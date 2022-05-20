@@ -37,6 +37,21 @@ pub struct Perspective {
     pub links: Vec<LinkExpression>
 }
 
+//TODO: this can likely be removed and instead just reference the PerspectiveDiffEntry/MergeEntry directly?
+#[hdk_entry(id = "hash_reference", visibility = "public")]
+#[derive(Clone)]
+pub struct HashReference {
+    pub hash: HoloHash<holo_hash::hash_type::Header>,
+    pub timestamp: DateTime<Utc>
+}
+
+#[hdk_entry(id = "local_hash_reference", visibility = "private")]
+#[derive(Clone)]
+pub struct LocalHashReference {
+    pub hash: HoloHash<holo_hash::hash_type::Header>,
+    pub timestamp: DateTime<Utc>
+}
+
 #[hdk_entry(id = "hash_anchor", visibility = "private")]
 #[derive(Clone)]
 pub struct HashAnchor(String);
@@ -49,7 +64,7 @@ pub struct AgentReference {
     pub timestamp: DateTime<Utc>,
 }
 
-entry_defs![PerspectiveDiffEntry::entry_def(), AgentReference::entry_def(), HashAnchor::entry_def(), PathEntry::entry_def()];
+entry_defs![PerspectiveDiffEntry::entry_def(), HashReference::entry_def(), LocalHashReference::entry_def(), AgentReference::entry_def(), HashAnchor::entry_def(), PathEntry::entry_def()];
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
