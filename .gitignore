@@ -1,0 +1,4 @@
+.cargo
+target
+workdir/social-context.dna
+zomes/tests/node_modules
