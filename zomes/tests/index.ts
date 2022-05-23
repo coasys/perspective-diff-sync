@@ -18,7 +18,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-orchestrator.registerScenario("basic testing", async (s, t) => {
+orchestrator.registerScenario("test committing, and updating latest & current revisions", async (s, t) => {
   const [alice] = await s.players([conductorConfig])
   const [[alice_sc_happ]] = await alice.installAgentsHapps(installation)
 

@@ -29,7 +29,7 @@ pub struct PerspectiveDiff {
 #[derive(Clone)]
 pub struct PerspectiveDiffEntry {
     pub diff: PerspectiveDiff,
-    pub parent: Option<HoloHash<holo_hash::hash_type::Header>>,
+    pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Header>>>,
 }
 
 #[derive(Clone, Serialize, Debug)]
