@@ -10,7 +10,7 @@ use crate::{
     Perspective, PerspectiveDiff, LocalHashReference, HashAnchor, HashReference
 };
 
-fn get_now() -> SocialContextResult<DateTime<Utc>> {
+pub fn get_now() -> SocialContextResult<DateTime<Utc>> {
     let now = sys_time()?.as_seconds_and_nanos();
     Ok(DateTime::<Utc>::from_utc(
         NaiveDateTime::from_timestamp(now.0, now.1),
@@ -18,7 +18,7 @@ fn get_now() -> SocialContextResult<DateTime<Utc>> {
     ))
 }
 
-fn update_latest_revision(hash: HoloHash<holo_hash::hash_type::Header>, timestamp: DateTime<Utc>) -> SocialContextResult<()> {
+pub fn update_latest_revision(hash: HoloHash<holo_hash::hash_type::Header>, timestamp: DateTime<Utc>) -> SocialContextResult<()> {
     let hash_ref = HashReference {
         hash,
         timestamp
@@ -28,7 +28,7 @@ fn update_latest_revision(hash: HoloHash<holo_hash::hash_type::Header>, timestam
     Ok(())
 }
 
-fn update_current_revision(hash: HoloHash<holo_hash::hash_type::Header>, timestamp: DateTime<Utc>) -> SocialContextResult<()> {
+pub fn update_current_revision(hash: HoloHash<holo_hash::hash_type::Header>, timestamp: DateTime<Utc>) -> SocialContextResult<()> {
     let hash_anchor = hash_entry(HashAnchor(String::from("current_hashes")))?;
     let hash_ref = LocalHashReference {
         hash,

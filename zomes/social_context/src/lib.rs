@@ -118,6 +118,22 @@ pub fn render(_: ()) -> ExternResult<Perspective> {
     methods::render().map_err(|err| WasmError::Host(err.to_string()))
 }
 
+#[hdk_extern]
+pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> ExternResult<()> {
+    #[cfg(feature = "test")] {
+        methods::update_current_revision(_hash, methods::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
+    }
+    Ok(())
+}
+
+#[hdk_extern]
+pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> ExternResult<()> {
+    #[cfg(feature = "test")] {
+        methods::update_latest_revision(_hash, methods::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
+    }
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize, Debug, SerializedBytes)]
 pub struct SocialContextProperties {
     pub active_agent_duration_s: i64,

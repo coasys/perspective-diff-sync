@@ -19,3 +19,7 @@ petgraph = "0.6.0"
 
 hdk = "0.0.123"
 holo_hash = "0.0.20"
+
+[features]
+prod = []
+test = []
