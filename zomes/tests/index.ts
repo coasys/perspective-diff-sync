@@ -1,5 +1,6 @@
 import { Orchestrator, Config, InstallAgentsHapps } from '@holochain/tryorama'
 import path from 'path'
+import faker from 'faker'
 
 //const conductorConfig = Config.gen({network});
 const conductorConfig = Config.gen();
@@ -56,6 +57,36 @@ orchestrator.registerScenario("test committing, and updating latest & current re
   console.warn("current_revision3", current_revision3);
   t.isEqual(commit2.toString(), current_revision3.toString())
 })
+
+orchestrator.registerScenario("test un-synced fetch", async (s, t) => {
+  const [alice, bob] = await s.players([conductorConfig, conductorConfig])
+  const [[alice_happ]] = await alice.installAgentsHapps(installation)
+  const [[bob_happ]] = await alice.installAgentsHapps(installation)
+  await s.shareAllNodes([alice, bob])
+
+  let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [generate_link_expression()], removals: []});
+  console.warn("\ncommit", commit);
+
+  await alice_happ.cells[0].call("social_context", "update_latest_revision", commit);
+  await alice_happ.cells[0].call("social_context", "update_current_revision", commit);
+
+  let pull_alice = await alice_happ.cells[0].call("social_context", "pull");
+  console.warn("\npull alice", pull_alice);
+
+  let pull_bob = await bob_happ.cells[0].call("social_context", "pull");
+  console.warn("\npull bob", pull_bob);
+  t.isEqual(pull_bob.length, 1);
+  t.end()
+})
+
+function generate_link_expression() {
+  return {
+    data: {source: faker.name.findName(), target: faker.name.findName(), predicate: faker.name.findName()},
+    author: "test1", 
+    timestamp: new Date().toISOString(), 
+    proof: {signature: "sig", key: "key"},
+ }
+}
 
 // Run all registered scenarios as a final step, and gather the report,
 // if you set up a reporter

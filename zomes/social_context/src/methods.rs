@@ -92,11 +92,24 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     if latest != current {
         if !latest.is_none() {
             let latest = latest.unwrap();
-            let current = current.unwrap();
 
             //Populate the search algorithm
             let mut search = search::populate_search(None, latest.clone())?;
             search.print();
+
+            if current.is_none() {
+                let mut out = PerspectiveDiff {
+                    additions: vec![],
+                    removals: vec![]
+                };
+                for (_key, value) in search.entry_map.iter() {
+                    out.additions.append(&mut value.diff.additions.clone());
+                    out.removals.append(&mut value.diff.removals.clone());
+                } 
+                return Ok(out)
+            }
+            let current = current.unwrap();
+
             //Get index for current and latest indexes
             let current_index = search.get_node_index(&current).expect("Could not find value in map").clone();
             let latest_index = search.get_node_index(&latest).expect("Could not find value in map").clone();
