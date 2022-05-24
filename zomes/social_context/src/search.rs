@@ -74,26 +74,50 @@ impl Search {
 
 //TODO; add ability to determine depth of recursion
 pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<Search> {
+    let mut search_position = latest;
+    let mut diffs = vec![];
+    let mut unseen_parents = vec![];
+
     let mut search = if search.is_none() {
         Search::new()
     } else {
         search.unwrap()
     };
-    let mut search_position = latest;
-    let mut diffs = vec![];
+
+    for item in search.entry_map.clone() {
+        diffs.push(item)
+    };
 
     loop {
-        //TODO; this will need to resolve/recurse merge entries also
         let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
-            .entry().to_app_option::<PerspectiveDiffEntry>()?.ok_or(
-                SocialContextError::InternalError("Expected element to contain app entry data"),
-            )?;
-        diffs.push((search_position, diff.clone(), ));
+        .entry().to_app_option::<PerspectiveDiffEntry>()?.ok_or(
+            SocialContextError::InternalError("Expected element to contain app entry data"),
+        )?;
+        diffs.push((search_position, diff.clone()));
         if diff.parents.is_none() {
-            break;
+            //No parents, we have reached the end of the chain
+            //Now move onto traversing parents
+            if unseen_parents.len() == 0 {
+                break
+            } else {
+                search_position = unseen_parents.remove(0);
+            }
+        } else {
+            //Do the fork traversals
+            let mut parents = diff.parents.unwrap();
+            //Check if all parents have already been seen, if so then break and move onto next unseen parents
+            if parents.iter().all(|val| diffs.clone().into_iter().map(|val| val.0).collect::<Vec<_>>().contains(val)) {
+                if unseen_parents.len() == 0 {
+                    break;
+                } else {
+                    search_position = unseen_parents.remove(0);
+                }
+            } else {
+                search_position = parents.first().unwrap().clone();
+                parents.remove(0);
+                unseen_parents.append(&mut parents);
+            };
         }
-        //TODO; handle multiple parents
-        search_position = diff.parents.unwrap().first().unwrap().clone();
     }
 
     diffs.reverse();
@@ -101,9 +125,12 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
     for diff in diffs {
         search.add_entry(diff.0.clone(), diff.1.clone());
         if diff.1.parents.is_some() {
-            //TODO; handle multiple parents
-            let parent = search.get_node_index(&diff.1.parents.unwrap().first().unwrap().clone()).ok_or(SocialContextError::InternalError("Could not find parent in search graph"))?.clone();
-            search.add_node(Some(vec![parent]), diff.0);
+            let mut parents = vec![];
+            for parent in diff.1.parents.unwrap() {
+                let parent = search.get_node_index(&parent).ok_or(SocialContextError::InternalError("Could not find parent in search graph"))?.clone();
+                parents.push(parent);
+            }
+            search.add_node(Some(parents), diff.0);
         } else {
             search.add_node(None, diff.0);
         }

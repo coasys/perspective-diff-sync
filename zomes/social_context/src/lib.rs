@@ -24,6 +24,10 @@ pub struct PerspectiveDiff {
     pub removals: Vec<LinkExpression>,
 }
 
+//TODO; add a PerspectiveDiffEntryReference type which contains reference to parents & reference to the PerspectiveDiffEntry object
+//When populating local search graph this can be used to reduce data transfered between agents when fetching the chain
+//Upon returning the PerspectiveDiff data, we can then resolve to the actual PerspectiveDiffEntry
+
 #[hdk_entry(id = "perspective_diff_entry", visibility = "public")]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone)]
