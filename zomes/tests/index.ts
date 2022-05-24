@@ -101,7 +101,9 @@ orchestrator.registerScenario("test merge fetch", async (s, t) => {
   t.isEqual(pull_bob.additions.length, 0);
 
   //Bob to commit his data, and update the latest revision, causingk a fork
-  let commit_bob = await bob_happ.cells[0].call("social_context", "commit", {additions: [generate_link_expression()], removals: []});
+  let bob_link_data = generate_link_expression();
+  console.log("Bob posting link data", bob_link_data);
+  let commit_bob = await bob_happ.cells[0].call("social_context", "commit", {additions: [bob_link_data], removals: []});
   console.warn("\ncommit_bob", commit_bob.toString("base64"));
   await bob_happ.cells[0].call("social_context", "update_latest_revision", commit_bob);
   await bob_happ.cells[0].call("social_context", "update_current_revision", commit_bob);
@@ -116,7 +118,8 @@ orchestrator.registerScenario("test merge fetch", async (s, t) => {
 
   //Alice tries to merge
   let merge_alice = await alice_happ.cells[0].call("social_context", "pull");
-  console.warn("\nmerge_alice", merge_alice);
+  t.isEqual(merge_alice.additions.length, 1);
+  t.isEqual(JSON.stringify(merge_alice.additions[0].data), JSON.stringify(bob_link_data.data));
 
   //note; running this test on some machines may require more than 200ms wait
   await sleep(200)
@@ -124,6 +127,7 @@ orchestrator.registerScenario("test merge fetch", async (s, t) => {
   let pull_bob3 = await bob_happ.cells[0].call("social_context", "pull");
   t.isEqual(pull_bob3.additions.length, 1);
   console.log(pull_bob3.additions[0].data);
+  t.isEqual(JSON.stringify(pull_bob3.additions[0].data), JSON.stringify(link_data.data));
 })
 
 function generate_link_expression() {

@@ -90,6 +90,7 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
             SocialContextError::InternalError("Expected element to contain app entry data"),
         )?;
         if !search.entry_map.contains_key(&search_position) {
+            //debug!("Diff: {:#?}", diff);
             diffs.push((search_position, diff.clone()))
         };
         if diff.parents.is_none() {

@@ -43,6 +43,7 @@ pub fn update_current_revision(hash: HoloHash<holo_hash::hash_type::Header>, tim
     Ok(())
 }
 
+//Latest revision as seen from the DHT
 pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Header>>> {
     let mut latest = hc_time_index::get_links_and_load_for_time_span::<HashReference>(
         String::from("current_rev"), get_now()?, DateTime::<Utc>::from_utc(
@@ -56,6 +57,7 @@ pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_
     Ok(latest.pop().map(|val| val.hash))
 }
 
+//Latest revision as seen from our local state
 pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Header>>> {
     let hash_anchor = hash_entry(HashAnchor(String::from("current_hashes")))?;
     let links = get_links(hash_anchor.clone(), None)?;
@@ -154,21 +156,33 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 //Calculate the place where a common ancestor is shared between current and latest revisions
                 //Common ancestor is then used as the starting point of gathering diffs on a fork
                 let common_ancestor = search.find_common_ancestor(current_index, latest_index).expect("Could not find common ancestor");
-                let paths = search.get_paths(current_index.clone(), common_ancestor.clone());
+                let fork_paths = search.get_paths(current_index.clone(), common_ancestor.clone());
+                let latest_paths = search.get_paths(latest_index.clone(), common_ancestor.clone());
                 let mut fork_direction: Option<Vec<NodeIndex>> = None;
+                let mut base_branch_direction: Option<Vec<NodeIndex>> = None;
 
+                debug!("Paths of fork: {:#?}", fork_paths);
+                debug!("Paths of latst: {:#?}", latest_paths);
                 //Use items in path to recurse from common_ancestor going in direction of fork
-                for path in paths {
+                for path in fork_paths.clone() {
                     if path.contains(&current_index) {
                         fork_direction = Some(path);
                         break
                     };
                 }
+                //Use items in path to recurse from common_ancestor going in direction of base
+                for path in latest_paths {
+                    if path.contains(&latest_index) {
+                        base_branch_direction = Some(path);
+                        break
+                    };
+                }
+
+                //Create the merge entry
                 let mut merge_entry = PerspectiveDiff {
                     additions: vec![],
                     removals: vec![]
                 };
-
                 if let Some(mut diffs) = fork_direction {    
                     diffs.reverse();
                     diffs.retain(|val| val != &common_ancestor);
@@ -194,11 +208,28 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 update_current_revision(hash.clone(), now)?;
                 update_latest_revision(hash, now)?;
 
-                //TODO: actually return diff from remote fork, since we need to pull changes we dont know about
-                Ok(PerspectiveDiff {
-                    removals: vec![],
-                    additions: vec![]
-                })
+                //Return the diffs unseen by the user
+                let mut unseen_entry = PerspectiveDiff {
+                    additions: vec![],
+                    removals: vec![]
+                };
+
+                if let Some(mut diffs) = base_branch_direction {
+                    diffs.reverse();
+                    diffs.retain(|val| val != &common_ancestor);
+                    for diff in diffs {
+                        let hash = search.index(diff);
+                        let current_diff = search.get_entry(
+                            &hash
+                        );
+                        if let Some(val) = current_diff {
+                            unseen_entry.additions.append(&mut val.diff.additions.clone());
+                            unseen_entry.removals.append(&mut val.diff.removals.clone());
+                        }
+                    }
+                }
+
+                Ok(unseen_entry)
             }
         } else {
             Ok(PerspectiveDiff {
@@ -234,6 +265,7 @@ pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::
         parents: parent.map(|val| vec![val])
     };
     let diff_entry_create = create_entry(diff_entry)?;
+    debug!("Created diff entry: {:#?}", diff_entry_create);
     
     //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
     #[cfg(feature = "prod")] {
