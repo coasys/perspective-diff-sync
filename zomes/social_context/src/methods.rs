@@ -88,6 +88,7 @@ pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash
 pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let latest = latest_revision()?;
     let current = current_revision()?;
+    debug!("Pull made with latest: {:#?} and current: {:#?}", latest, current);
 
     if latest != current {
         if !latest.is_none() {
@@ -118,6 +119,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
             //Check if latest diff is a child of current diff
             let ancestor_status = search.get_paths(latest_index.clone(), current_index.clone());
+            debug!("Ancestor status: {:#?}", ancestor_status);
             
             if ancestor_status.len() > 0 {
                 //Latest diff contains in its chain our current diff, fast forward and get all changes between now and then
@@ -147,6 +149,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 update_current_revision(latest, get_now()?)?;
                 Ok(out)
             } else {
+                debug!("Fork detected, attempting merge...");
                 //There is a fork, find all the diffs from a fork and apply in merge with latest and current revisions as parents
                 //Calculate the place where a common ancestor is shared between current and latest revisions
                 //Common ancestor is then used as the starting point of gathering diffs on a fork
@@ -186,6 +189,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     parents: Some(vec![latest, current]),
                     diff: merge_entry.clone()
                 })?;
+                debug!("Commited merge entry: {:#?}", hash);
                 let now = get_now()?;
                 update_current_revision(hash.clone(), now)?;
                 update_latest_revision(hash, now)?;

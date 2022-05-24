@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use petgraph::{graph::{UnGraph, DiGraph, Graph, NodeIndex}, algo::{all_simple_paths, dominators::simple_fast}};
-use petgraph::dot::{Dot, Config};
+use petgraph::dot::Dot;
 use hdk::prelude::*;
 use std::ops::Index;
 
@@ -54,8 +54,8 @@ impl Search {
     }
 
     pub fn print(&self) {
-        debug!("Directed: {:?}\n", Dot::with_config(&self.graph, &[Config::NodeIndexLabel]));
-        debug!("Undirected: {:?}\n", Dot::with_config(&self.undirected_graph, &[Config::NodeIndexLabel]));
+        debug!("Directed: {:?}\n", Dot::with_config(&self.graph, &[]));
+        debug!("Undirected: {:?}\n", Dot::with_config(&self.undirected_graph, &[]));
     }
 
     pub fn get_paths(&self, child: NodeIndex<u32>, ancestor: NodeIndex<u32>) -> Vec<Vec<NodeIndex>> {
@@ -84,16 +84,14 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
         search.unwrap()
     };
 
-    for item in search.entry_map.clone() {
-        diffs.push(item)
-    };
-
     loop {
         let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
         .entry().to_app_option::<PerspectiveDiffEntry>()?.ok_or(
             SocialContextError::InternalError("Expected element to contain app entry data"),
         )?;
-        diffs.push((search_position, diff.clone()));
+        if !search.entry_map.contains_key(&search_position) {
+            diffs.push((search_position, diff.clone()))
+        };
         if diff.parents.is_none() {
             //No parents, we have reached the end of the chain
             //Now move onto traversing parents
@@ -122,6 +120,10 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
 
     diffs.reverse();
 
+    //Add root node
+    if search.get_node_index(&HeaderHash::from_raw_36(vec![0xdb; 36])).is_none() {
+        search.add_node(None, HeaderHash::from_raw_36(vec![0xdb; 36]));
+    };
     for diff in diffs {
         search.add_entry(diff.0.clone(), diff.1.clone());
         if diff.1.parents.is_some() {
@@ -132,7 +134,7 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
             }
             search.add_node(Some(parents), diff.0);
         } else {
-            search.add_node(None, diff.0);
+            search.add_node(Some(vec![NodeIndex::from(0)]), diff.0);
         }
     }
 

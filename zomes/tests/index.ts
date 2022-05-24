@@ -1,4 +1,5 @@
 import { Orchestrator, Config, InstallAgentsHapps } from '@holochain/tryorama'
+import { TransportConfigType, ProxyAcceptConfig, ProxyConfigType, NetworkType } from '@holochain/tryorama'
 import path from 'path'
 import faker from 'faker'
 
@@ -13,7 +14,7 @@ const installation: InstallAgentsHapps = [
   ]
 ]
 
-const orchestrator = new Orchestrator()
+let orchestrator = new Orchestrator()
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -58,6 +59,8 @@ orchestrator.registerScenario("test committing, and updating latest & current re
   t.isEqual(commit2.toString(), current_revision3.toString())
 })
 
+orchestrator = new Orchestrator()
+
 orchestrator.registerScenario("test un-synced fetch", async (s, t) => {
   const [alice, bob] = await s.players([conductorConfig, conductorConfig])
   const [[alice_happ]] = await alice.installAgentsHapps(installation)
@@ -76,7 +79,51 @@ orchestrator.registerScenario("test un-synced fetch", async (s, t) => {
   let pull_bob = await bob_happ.cells[0].call("social_context", "pull");
   console.warn("\npull bob", pull_bob);
   t.isEqual(pull_bob.length, 1);
-  t.end()
+})
+
+orchestrator = new Orchestrator()
+
+orchestrator.registerScenario("test merge fetch", async (s, t) => {
+  const [alice, bob] = await s.players([conductorConfig, conductorConfig])
+  const [[alice_happ]] = await alice.installAgentsHapps(installation)
+  const [[bob_happ]] = await bob.installAgentsHapps(installation)
+
+  //Create new commit whilst bob is not connected
+  let link_data = generate_link_expression();
+  console.log("Alice posting link data", link_data);
+  let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [link_data], removals: []});
+  console.warn("\ncommit", commit.toString("base64"));
+  await alice_happ.cells[0].call("social_context", "update_latest_revision", commit);
+  await alice_happ.cells[0].call("social_context", "update_current_revision", commit);
+
+  //Pull from bob and make sure he does not have the latest state
+  let pull_bob = await bob_happ.cells[0].call("social_context", "pull");
+  t.isEqual(pull_bob.additions.length, 0);
+
+  //Bob to commit his data, and update the latest revision, causingk a fork
+  let commit_bob = await bob_happ.cells[0].call("social_context", "commit", {additions: [generate_link_expression()], removals: []});
+  console.warn("\ncommit_bob", commit_bob.toString("base64"));
+  await bob_happ.cells[0].call("social_context", "update_latest_revision", commit_bob);
+  await bob_happ.cells[0].call("social_context", "update_current_revision", commit_bob);
+
+  let pull_bob2 = await bob_happ.cells[0].call("social_context", "pull");
+  t.isEqual(pull_bob2.additions.length, 0);
+
+  //Connect nodes togther
+  await s.shareAllNodes([alice, bob])
+  //note; running this test on some machines may require more than 200ms wait
+  await sleep(200)
+
+  //Alice tries to merge
+  let merge_alice = await alice_happ.cells[0].call("social_context", "pull");
+  console.warn("\nmerge_alice", merge_alice);
+
+  //note; running this test on some machines may require more than 200ms wait
+  await sleep(200)
+
+  let pull_bob3 = await bob_happ.cells[0].call("social_context", "pull");
+  t.isEqual(pull_bob3.additions.length, 1);
+  console.log(pull_bob3.additions[0].data);
 })
 
 function generate_link_expression() {
