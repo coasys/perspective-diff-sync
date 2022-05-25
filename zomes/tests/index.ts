@@ -200,12 +200,15 @@ orchestrator.registerScenario("test complex merge", async (s, t) => {
 
   let bob_merge = await bob_happ.cells[0].call("social_context", "pull");
   console.log("Bob merge result", bob_merge);
+  //Should get two entries from Eric
   await sleep(200)
 
   let alice_merge = await alice_happ.cells[0].call("social_context", "pull");
   console.log("Alice merge result", alice_merge);
+  //should get whole side of bob/eric graph
   await sleep(200)
   
+  //Should get alice graph and one entry from bobs
   let eric_pull = await eric_happ.cells[0].call("social_context", "pull");
   console.log("Eric pull result", eric_pull);
 })

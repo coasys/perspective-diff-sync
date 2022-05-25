@@ -134,7 +134,7 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
     }
 
     diffs.reverse();
-    debug!("Got diff list: {:#?}", diffs);
+    //debug!("Got diff list: {:#?}", diffs);
 
     //Add root node
     if search.get_node_index(&HeaderHash::from_raw_36(vec![0xdb; 36])).is_none() {

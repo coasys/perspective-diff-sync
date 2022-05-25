@@ -155,14 +155,15 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 //There is a fork, find all the diffs from a fork and apply in merge with latest and current revisions as parents
                 //Calculate the place where a common ancestor is shared between current and latest revisions
                 //Common ancestor is then used as the starting point of gathering diffs on a fork
-                let common_ancestor = search.find_common_ancestor(current_index, latest_index).expect("Could not find common ancestor");
+                let common_ancestor = search.find_common_ancestor(latest_index, current_index).expect("Could not find common ancestor");
                 let fork_paths = search.get_paths(current_index.clone(), common_ancestor.clone());
                 let latest_paths = search.get_paths(latest_index.clone(), common_ancestor.clone());
                 let mut fork_direction: Option<Vec<NodeIndex>> = None;
-                let mut base_branch_direction: Option<Vec<NodeIndex>> = None;
 
                 debug!("Paths of fork: {:#?}", fork_paths);
                 debug!("Paths of latst: {:#?}", latest_paths);
+                debug!("Common ancestor: {:#?}", common_ancestor);
+
                 //Use items in path to recurse from common_ancestor going in direction of fork
                 for path in fork_paths.clone() {
                     if path.contains(&current_index) {
@@ -170,13 +171,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                         break
                     };
                 }
-                //Use items in path to recurse from common_ancestor going in direction of base
-                for path in latest_paths {
-                    if path.contains(&latest_index) {
-                        base_branch_direction = Some(path);
-                        break
-                    };
-                }
+                let mut latest_paths = latest_paths.into_iter().flatten().collect::<Vec<_>>();
+                latest_paths.dedup();
+                latest_paths.retain(|val| val != &common_ancestor);
 
                 //Create the merge entry
                 let mut merge_entry = PerspectiveDiff {
@@ -198,7 +195,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     }
                 }
                 
-                debug!("Will merge entries: {:#?} and {:#?}", latest, current);
+                debug!("Will merge entries: {:#?} and {:#?}. With diff data: {:#?}", latest, current, merge_entry);
                 //Create the merge entry
                 let hash = create_entry(PerspectiveDiffEntry {
                     parents: Some(vec![latest, current]),
@@ -215,15 +212,19 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     removals: vec![]
                 };
 
-                if let Some(mut diffs) = base_branch_direction {
-                    diffs.reverse();
-                    diffs.retain(|val| val != &common_ancestor);
-                    for diff in diffs {
-                        let hash = search.index(diff);
-                        let current_diff = search.get_entry(
-                            &hash
-                        );
-                        if let Some(val) = current_diff {
+                for diff in latest_paths {
+                    let hash = search.index(diff);
+                    let current_diff = search.get_entry(
+                        &hash
+                    );
+                    if let Some(val) = current_diff {
+                        if val.parents.is_some() {
+                            //Filter out the merge entries to avoid duplicate results
+                            if val.parents.unwrap().len() == 1 {
+                                unseen_entry.additions.append(&mut val.diff.additions.clone());
+                                unseen_entry.removals.append(&mut val.diff.removals.clone());
+                            }
+                        } else {
                             unseen_entry.additions.append(&mut val.diff.additions.clone());
                             unseen_entry.removals.append(&mut val.diff.removals.clone());
                         }
