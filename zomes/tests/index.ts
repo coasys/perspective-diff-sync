@@ -67,7 +67,7 @@ orchestrator.registerScenario("test un-synced fetch", async (s, t) => {
   const [[bob_happ]] = await alice.installAgentsHapps(installation)
   await s.shareAllNodes([alice, bob])
 
-  let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [generate_link_expression()], removals: []});
+  let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [generate_link_expression("alice")], removals: []});
   console.warn("\ncommit", commit);
 
   await alice_happ.cells[0].call("social_context", "update_latest_revision", commit);
@@ -89,7 +89,7 @@ orchestrator.registerScenario("test merge fetch", async (s, t) => {
   const [[bob_happ]] = await bob.installAgentsHapps(installation)
 
   //Create new commit whilst bob is not connected
-  let link_data = generate_link_expression();
+  let link_data = generate_link_expression("alice");
   console.log("Alice posting link data", link_data);
   let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [link_data], removals: []});
   console.warn("\ncommit", commit.toString("base64"));
@@ -100,8 +100,8 @@ orchestrator.registerScenario("test merge fetch", async (s, t) => {
   let pull_bob = await bob_happ.cells[0].call("social_context", "pull");
   t.isEqual(pull_bob.additions.length, 0);
 
-  //Bob to commit his data, and update the latest revision, causingk a fork
-  let bob_link_data = generate_link_expression();
+  //Bob to commit his data, and update the latest revision, causing a fork
+  let bob_link_data = generate_link_expression("bob");
   console.log("Bob posting link data", bob_link_data);
   let commit_bob = await bob_happ.cells[0].call("social_context", "commit", {additions: [bob_link_data], removals: []});
   console.warn("\ncommit_bob", commit_bob.toString("base64"));
@@ -130,10 +130,90 @@ orchestrator.registerScenario("test merge fetch", async (s, t) => {
   t.isEqual(JSON.stringify(pull_bob3.additions[0].data), JSON.stringify(link_data.data));
 })
 
-function generate_link_expression() {
+orchestrator = new Orchestrator()
+
+orchestrator.registerScenario("test complex merge", async (s, t) => {
+  const [alice, bob, eric] = await s.players([conductorConfig, conductorConfig, conductorConfig])
+  const [[alice_happ]] = await alice.installAgentsHapps(installation)
+  const [[bob_happ]] = await bob.installAgentsHapps(installation)
+  const [[eric_happ]] = await eric.installAgentsHapps(installation)
+
+  // 1 -> alice_link (2)
+  //Create new commit whilst bob is not connected
+  let link_data = generate_link_expression("alice1");
+  console.log("Alice posting link data", link_data);
+  let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [link_data], removals: []});
+  console.warn("\ncommit", commit.toString("base64"));
+  await alice_happ.cells[0].call("social_context", "update_latest_revision", commit);
+  await alice_happ.cells[0].call("social_context", "update_current_revision", commit);
+
+  //1 -> bob_link (3)
+  //Bob to commit his data, and update the latest revision, causing a fork
+  let bob_link_data = generate_link_expression("bob1");
+  console.log("Bob posting link data", bob_link_data);
+  let commit_bob = await bob_happ.cells[0].call("social_context", "commit", {additions: [bob_link_data], removals: []});
+  console.warn("\ncommit_bob", commit_bob.toString("base64"));
+  await bob_happ.cells[0].call("social_context", "update_latest_revision", commit_bob);
+  await bob_happ.cells[0].call("social_context", "update_current_revision", commit_bob);
+
+  //Update bob to use latest revision as created by bob; bob and eric now in their own forked state
+  //await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_bob);
+  await eric_happ.cells[0].call("social_context", "update_current_revision", commit_bob);
+
+  //1 -> bob_link(3) -> eric_link(4)
+  //Eric to commit his data, and update the latest revision, causing another fork on a fork
+  let eric_link_data = generate_link_expression("eric1");
+  console.log("eric posting link data, child of eric commit", eric_link_data);
+  let commit_eric = await eric_happ.cells[0].call("social_context", "commit", {additions: [eric_link_data], removals: []});
+  console.warn("\ncommit_eric", commit_eric.toString("base64"));
+  await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_eric);
+  await eric_happ.cells[0].call("social_context", "update_current_revision", commit_eric);
+
+  // let eric_pull = await eric_happ.cells[0].call("social_context", "pull");
+  // console.log("eric pull result", eric_pull);
+
+  //1 -> bob_link(3) -> eric_link(4)
+  //                 -> bob_link(5)
+  //1 -> alice_link(2) 
+  let bob_link_data2 = generate_link_expression("bob2");
+  console.log("Bob posting link data, child of bob last commit", bob_link_data2);
+  let commit_bob2 = await bob_happ.cells[0].call("social_context", "commit", {additions: [bob_link_data2], removals: []});
+  console.warn("\ncommit_bob2", commit_bob2.toString("base64"));
+  await bob_happ.cells[0].call("social_context", "update_latest_revision", commit_bob2);
+  await bob_happ.cells[0].call("social_context", "update_current_revision", commit_bob2);
+
+  //1 -> bob_link(3) -> eric_link(4) -> eric_link(6)
+  //                 -> bob_link(5)
+  //1 -> alice_link(2) 
+  //Eric to commit his data, and update the latest revision, causing another fork on a fork
+  let eric_link_data2 = generate_link_expression("eric2");
+  console.log("eric posting link data, child of eric last commit", eric_link_data2);
+  let commit_eric2 = await eric_happ.cells[0].call("social_context", "commit", {additions: [eric_link_data2], removals: []});
+  console.warn("\ncommit_eric2", commit_eric2.toString("base64"));
+  await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_eric2);
+  await eric_happ.cells[0].call("social_context", "update_current_revision", commit_eric2);
+
+  //Connect nodes togther
+  await s.shareAllNodes([alice, bob, eric])
+  //note; running this test on some machines may require more than 500ms wait
+  await sleep(1000)
+
+  let bob_merge = await bob_happ.cells[0].call("social_context", "pull");
+  console.log("Bob merge result", bob_merge);
+  await sleep(200)
+
+  let alice_merge = await alice_happ.cells[0].call("social_context", "pull");
+  console.log("Alice merge result", alice_merge);
+  await sleep(200)
+  
+  let eric_pull = await eric_happ.cells[0].call("social_context", "pull");
+  console.log("Eric pull result", eric_pull);
+})
+
+function generate_link_expression(agent: string) {
   return {
     data: {source: faker.name.findName(), target: faker.name.findName(), predicate: faker.name.findName()},
-    author: "test1", 
+    author: agent, 
     timestamp: new Date().toISOString(), 
     proof: {signature: "sig", key: "key"},
  }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use petgraph::{graph::{UnGraph, DiGraph, Graph, NodeIndex}, algo::{all_simple_paths, dominators::simple_fast}};
-use petgraph::dot::Dot;
+use petgraph::dot::{Dot, Config};
 use hdk::prelude::*;
 use std::ops::Index;
 
@@ -54,7 +54,7 @@ impl Search {
     }
 
     pub fn print(&self) {
-        debug!("Directed: {:?}\n", Dot::with_config(&self.graph, &[]));
+        debug!("Directed: {:?}\n", Dot::with_config(&self.graph, &[Config::NodeIndexLabel]));
         debug!("Undirected: {:?}\n", Dot::with_config(&self.undirected_graph, &[]));
     }
 
@@ -72,11 +72,20 @@ impl Search {
     }
 }
 
+fn move_me<T>(arr: &mut Vec<T>, old_index: usize, new_index: usize) {
+    if old_index < new_index {
+        arr[old_index..=new_index].rotate_left(1);
+    } else {
+        arr[new_index..=old_index].rotate_right(1);
+    }
+}
+
 //TODO; add ability to determine depth of recursion
 pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<Search> {
-    let mut search_position = latest;
+    let mut search_position = (latest, 0);
     let mut diffs = vec![];
     let mut unseen_parents = vec![];
+    let mut depth = 0;
 
     let mut search = if search.is_none() {
         Search::new()
@@ -85,26 +94,32 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
     };
 
     loop {
-        let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
+        let diff = get(search_position.0.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
         .entry().to_app_option::<PerspectiveDiffEntry>()?.ok_or(
             SocialContextError::InternalError("Expected element to contain app entry data"),
         )?;
-        if !search.entry_map.contains_key(&search_position) {
-            //debug!("Diff: {:#?}", diff);
-            diffs.push((search_position, diff.clone()))
+        if !search.entry_map.contains_key(&search_position.0) {
+            diffs.push((search_position.0, diff.clone()));
+            depth +=1;
+            if search_position.1 != 0 {
+                let len = diffs.len();
+                move_me(&mut diffs, len-1, len-1-search_position.1);
+            }
         };
         if diff.parents.is_none() {
             //No parents, we have reached the end of the chain
             //Now move onto traversing parents
             if unseen_parents.len() == 0 {
+                debug!("No more unseen items");
                 break
             } else {
+                debug!("Moving onto unseen fork items");
                 search_position = unseen_parents.remove(0);
             }
         } else {
             //Do the fork traversals
             let mut parents = diff.parents.unwrap();
-            //Check if all parents have already been seen, if so then break and move onto next unseen parents
+            //Check if all parents have already been seen, if so then break or move onto next unseen parents
             if parents.iter().all(|val| diffs.clone().into_iter().map(|val| val.0).collect::<Vec<_>>().contains(val)) {
                 if unseen_parents.len() == 0 {
                     break;
@@ -112,14 +127,14 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
                     search_position = unseen_parents.remove(0);
                 }
             } else {
-                search_position = parents.first().unwrap().clone();
-                parents.remove(0);
-                unseen_parents.append(&mut parents);
+                search_position = (parents.remove(0), 0);
+                unseen_parents.append(&mut parents.into_iter().enumerate().map(|val| (val.1, depth+val.0)).collect::<Vec<_>>());
             };
         }
     }
 
     diffs.reverse();
+    debug!("Got diff list: {:#?}", diffs);
 
     //Add root node
     if search.get_node_index(&HeaderHash::from_raw_36(vec![0xdb; 36])).is_none() {
@@ -130,8 +145,8 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
         if diff.1.parents.is_some() {
             let mut parents = vec![];
             for parent in diff.1.parents.unwrap() {
-                let parent = search.get_node_index(&parent).ok_or(SocialContextError::InternalError("Could not find parent in search graph"))?.clone();
-                parents.push(parent);
+                let parent = search.get_node_index(&parent).ok_or(SocialContextError::InternalError("Did not find parent"))?;
+                parents.push(parent.clone());
             }
             search.add_node(Some(parents), diff.0);
         } else {

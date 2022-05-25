@@ -198,6 +198,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     }
                 }
                 
+                debug!("Will merge entries: {:#?} and {:#?}", latest, current);
                 //Create the merge entry
                 let hash = create_entry(PerspectiveDiffEntry {
                     parents: Some(vec![latest, current]),
@@ -260,6 +261,7 @@ pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::
     };
 
     let parent = current_revision()?;
+    debug!("Parent entry is: {:#?}", parent);
     let diff_entry = PerspectiveDiffEntry {
         diff,
         parents: parent.map(|val| vec![val])
