@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 mod errors;
 mod inputs;
-mod methods;
+pub mod methods;
 mod impls;
 mod search;
 
@@ -18,7 +18,7 @@ pub struct LinkExpression {
     pub proof: ExpressionProof,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, SerializedBytes)]
 pub struct PerspectiveDiff {
     pub additions: Vec<LinkExpression>,
     pub removals: Vec<LinkExpression>,
@@ -88,7 +88,7 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 
 #[hdk_extern]
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    let sig: PerspectiveDiffEntry = PerspectiveDiffEntry::try_from(signal.clone())?;
+    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone())?;
     Ok(emit_signal(&sig)?)
 }
 
@@ -98,7 +98,7 @@ pub fn commit(diff: PerspectiveDiff) -> ExternResult<HoloHash<holo_hash::hash_ty
 }
 
 #[hdk_extern]
-pub fn add_active_agent_link(_: ()) -> ExternResult<()> {
+pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
     methods::add_active_agent_link().map_err(|err| WasmError::Host(err.to_string()))
 }
 
@@ -138,27 +138,8 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> 
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug, SerializedBytes)]
-pub struct SocialContextProperties {
-    pub active_agent_duration_s: i64,
-    pub enable_signals: bool,
-}
-
+//not loading from DNA properies since dna zome properties is always null for some reason
 lazy_static! {
-    pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = {
-        let host_dna_config = zome_info()
-            .expect("Could not get zome configuration")
-            .properties;
-        let properties = SocialContextProperties::try_from(host_dna_config)
-            .expect("Could not convert zome dna properties to SocialContextProperties. Please ensure that your dna properties contains a SocialContextProperties field.");
-        chrono::Duration::seconds(properties.active_agent_duration_s)
-    };
-    pub static ref ENABLE_SIGNALS: bool = {
-        let host_dna_config = zome_info()
-            .expect("Could not get zome configuration")
-            .properties;
-        let properties = SocialContextProperties::try_from(host_dna_config)
-            .expect("Could not convert zome dna properties to SocialContextProperties. Please ensure that your dna properties contains a SocialContextProperties field.");
-        properties.enable_signals
-    };
+    pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
+    pub static ref ENABLE_SIGNALS: bool = true;
 }
