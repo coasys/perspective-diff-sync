@@ -104,9 +104,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 };
                 for (_key, value) in search.entry_map.iter() {
                     let diff_entry = get(value.diff.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
-                    .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
-                        SocialContextError::InternalError("Expected element to contain app entry data"),
-                    )?;
+                        .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                            SocialContextError::InternalError("Expected element to contain app entry data"),
+                        )?;
                     out.additions.append(&mut diff_entry.additions.clone());
                     out.removals.append(&mut diff_entry.removals.clone());
                 } 
@@ -145,9 +145,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     let current_diff = search.get_entry(&hash);
                     if let Some(val) = current_diff {
                         let diff_entry = get(val.diff, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
-                        .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
-                            SocialContextError::InternalError("Expected element to contain app entry data"),
-                        )?;
+                            .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                                SocialContextError::InternalError("Expected element to contain app entry data"),
+                            )?;
                         out.additions.append(&mut diff_entry.additions.clone());
                         out.removals.append(&mut diff_entry.removals.clone());
                     }
@@ -196,9 +196,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                         );
                         if let Some(val) = current_diff {
                             let diff_entry = get(val.diff, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
-                            .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
-                                SocialContextError::InternalError("Expected element to contain app entry data"),
-                            )?;
+                                .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                                    SocialContextError::InternalError("Expected element to contain app entry data"),
+                                )?;
                             merge_entry.additions.append(&mut diff_entry.additions.clone());
                             merge_entry.removals.append(&mut diff_entry.removals.clone());
                         }
