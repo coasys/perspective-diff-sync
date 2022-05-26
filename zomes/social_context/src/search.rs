@@ -4,13 +4,13 @@ use petgraph::dot::{Dot, Config};
 use hdk::prelude::*;
 use std::ops::Index;
 
-use crate::{errors::{SocialContextResult, SocialContextError}, PerspectiveDiffEntry};
+use crate::{errors::{SocialContextResult, SocialContextError}, PerspectiveDiffEntryReference};
 
 pub struct Search {
     pub graph: DiGraph<HoloHash<holo_hash::hash_type::Header>, ()>,
     pub undirected_graph: UnGraph<HoloHash<holo_hash::hash_type::Header>, ()>,
     pub node_index_map: HashMap<HoloHash<holo_hash::hash_type::Header>, NodeIndex<u32>>,
-    pub entry_map: HashMap<HoloHash<holo_hash::hash_type::Header>, PerspectiveDiffEntry>
+    pub entry_map: HashMap<HoloHash<holo_hash::hash_type::Header>, PerspectiveDiffEntryReference>
 }
 
 
@@ -37,11 +37,11 @@ impl Search {
         index
     }
 
-    pub fn add_entry(&mut self, hash: HoloHash<holo_hash::hash_type::Header>, diff: PerspectiveDiffEntry) {
+    pub fn add_entry(&mut self, hash: HoloHash<holo_hash::hash_type::Header>, diff: PerspectiveDiffEntryReference) {
         self.entry_map.insert(hash, diff);
     }
 
-    pub fn get_entry(&mut self, hash: &HoloHash<holo_hash::hash_type::Header>) -> Option<PerspectiveDiffEntry> {
+    pub fn get_entry(&mut self, hash: &HoloHash<holo_hash::hash_type::Header>) -> Option<PerspectiveDiffEntryReference> {
         self.entry_map.remove(hash)
     }
 
@@ -95,7 +95,7 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
 
     loop {
         let diff = get(search_position.0.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
-        .entry().to_app_option::<PerspectiveDiffEntry>()?.ok_or(
+        .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
             SocialContextError::InternalError("Expected element to contain app entry data"),
         )?;
         if !search.entry_map.contains_key(&search_position.0) {

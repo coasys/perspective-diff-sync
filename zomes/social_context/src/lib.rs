@@ -18,21 +18,19 @@ pub struct LinkExpression {
     pub proof: ExpressionProof,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[hdk_entry(id = "perspective_diff", visibility = "public")]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone)]
 pub struct PerspectiveDiff {
     pub additions: Vec<LinkExpression>,
     pub removals: Vec<LinkExpression>,
 }
 
-//TODO; add a PerspectiveDiffEntryReference type which contains reference to parents & reference to the PerspectiveDiffEntry object
-//When populating local search graph this can be used to reduce data transfered between agents when fetching the chain
-//Upon returning the PerspectiveDiff data, we can then resolve to the actual PerspectiveDiffEntry
-
-#[hdk_entry(id = "perspective_diff_entry", visibility = "public")]
+#[hdk_entry(id = "perspective_diff_entry_reference", visibility = "public")]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone)]
-pub struct PerspectiveDiffEntry {
-    pub diff: PerspectiveDiff,
+pub struct PerspectiveDiffEntryReference {
+    pub diff: HoloHash<holo_hash::hash_type::Header>,
     pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Header>>>,
 }
 
@@ -68,7 +66,7 @@ pub struct AgentReference {
     pub timestamp: DateTime<Utc>,
 }
 
-entry_defs![PerspectiveDiffEntry::entry_def(), HashReference::entry_def(), LocalHashReference::entry_def(), AgentReference::entry_def(), HashAnchor::entry_def(), PathEntry::entry_def()];
+entry_defs![PerspectiveDiff::entry_def(), PerspectiveDiffEntryReference::entry_def(), HashReference::entry_def(), LocalHashReference::entry_def(), AgentReference::entry_def(), HashAnchor::entry_def(), PathEntry::entry_def()];
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
@@ -88,7 +86,7 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 
 #[hdk_extern]
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    let sig: PerspectiveDiffEntry = PerspectiveDiffEntry::try_from(signal.clone())?;
+    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone())?;
     Ok(emit_signal(&sig)?)
 }
 

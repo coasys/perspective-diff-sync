@@ -4,10 +4,8 @@ use petgraph::graph::NodeIndex;
 
 use crate::search;
 use crate::{
-    errors::{SocialContextResult, SocialContextError}, PerspectiveDiffEntry
-};
-use crate::{
-    Perspective, PerspectiveDiff, LocalHashReference, HashAnchor, HashReference
+    errors::{SocialContextResult, SocialContextError},
+    Perspective, PerspectiveDiff, LocalHashReference, HashAnchor, HashReference, PerspectiveDiffEntryReference
 };
 
 pub fn get_now() -> SocialContextResult<DateTime<Utc>> {
@@ -105,8 +103,12 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     removals: vec![]
                 };
                 for (_key, value) in search.entry_map.iter() {
-                    out.additions.append(&mut value.diff.additions.clone());
-                    out.removals.append(&mut value.diff.removals.clone());
+                    let diff_entry = get(value.diff.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
+                    .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                        SocialContextError::InternalError("Expected element to contain app entry data"),
+                    )?;
+                    out.additions.append(&mut diff_entry.additions.clone());
+                    out.removals.append(&mut diff_entry.removals.clone());
                 } 
                 return Ok(out)
             }
@@ -142,8 +144,12 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     let hash = search.index(diff);
                     let current_diff = search.get_entry(&hash);
                     if let Some(val) = current_diff {
-                        out.additions.append(&mut val.diff.additions.clone());
-                        out.removals.append(&mut val.diff.removals.clone());
+                        let diff_entry = get(val.diff, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
+                        .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                            SocialContextError::InternalError("Expected element to contain app entry data"),
+                        )?;
+                        out.additions.append(&mut diff_entry.additions.clone());
+                        out.removals.append(&mut diff_entry.removals.clone());
                     }
                 }
                 println!("Setting current to: {:#?}", latest);
@@ -189,15 +195,20 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                             &hash
                         );
                         if let Some(val) = current_diff {
-                            merge_entry.additions.append(&mut val.diff.additions.clone());
-                            merge_entry.removals.append(&mut val.diff.removals.clone());
+                            let diff_entry = get(val.diff, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
+                            .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                                SocialContextError::InternalError("Expected element to contain app entry data"),
+                            )?;
+                            merge_entry.additions.append(&mut diff_entry.additions.clone());
+                            merge_entry.removals.append(&mut diff_entry.removals.clone());
                         }
                     }
                 }
                 
                 debug!("Will merge entries: {:#?} and {:#?}. With diff data: {:#?}", latest, current, merge_entry);
+                let merge_entry = create_entry(merge_entry)?;
                 //Create the merge entry
-                let hash = create_entry(PerspectiveDiffEntry {
+                let hash = create_entry(PerspectiveDiffEntryReference {
                     parents: Some(vec![latest, current]),
                     diff: merge_entry.clone()
                 })?;
@@ -221,12 +232,20 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                         if val.parents.is_some() {
                             //Filter out the merge entries to avoid duplicate results
                             if val.parents.unwrap().len() == 1 {
-                                unseen_entry.additions.append(&mut val.diff.additions.clone());
-                                unseen_entry.removals.append(&mut val.diff.removals.clone());
+                                let diff_entry = get(val.diff, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
+                                .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                                    SocialContextError::InternalError("Expected element to contain app entry data"),
+                                )?;
+                                unseen_entry.additions.append(&mut diff_entry.additions.clone());
+                                unseen_entry.removals.append(&mut diff_entry.removals.clone());
                             }
                         } else {
-                            unseen_entry.additions.append(&mut val.diff.additions.clone());
-                            unseen_entry.removals.append(&mut val.diff.removals.clone());
+                            let diff_entry = get(val.diff, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
+                            .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                                SocialContextError::InternalError("Expected element to contain app entry data"),
+                            )?;
+                            unseen_entry.additions.append(&mut diff_entry.additions.clone());
+                            unseen_entry.removals.append(&mut diff_entry.removals.clone());
                         }
                     }
                 }
@@ -263,12 +282,13 @@ pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
-    let diff_entry = PerspectiveDiffEntry {
-        diff,
-        parents: parent.map(|val| vec![val])
-    };
-    let diff_entry_create = create_entry(diff_entry)?;
+    let diff_entry_create = create_entry(diff)?;
     debug!("Created diff entry: {:#?}", diff_entry_create);
+    let diff_entry_reference = create_entry(PerspectiveDiffEntryReference {
+        diff: diff_entry_create,
+        parents: parent.map(|val| vec![val])
+    })?;
+
     
     //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
     #[cfg(feature = "prod")] {
@@ -279,7 +299,7 @@ pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::
 
     //TODO: send signal to active agents
 
-    Ok(diff_entry_create)
+    Ok(diff_entry_reference)
 }
 
 pub fn add_active_agent_link() -> SocialContextResult<()> {
