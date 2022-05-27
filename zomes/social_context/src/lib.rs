@@ -144,4 +144,5 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> 
 lazy_static! {
     pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
     pub static ref ENABLE_SIGNALS: bool = true;
+    pub static ref SNAPSHOT_INTERVAL: usize = 10;
 }

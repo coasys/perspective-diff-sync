@@ -93,14 +93,21 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
         search.unwrap()
     };
 
+    //Search up the chain starting from the latest known hash
     loop {
         let diff = get(search_position.0.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
         .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
             SocialContextError::InternalError("Expected element to contain app entry data"),
         )?;
+        //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
             diffs.push((search_position.0, diff.clone()));
             depth +=1;
+            //Check if this diff was found in a fork traversal (which happen after the main route traversal)
+            //search position = 0 means that diff was found in main traversal
+            //any other value denotes where in the array it should be moved to as to keep consistent order of diffs
+            //it is important to keep the correct order so when we add to the graph there is always a parent entry for the node
+            //to link from
             if search_position.1 != 0 {
                 let len = diffs.len();
                 move_me(&mut diffs, len-1, len-1-search_position.1);

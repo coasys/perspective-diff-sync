@@ -19,6 +19,8 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             let latest = latest.unwrap();
 
             //Populate the search algorithm
+            //if current is not none then we should also break the search population if current is found, as to avoid getting the 
+            //whole graph each time a commit / pull is made where a user is basically sync'd
             let mut search = search::populate_search(None, latest.clone())?;
 
             if current.is_none() {
