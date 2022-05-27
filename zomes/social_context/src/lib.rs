@@ -4,9 +4,13 @@ use lazy_static::lazy_static;
 
 mod errors;
 mod inputs;
-pub mod methods;
 mod impls;
 mod search;
+mod revisions;
+mod utils;
+mod commit;
+mod pull;
+mod render;
 
 use inputs::*;
 
@@ -92,32 +96,32 @@ fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
 
 #[hdk_extern]
 pub fn commit(diff: PerspectiveDiff) -> ExternResult<HoloHash<holo_hash::hash_type::Header>> {
-    methods::commit(diff).map_err(|err| WasmError::Host(err.to_string()))
+    commit::commit(diff).map_err(|err| WasmError::Host(err.to_string()))
 }
 
 #[hdk_extern]
 pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
-    methods::add_active_agent_link().map_err(|err| WasmError::Host(err.to_string()))
+    commit::add_active_agent_link().map_err(|err| WasmError::Host(err.to_string()))
 }
 
 #[hdk_extern]
 pub fn latest_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Header>>> {
-    methods::latest_revision().map_err(|err| WasmError::Host(err.to_string()))
+    revisions::latest_revision().map_err(|err| WasmError::Host(err.to_string()))
 }
 
 #[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Header>>> {
-    methods::current_revision().map_err(|err| WasmError::Host(err.to_string()))
+    revisions::current_revision().map_err(|err| WasmError::Host(err.to_string()))
 }
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    methods::pull().map_err(|err| WasmError::Host(err.to_string()))
+    pull::pull().map_err(|err| WasmError::Host(err.to_string()))
 }
 
 #[hdk_extern]
 pub fn render(_: ()) -> ExternResult<Perspective> {
-    methods::render().map_err(|err| WasmError::Host(err.to_string()))
+    render::render().map_err(|err| WasmError::Host(err.to_string()))
 }
 
 #[hdk_extern]
