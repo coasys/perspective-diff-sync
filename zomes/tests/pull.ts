@@ -104,7 +104,7 @@ export function complexMerge(orchestrator) {
         //1 -> bob_link(3) -> eric_link(4)
         //Eric to commit his data, and update the latest revision, causing another fork on a fork
         let eric_link_data = generate_link_expression("eric1");
-        console.log("eric posting link data, child of eric commit", eric_link_data);
+        console.log("eric posting link data, child of bob commit", eric_link_data);
         let commit_eric = await eric_happ.cells[0].call("social_context", "commit", {additions: [eric_link_data], removals: []});
         console.warn("\ncommit_eric", commit_eric.toString("base64"));
         await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_eric);
@@ -123,6 +123,11 @@ export function complexMerge(orchestrator) {
         await bob_happ.cells[0].call("social_context", "update_latest_revision", commit_bob2);
         await bob_happ.cells[0].call("social_context", "update_current_revision", commit_bob2);
       
+        //Connect nodes togther
+        await s.shareAllNodes([alice, bob, eric])
+        //note; running this test on some machines may require more than 500ms wait
+        await sleep(1000)
+
         //1 -> bob_link(3) -> eric_link(4) -> eric_link(6)
         //                 -> bob_link(5)
         //1 -> alice_link(2) 
@@ -133,11 +138,6 @@ export function complexMerge(orchestrator) {
         console.warn("\ncommit_eric2", commit_eric2.toString("base64"));
         await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_eric2);
         await eric_happ.cells[0].call("social_context", "update_current_revision", commit_eric2);
-      
-        //Connect nodes togther
-        await s.shareAllNodes([alice, bob, eric])
-        //note; running this test on some machines may require more than 500ms wait
-        await sleep(1000)
       
         let bob_merge = await bob_happ.cells[0].call("social_context", "pull");
         console.log("Bob merge result", bob_merge);

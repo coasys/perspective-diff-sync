@@ -6,22 +6,25 @@ use crate::{
     PerspectiveDiff, PerspectiveDiffEntryReference, AgentReference, ACTIVE_AGENT_DURATION, ENABLE_SIGNALS,
     SNAPSHOT_INTERVAL
 };
-use crate::errors::SocialContextResult;
+use crate::errors::{SocialContextResult, SocialContextError};
 use crate::revisions::{current_revision, latest_revision};
 use crate::utils::{get_now, dedup};
 use crate::pull::pull;
-use crate::search::get_entries_since_snapshot;
+use crate::snapshots::{get_entries_since_snapshot, generate_snapshot};
 
-pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::hash_type::Header>> {
+pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::hash_type::Header>> {
     let pre_current_revision = current_revision()?;
     let pre_latest_revision = latest_revision()?;
     let mut entries_since_snapshot = 0;
 
     if pre_current_revision != pre_latest_revision {
-        entries_since_snapshot = pull()?.1;
+        pull()?;
+        if pre_latest_revision.is_some() {
+            entries_since_snapshot = get_entries_since_snapshot(latest_revision()?.ok_or(SocialContextError::InternalError("Expected to have latest revision"))?)?;
+        };
     } else {
         if pre_latest_revision.is_some() {
-            entries_since_snapshot = get_entries_since_snapshot(pre_latest_revision.unwrap())?;
+            entries_since_snapshot = get_entries_since_snapshot(pre_latest_revision.clone().unwrap())?;
         };
     }
 
@@ -29,15 +32,23 @@ pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::
     debug!("Parent entry is: {:#?}", parent);
     let diff_entry_create = create_entry(diff.clone())?;
     debug!("Created diff entry: {:#?}", diff_entry_create);
-    let diff_entry_reference = create_entry(PerspectiveDiffEntryReference {
+    let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create,
         parents: parent.map(|val| vec![val])
-    })?;
+    };
+    let diff_entry_reference = create_entry(diff_entry_ref_entry.clone())?;
 
-    if entries_since_snapshot > *SNAPSHOT_INTERVAL {
+    if pre_latest_revision.is_some() && entries_since_snapshot > *SNAPSHOT_INTERVAL {
         debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
         //create new snapshot linked from above diff_entry_reference
+        let mut snapshot = generate_snapshot(latest_revision()?.ok_or(SocialContextError::InternalError("Expected to have latest revision"))?)?;
+        snapshot.additions.append(&mut diff.additions);
+        snapshot.removals.append(&mut diff.removals);
+        debug!("Creating snapshot: {:#?}", snapshot);
+
+        create_entry(snapshot.clone())?;
+        create_link(hash_entry(diff_entry_ref_entry)?, hash_entry(snapshot)?, LinkTag::new("snapshot"))?;
     };
 
     
