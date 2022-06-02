@@ -9,7 +9,7 @@ use crate::{
 use crate::utils::get_now;
 use crate::revisions::{current_revision, latest_revision, update_current_revision, update_latest_revision};
 
-pub fn pull() -> SocialContextResult<PerspectiveDiff> {
+pub fn pull() -> SocialContextResult<(PerspectiveDiff, usize)> {
     let latest = latest_revision()?;
     let current = current_revision()?;
     debug!("Pull made with latest: {:#?} and current: {:#?}", latest, current);
@@ -21,7 +21,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             //Populate the search algorithm
             //if current is not none then we should also break the search population if current is found, as to avoid getting the 
             //whole graph each time a commit / pull is made where a user is basically sync'd
-            let mut search = search::populate_search(None, latest.clone(), current.clone())?;
+            let search_res = search::populate_search(None, latest.clone(), current.clone(), false)?;
+            let mut search = search_res.0;
+            let entries_since_snapshot = search_res.1;
 
             if current.is_none() {
                 let mut out = PerspectiveDiff {
@@ -36,11 +38,11 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     out.additions.append(&mut diff_entry.additions.clone());
                     out.removals.append(&mut diff_entry.removals.clone());
                 } 
-                return Ok(out)
+                return Ok((out, entries_since_snapshot))
             }
             let current = current.unwrap();
             //also populate the search from the current_latest
-            search = search::populate_search(Some(search), current.clone(), None)?;
+            search = search::populate_search(Some(search), current.clone(), None, false)?.0;
             search.print();
 
             //Get index for current and latest indexes
@@ -81,7 +83,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 println!("Setting current to: {:#?}", latest);
                 //Using now as the timestamp here may cause problems
                 update_current_revision(latest, get_now()?)?;
-                Ok(out)
+                Ok((out, entries_since_snapshot))
             } else {
                 debug!("Fork detected, attempting merge...");
                 //There is a fork, find all the diffs from a fork and apply in merge with latest and current revisions as parents
@@ -176,18 +178,18 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     }
                 }
 
-                Ok(unseen_entry)
+                Ok((unseen_entry, entries_since_snapshot))
             }
         } else {
-            Ok(PerspectiveDiff {
+            Ok((PerspectiveDiff {
                 removals: vec![],
                 additions: vec![]
-            })
+            }, 0))
         }
     } else {
-        Ok(PerspectiveDiff {
+        Ok((PerspectiveDiff {
             removals: vec![],
             additions: vec![]
-        })
+        }, 0))
     }
 }

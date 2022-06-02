@@ -4,7 +4,7 @@ use petgraph::dot::{Dot, Config};
 use hdk::prelude::*;
 use std::ops::Index;
 
-use crate::{errors::{SocialContextResult, SocialContextError}, PerspectiveDiffEntryReference};
+use crate::{errors::{SocialContextResult, SocialContextError}, PerspectiveDiffEntryReference, SNAPSHOT_INTERVAL};
 
 pub struct Search {
     pub graph: DiGraph<HoloHash<holo_hash::hash_type::Header>, ()>,
@@ -80,12 +80,65 @@ fn move_me<T>(arr: &mut Vec<T>, old_index: usize, new_index: usize) {
     }
 }
 
+pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<usize> {
+    let mut search_position = latest;
+    let mut depth = 0;
+    let mut seen = HashSet::new();
+    let mut unseen_parents = vec![];
+
+    loop {
+        //Check if entry is already in graph
+        if !seen.contains(&search_position) {
+            seen.insert(search_position.clone());
+            depth +=1;
+        };
+
+        let diff = get(search_position, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
+            .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
+                SocialContextError::InternalError("Expected element to contain app entry data"),
+            )?;
+        let diff_entry_hash = hash_entry(&diff)?;
+        let check_snapshot = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
+        if check_snapshot.len() != 0 {
+            break;
+        }
+
+        if diff.parents.is_none() {
+            //No parents, we have reached the end of the chain
+            //Now move onto traversing parents
+            if unseen_parents.len() == 0 {
+                debug!("No more unseen items");
+                break
+            } else {
+                debug!("Moving onto unseen fork items");
+                search_position = unseen_parents.remove(0);
+            }
+        } else {
+            let mut parents = diff.parents.unwrap();
+            //Check if all parents have already been seen, if so then break or move onto next unseen parents
+            if parents.iter().all(|val| seen.contains(val)) {
+                if unseen_parents.len() == 0 {
+                    //TODO; consider what happens here where snapshot has not been found in block above
+                    break;
+                } else {
+                    search_position = unseen_parents.remove(0);
+                };
+            } else {
+                search_position = parents.remove(0);
+                unseen_parents.append(&mut parents);
+            };
+        }
+    };
+    Ok(depth)
+}
+
 //TODO; add ability to determine depth of recursion
-pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>, break_on: Option<HoloHash<holo_hash::hash_type::Header>>) -> SocialContextResult<Search> {
+pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>, break_on: Option<HoloHash<holo_hash::hash_type::Header>>, fetch_snapshot: bool) -> SocialContextResult<(Search, usize)> {
     let mut search_position = (latest, 0);
     let mut diffs = vec![];
     let mut unseen_parents = vec![];
     let mut depth = 0;
+    let mut snapshot_depth = 0;
 
     let mut search = if search.is_none() {
         Search::new()
@@ -96,9 +149,9 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
     //Search up the chain starting from the latest known hash
     loop {
         let diff = get(search_position.0.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
-        .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
-            SocialContextError::InternalError("Expected element to contain app entry data"),
-        )?;
+            .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
+                SocialContextError::InternalError("Expected element to contain app entry data"),
+            )?;
         //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
             diffs.push((search_position.0.clone(), diff.clone()));
@@ -113,8 +166,17 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
                 move_me(&mut diffs, len-1, len-1-search_position.1);
             }
         };
+        if fetch_snapshot && depth <= *SNAPSHOT_INTERVAL {
+            let diff_entry_hash = hash_entry(&diff)?;
+            let check_snapshot = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
+            if check_snapshot.len() != 0 {
+                debug!("Found snapshot on entry: {:#?}", search_position.0);
+                snapshot_depth = depth;
+            }
+        };
         if let Some(ref break_on_hash) = break_on {
             if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
+                //TODO; consider what happens here where snapshot has not been found in block above
                 break;
             }
         };
@@ -132,8 +194,10 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
             //Do the fork traversals
             let mut parents = diff.parents.unwrap();
             //Check if all parents have already been seen, if so then break or move onto next unseen parents
+            //TODO; we should probably have a seen set
             if parents.iter().all(|val| diffs.clone().into_iter().map(|val| val.0).collect::<Vec<_>>().contains(val)) {
                 if unseen_parents.len() == 0 {
+                    //TODO; consider what happens here where snapshot has not been found in block above
                     break;
                 } else {
                     search_position = unseen_parents.remove(0);
@@ -166,5 +230,5 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
         }
     }
 
-    Ok(search)
+    Ok((search, snapshot_depth))
 }

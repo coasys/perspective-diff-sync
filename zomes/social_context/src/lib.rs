@@ -116,7 +116,7 @@ pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_t
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull().map_err(|err| WasmError::Host(err.to_string()))
+    pull::pull().map_err(|err| WasmError::Host(err.to_string())).map(|res| res.0)
 }
 
 #[hdk_extern]
@@ -144,5 +144,6 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> 
 lazy_static! {
     pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
     pub static ref ENABLE_SIGNALS: bool = true;
-    pub static ref SNAPSHOT_INTERVAL: usize = 10;
+    //TODO: 2 is a test value; this should be updated to a higher value for production
+    pub static ref SNAPSHOT_INTERVAL: usize = 2;
 }

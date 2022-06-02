@@ -4,19 +4,26 @@ use hc_time_index::SearchStrategy;
 
 use crate::{
     PerspectiveDiff, PerspectiveDiffEntryReference, AgentReference, ACTIVE_AGENT_DURATION, ENABLE_SIGNALS,
-    errors::SocialContextResult
+    SNAPSHOT_INTERVAL
 };
+use crate::errors::SocialContextResult;
 use crate::revisions::{current_revision, latest_revision};
 use crate::utils::{get_now, dedup};
 use crate::pull::pull;
+use crate::search::get_entries_since_snapshot;
 
 pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::hash_type::Header>> {
     let pre_current_revision = current_revision()?;
     let pre_latest_revision = latest_revision()?;
-    
+    let mut entries_since_snapshot = 0;
+
     if pre_current_revision != pre_latest_revision {
-        pull()?;
-    };
+        entries_since_snapshot = pull()?.1;
+    } else {
+        if pre_latest_revision.is_some() {
+            entries_since_snapshot = get_entries_since_snapshot(pre_latest_revision.unwrap())?;
+        };
+    }
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
@@ -26,6 +33,12 @@ pub fn commit(diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_hash::
         diff: diff_entry_create,
         parents: parent.map(|val| vec![val])
     })?;
+
+    if entries_since_snapshot > *SNAPSHOT_INTERVAL {
+        debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
+        //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
+        //create new snapshot linked from above diff_entry_reference
+    };
 
     
     //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
