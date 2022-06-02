@@ -21,7 +21,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             //Populate the search algorithm
             //if current is not none then we should also break the search population if current is found, as to avoid getting the 
             //whole graph each time a commit / pull is made where a user is basically sync'd
-            let mut search = search::populate_search(None, latest.clone())?;
+            let mut search = search::populate_search(None, latest.clone(), current.clone())?;
 
             if current.is_none() {
                 let mut out = PerspectiveDiff {
@@ -40,7 +40,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             }
             let current = current.unwrap();
             //also populate the search from the current_latest
-            search = search::populate_search(Some(search), current.clone())?;
+            search = search::populate_search(Some(search), current.clone(), None)?;
             search.print();
 
             //Get index for current and latest indexes

@@ -81,7 +81,7 @@ fn move_me<T>(arr: &mut Vec<T>, old_index: usize, new_index: usize) {
 }
 
 //TODO; add ability to determine depth of recursion
-pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<Search> {
+pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>, break_on: Option<HoloHash<holo_hash::hash_type::Header>>) -> SocialContextResult<Search> {
     let mut search_position = (latest, 0);
     let mut diffs = vec![];
     let mut unseen_parents = vec![];
@@ -101,7 +101,7 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
         )?;
         //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
-            diffs.push((search_position.0, diff.clone()));
+            diffs.push((search_position.0.clone(), diff.clone()));
             depth +=1;
             //Check if this diff was found in a fork traversal (which happen after the main route traversal)
             //search position = 0 means that diff was found in main traversal
@@ -111,6 +111,11 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
             if search_position.1 != 0 {
                 let len = diffs.len();
                 move_me(&mut diffs, len-1, len-1-search_position.1);
+            }
+        };
+        if let Some(ref break_on_hash) = break_on {
+            if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
+                break;
             }
         };
         if diff.parents.is_none() {

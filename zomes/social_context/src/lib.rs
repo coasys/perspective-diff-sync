@@ -127,7 +127,7 @@ pub fn render(_: ()) -> ExternResult<Perspective> {
 #[hdk_extern]
 pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> ExternResult<()> {
     #[cfg(feature = "test")] {
-        methods::update_current_revision(_hash, methods::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
+        revisions::update_current_revision(_hash, utils::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
     }
     Ok(())
 }
@@ -135,7 +135,7 @@ pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Header>) ->
 #[hdk_extern]
 pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> ExternResult<()> {
     #[cfg(feature = "test")] {
-        methods::update_latest_revision(_hash, methods::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
+        revisions::update_latest_revision(_hash, utils::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
     }
     Ok(())
 }
