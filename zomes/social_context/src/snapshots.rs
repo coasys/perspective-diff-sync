@@ -3,7 +3,6 @@ use hdk::prelude::*;
 use crate::{PerspectiveDiffEntryReference, PerspectiveDiff};
 use crate::errors::{SocialContextResult, SocialContextError};
 
-
 pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<usize> {
     let mut search_position = latest;
     let mut depth = 0;

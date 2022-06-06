@@ -66,9 +66,25 @@ impl Search {
     }
 
     pub fn find_common_ancestor(&self, root: NodeIndex<u32>, second: NodeIndex<u32>) -> Option<NodeIndex> {
-        let common = simple_fast(&self.undirected_graph, root).immediate_dominator(second);
-        debug!("Common: {:#?}", common);
-        common
+        let imm = simple_fast(&self.undirected_graph, root);
+        let imm = imm.dominators(second);
+        let mut index: Option<NodeIndex> = None;
+        match imm {
+            Some(imm_iter) => {
+                for dom in imm_iter {
+                    match index {
+                        Some(current_index) => {
+                            if current_index.index() > dom.index() {
+                                index = Some(dom)
+                            }
+                        },
+                        None => index = Some(dom)
+                    };
+                };
+            },
+            None => {}
+        };
+        index
     }
 }
 

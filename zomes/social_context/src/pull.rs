@@ -93,7 +93,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 let mut fork_direction: Option<Vec<NodeIndex>> = None;
 
                 debug!("Paths of fork: {:#?}", fork_paths);
-                debug!("Paths of latst: {:#?}", latest_paths);
+                debug!("Paths of latest: {:#?}", latest_paths);
                 debug!("Common ancestor: {:#?}", common_ancestor);
 
                 //Use items in path to recurse from common_ancestor going in direction of fork
