@@ -10,20 +10,26 @@ pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>
     let mut unseen_parents = vec![];
 
     loop {
-        //Check if entry is already in graph
-        if !seen.contains(&search_position) {
-            seen.insert(search_position.clone());
-            //TODO; Should we only increase depth if entry is not a merge entry?
-            depth +=1;
-        };
-        debug!("Checking: {:#?}", search_position);
-        let diff = get(search_position, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
+        let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
             .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
                 SocialContextError::InternalError("Expected element to contain app entry data"),
             )?;
+        //Check if entry is already in graph
+        if !seen.contains(&search_position) {
+            seen.insert(search_position.clone());
+            //Only increase depth if entry is not a merge entry?
+            if diff.parents.is_some() {
+                if diff.parents.clone().unwrap().len() < 2 {
+                    depth +=1;
+                }
+            } else {
+                depth +=1;
+            }
+        };
         let diff_entry_hash = hash_entry(&diff)?;
         let check_snapshot = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
         if check_snapshot.len() != 0 {
+            depth -= 1;
             break;
         }
 
@@ -42,7 +48,7 @@ pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>
             //Check if all parents have already been seen, if so then break or move onto next unseen parents
             if parents.iter().all(|val| seen.contains(val)) {
                 if unseen_parents.len() == 0 {
-                    //TODO; consider what happens here where snapshot has not been found in block above
+                    debug!("Reached end of graph");
                     break;
                 } else {
                     search_position = unseen_parents.remove(0);
