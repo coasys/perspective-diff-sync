@@ -15,7 +15,7 @@ mod snapshots;
 
 use inputs::*;
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
 pub struct LinkExpression {
     pub author: String,
     pub data: Triple,

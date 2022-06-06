@@ -27,6 +27,7 @@ pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_ha
             entries_since_snapshot = get_entries_since_snapshot(pre_latest_revision.clone().unwrap())?;
         };
     }
+    debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
@@ -38,8 +39,7 @@ pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_ha
     };
     let diff_entry_reference = create_entry(diff_entry_ref_entry.clone())?;
 
-    if pre_latest_revision.is_some() && entries_since_snapshot > *SNAPSHOT_INTERVAL {
-        debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
+    if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
         //create new snapshot linked from above diff_entry_reference
         let mut snapshot = generate_snapshot(latest_revision()?.ok_or(SocialContextError::InternalError("Expected to have latest revision"))?)?;

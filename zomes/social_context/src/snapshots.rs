@@ -112,3 +112,51 @@ pub fn generate_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> Soci
 
     Ok(out)
 }
+
+pub fn get_latest_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<PerspectiveDiff> {
+    let mut search_position = latest;
+    let mut seen = HashSet::new();
+
+    let mut out = PerspectiveDiff {
+        additions: vec![],
+        removals: vec![]
+    };
+
+    loop  {
+        let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
+            .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
+                SocialContextError::InternalError("Expected element to contain app entry data"),
+            )?;
+        debug!("Checking: {:#?}", diff);
+        if !seen.contains(&search_position) {
+            seen.insert(search_position.clone());
+            let diff_entry_hash = hash_entry(&diff)?;
+            let mut snapshot_links = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
+            if snapshot_links.len() != 0 {
+                //get snapshot and add elements to out
+                let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
+                    .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
+                        SocialContextError::InternalError("Expected element to contain app entry data"),
+                    )?;
+                out.additions.append(&mut snapshot.additions.clone());
+                out.removals.append(&mut snapshot.removals.clone());
+                debug!("Breaking at snapshot");
+                break;
+            }
+        }
+
+        if diff.parents.is_none() {
+            break;
+        } else {
+            let mut parents = diff.parents.unwrap();
+            //Check if all parents have already been seen, if so then break or move onto next unseen parents
+            if parents.iter().all(|val| seen.contains(val)) {
+                break;
+            } else {
+                search_position = parents.remove(0);
+            };
+        }
+    }
+
+    Ok(out)
+}
