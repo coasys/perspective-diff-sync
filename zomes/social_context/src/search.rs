@@ -98,10 +98,10 @@ fn move_me<T>(arr: &mut Vec<T>, old_index: usize, new_index: usize) {
 
 //TODO; add ability to determine depth of recursion
 pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_type::Header>, break_on: Option<HoloHash<holo_hash::hash_type::Header>>) -> SocialContextResult<Search> {
-    let mut search_position = (latest, 0);
+    let mut search_position = (latest, -1 as i64);
     let mut diffs = vec![];
     let mut unseen_parents = vec![];
-    let mut depth = 0;
+    let mut depth = 0 as i64;
 
     let mut search = if search.is_none() {
         Search::new()
@@ -115,18 +115,28 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
             .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
                 SocialContextError::InternalError("Expected element to contain app entry data"),
             )?;
+        //debug!("Checking diff: {:#?} with hash: {:#?}", diff, search_position);
         //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
             diffs.push((search_position.0.clone(), diff.clone()));
             depth +=1;
             //Check if this diff was found in a fork traversal (which happen after the main route traversal)
-            //search position = 0 means that diff was found in main traversal
+            //search position = -1 means that diff was found in main traversal
             //any other value denotes where in the array it should be moved to as to keep consistent order of diffs
             //it is important to keep the correct order so when we add to the graph there is always a parent entry for the node
             //to link from
-            if search_position.1 != 0 {
-                let len = diffs.len();
-                move_me(&mut diffs, len-1, len-1-search_position.1);
+            if search_position.1 != -1 {
+                let len = diffs.len() -1;
+                let move_index = if search_position.1 == 0 {
+                    if len == 0 {
+                        len
+                    } else {
+                        len - 1
+                    }
+                } else {
+                    (len as i64 - search_position.1) as usize
+                };
+                move_me(&mut diffs, len, move_index);
             }
         };
         if let Some(ref break_on_hash) = break_on {
@@ -157,8 +167,8 @@ pub fn populate_search(search: Option<Search>, latest: HoloHash<holo_hash::hash_
                     search_position = unseen_parents.remove(0);
                 }
             } else {
-                search_position = (parents.remove(0), 0);
-                unseen_parents.append(&mut parents.into_iter().enumerate().map(|val| (val.1, depth+val.0)).collect::<Vec<_>>());
+                search_position = (parents.remove(0), -1);
+                unseen_parents.append(&mut parents.into_iter().map(|val| (val, depth-1)).collect::<Vec<_>>());
             };
         }
     }
