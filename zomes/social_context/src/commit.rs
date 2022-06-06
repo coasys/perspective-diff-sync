@@ -18,6 +18,9 @@ pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_ha
     let mut entries_since_snapshot = 0;
 
     if pre_current_revision != pre_latest_revision {
+        //TODO; should any data that gets pulled here be returned by the commit function?
+        //Otherwise how will the UI ever get it if we have already pulled and updated
+        //maybe ommit as a signal?
         pull()?;
         if pre_latest_revision.is_some() {
             entries_since_snapshot = get_entries_since_snapshot(latest_revision()?.ok_or(SocialContextError::InternalError("Expected to have latest revision"))?)?;
@@ -47,7 +50,7 @@ pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_ha
         let mut snapshot = generate_snapshot(latest_revision()?.ok_or(SocialContextError::InternalError("Expected to have latest revision"))?)?;
         snapshot.additions.append(&mut diff.additions);
         snapshot.removals.append(&mut diff.removals);
-        debug!("Creating snapshot: {:#?}", snapshot);
+        debug!("Creating snapshot");
 
         create_entry(snapshot.clone())?;
         create_link(hash_entry(diff_entry_ref_entry)?, hash_entry(snapshot)?, LinkTag::new("snapshot"))?;
