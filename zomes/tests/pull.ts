@@ -5,7 +5,7 @@ export function unSyncFetch(orchestrator) {
     orchestrator.registerScenario("test un-synced fetch", async (s, t) => {
     const [alice, bob] = await s.players([conductorConfig, conductorConfig])
     const [[alice_happ]] = await alice.installAgentsHapps(installation)
-    const [[bob_happ]] = await alice.installAgentsHapps(installation)
+    const [[bob_happ]] = await bob.installAgentsHapps(installation)
     await s.shareAllNodes([alice, bob])
     
     let commit = await alice_happ.cells[0].call("social_context", "commit", {additions: [generate_link_expression("alice")], removals: []});
@@ -122,7 +122,7 @@ export function complexMerge(orchestrator) {
         console.warn("\ncommit_bob2", commit_bob2.toString("base64"));
         await bob_happ.cells[0].call("social_context", "update_latest_revision", commit_bob2);
         await bob_happ.cells[0].call("social_context", "update_current_revision", commit_bob2);
-      
+        
         //Connect nodes togther
         await s.shareAllNodes([alice, bob, eric])
         //note; running this test on some machines may require more than 500ms wait
@@ -138,7 +138,12 @@ export function complexMerge(orchestrator) {
         console.warn("\ncommit_eric2", commit_eric2.toString("base64"));
         await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_eric2);
         await eric_happ.cells[0].call("social_context", "update_current_revision", commit_eric2);
-      
+
+        // //Connect nodes togther
+        // await s.shareAllNodes([alice, bob, eric])
+        // //note; running this test on some machines may require more than 500ms wait
+        // await sleep(1000)
+
         let bob_merge = await bob_happ.cells[0].call("social_context", "pull");
         console.log("Bob merge result", bob_merge);
         //Should get two entries from Eric

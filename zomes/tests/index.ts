@@ -2,35 +2,39 @@ import { Orchestrator } from '@holochain/tryorama'
 import { testRevisionUpdates } from "./revisions"
 import { unSyncFetch, mergeFetch, complexMerge } from "./pull";
 import { signals } from "./signals";
-import { render } from "./render";
+import { render, renderMerges } from "./render";
 
 let orchestrator = new Orchestrator()
 
-// testRevisionUpdates(orchestrator)
-// orchestrator.run()
+testRevisionUpdates(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// unSyncFetch(orchestrator)
-// orchestrator.run()
+unSyncFetch(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// mergeFetch(orchestrator)
-// orchestrator.run()
+mergeFetch(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// complexMerge(orchestrator)
-// orchestrator.run()
+complexMerge(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// signals(orchestrator)
-// orchestrator.run()
+signals(orchestrator)
+orchestrator.run()
 
 orchestrator = new Orchestrator();
 render(orchestrator)
+orchestrator.run()
+
+orchestrator = new Orchestrator();
+renderMerges(orchestrator)
 orchestrator.run()
 
 // // Run all registered scenarios as a final step, and gather the report,
