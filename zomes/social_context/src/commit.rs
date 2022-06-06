@@ -28,6 +28,8 @@ pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_ha
         };
     }
     debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
+    //Add one since we are comitting an entry here
+    entries_since_snapshot += 1;
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);

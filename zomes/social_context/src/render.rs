@@ -22,6 +22,7 @@ pub fn render() -> SocialContextResult<Perspective> {
         for link in link_set.into_iter() {
             perspective.links.push(link);
         };
+        //TODO: update current revision?
         Ok(perspective)
     } else {
         Ok(Perspective {
