@@ -21,7 +21,8 @@ pub fn commit(mut diff: PerspectiveDiff) -> SocialContextResult<HoloHash<holo_ha
         //TODO; should any data that gets pulled here be returned by the commit function?
         //Otherwise how will the UI ever get it if we have already pulled and updated
         //maybe ommit as a signal?
-        pull()?;
+        let new_diffs = pull()?;
+        emit_signal(new_diffs)?;
         if pre_latest_revision.is_some() {
             entries_since_snapshot = get_entries_since_snapshot(latest_revision()?.ok_or(SocialContextError::InternalError("Expected to have latest revision"))?)?;
         };

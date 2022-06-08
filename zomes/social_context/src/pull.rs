@@ -15,7 +15,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     debug!("Pull made with latest: {:#?} and current: {:#?}", latest, current);
 
     if latest != current {
-        if !latest.is_none() {
+        if latest.is_some() {
             let latest = latest.unwrap();
 
             //Populate the search algorithm
@@ -39,7 +39,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
             let current = current.unwrap();
             //also populate the search from the current_latest
-            //likely this population is only required when current is on an un-merged fork
+            //TODO; likely this population is only required when current is on an un-merged fork
             search = search::populate_search(Some(search), current.clone(), None)?;
             search.print();
 

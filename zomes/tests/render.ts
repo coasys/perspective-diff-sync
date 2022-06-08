@@ -50,7 +50,7 @@ export function render(orchestrator) {
 };
 
 export function renderMerges(orchestrator) {
-    orchestrator.registerScenario("test simple render", async (s, t) => {
+    orchestrator.registerScenario("test complex render", async (s, t) => {
         const [alice, bob] = await s.players([conductorConfig, conductorConfig])
         const [[alice_happ]] = await alice.installAgentsHapps(installation)
         const [[bob_happ]] = await bob.installAgentsHapps(installation)
