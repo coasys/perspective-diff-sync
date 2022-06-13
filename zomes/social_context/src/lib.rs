@@ -2,16 +2,16 @@ use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 use lazy_static::lazy_static;
 
-mod errors;
-mod inputs;
-mod impls;
-mod search;
-mod revisions;
-mod utils;
 mod commit;
+mod errors;
+mod impls;
+mod inputs;
 mod pull;
 mod render;
+mod revisions;
+mod search;
 mod snapshots;
+mod utils;
 
 use inputs::*;
 
@@ -24,15 +24,23 @@ pub struct LinkExpression {
 }
 
 #[hdk_entry(id = "perspective_diff", visibility = "public")]
-#[serde(rename_all = "camelCase")]
 #[derive(Clone)]
 pub struct PerspectiveDiff {
     pub additions: Vec<LinkExpression>,
     pub removals: Vec<LinkExpression>,
 }
 
+#[hdk_entry(id = "snapshot", visibility = "public")]
+#[derive(Clone)]
+pub struct Snapshot {
+    pub diff: HoloHash<holo_hash::hash_type::Header>,
+    pub diff_graph: Vec<(
+        HoloHash<holo_hash::hash_type::Header>,
+        PerspectiveDiffEntryReference,
+    )>,
+}
+
 #[hdk_entry(id = "perspective_diff_entry_reference", visibility = "public")]
-#[serde(rename_all = "camelCase")]
 #[derive(Clone)]
 pub struct PerspectiveDiffEntryReference {
     pub diff: HoloHash<holo_hash::hash_type::Header>,
@@ -41,7 +49,7 @@ pub struct PerspectiveDiffEntryReference {
 
 #[derive(Clone, Serialize, Debug)]
 pub struct Perspective {
-    pub links: Vec<LinkExpression>
+    pub links: Vec<LinkExpression>,
 }
 
 //TODO: this can likely be removed and instead just reference the PerspectiveDiffEntry/MergeEntry directly?
@@ -49,20 +57,19 @@ pub struct Perspective {
 #[derive(Clone)]
 pub struct HashReference {
     pub hash: HoloHash<holo_hash::hash_type::Header>,
-    pub timestamp: DateTime<Utc>
+    pub timestamp: DateTime<Utc>,
 }
 
 #[hdk_entry(id = "local_hash_reference", visibility = "private")]
 #[derive(Clone)]
 pub struct LocalHashReference {
     pub hash: HoloHash<holo_hash::hash_type::Header>,
-    pub timestamp: DateTime<Utc>
+    pub timestamp: DateTime<Utc>,
 }
 
 #[hdk_entry(id = "hash_anchor", visibility = "private")]
 #[derive(Clone)]
 pub struct HashAnchor(String);
-
 
 #[hdk_entry(id = "agent_reference", visbility = "public")]
 #[derive(Clone)]
@@ -71,12 +78,24 @@ pub struct AgentReference {
     pub timestamp: DateTime<Utc>,
 }
 
-entry_defs![PerspectiveDiff::entry_def(), PerspectiveDiffEntryReference::entry_def(), HashReference::entry_def(), LocalHashReference::entry_def(), AgentReference::entry_def(), HashAnchor::entry_def(), PathEntry::entry_def()];
+entry_defs![
+    PerspectiveDiff::entry_def(),
+    PerspectiveDiffEntryReference::entry_def(),
+    HashReference::entry_def(),
+    LocalHashReference::entry_def(),
+    AgentReference::entry_def(),
+    HashAnchor::entry_def(),
+    PathEntry::entry_def(),
+    Snapshot::entry_def()
+];
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
     let mut functions: GrantedFunctions = BTreeSet::new();
-    functions.insert((ZomeName::from("social_context"), "recv_remote_signal".into()));
+    functions.insert((
+        ZomeName::from("social_context"),
+        "recv_remote_signal".into(),
+    ));
 
     create_cap_grant(CapGrantEntry {
         tag: "".into(),
@@ -117,7 +136,9 @@ pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_t
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull().map_err(|err| WasmError::Host(err.to_string())).map(|res| res)
+    pull::pull()
+        .map_err(|err| WasmError::Host(err.to_string()))
+        .map(|res| res)
 }
 
 #[hdk_extern]
@@ -127,16 +148,20 @@ pub fn render(_: ()) -> ExternResult<Perspective> {
 
 #[hdk_extern]
 pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> ExternResult<()> {
-    #[cfg(feature = "test")] {
-        revisions::update_current_revision(_hash, utils::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
+    #[cfg(feature = "test")]
+    {
+        revisions::update_current_revision(_hash, utils::get_now().unwrap())
+            .map_err(|err| WasmError::Host(err.to_string()))?;
     }
     Ok(())
 }
 
 #[hdk_extern]
 pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Header>) -> ExternResult<()> {
-    #[cfg(feature = "test")] {
-        revisions::update_latest_revision(_hash, utils::get_now().unwrap()).map_err(|err| WasmError::Host(err.to_string()))?;
+    #[cfg(feature = "test")]
+    {
+        revisions::update_latest_revision(_hash, utils::get_now().unwrap())
+            .map_err(|err| WasmError::Host(err.to_string()))?;
     }
     Ok(())
 }

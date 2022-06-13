@@ -1,29 +1,36 @@
 use hdk::prelude::*;
 
-use crate::{PerspectiveDiffEntryReference, PerspectiveDiff};
-use crate::errors::{SocialContextResult, SocialContextError};
+use crate::errors::{SocialContextError, SocialContextResult};
+use crate::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot};
 
-pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<usize> {
+pub fn get_entries_since_snapshot(
+    latest: HoloHash<holo_hash::hash_type::Header>,
+) -> SocialContextResult<usize> {
     let mut search_position = latest;
     let mut depth = 0;
     let mut seen = HashSet::new();
     let mut unseen_parents = vec![];
 
     loop {
-        let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
-            .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
-                SocialContextError::InternalError("Expected element to contain app entry data"),
-            )?;
+        let diff = get(search_position.clone(), GetOptions::latest())?
+            .ok_or(SocialContextError::InternalError(
+                "Could not find entry while populating search",
+            ))?
+            .entry()
+            .to_app_option::<PerspectiveDiffEntryReference>()?
+            .ok_or(SocialContextError::InternalError(
+                "Expected element to contain app entry data",
+            ))?;
         //Check if entry is already in graph
         if !seen.contains(&search_position) {
             seen.insert(search_position.clone());
             //Only increase depth if entry is not a merge entry?
             if diff.parents.is_some() {
                 if diff.parents.clone().unwrap().len() < 2 {
-                    depth +=1;
+                    depth += 1;
                 }
             } else {
-                depth +=1;
+                depth += 1;
             }
         };
         let diff_entry_hash = hash_entry(&diff)?;
@@ -38,7 +45,7 @@ pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>
             //Now move onto traversing parents
             if unseen_parents.len() == 0 {
                 debug!("No more unseen items");
-                break
+                break;
             } else {
                 debug!("Moving onto unseen fork items");
                 search_position = unseen_parents.remove(0);
@@ -58,47 +65,80 @@ pub fn get_entries_since_snapshot(latest: HoloHash<holo_hash::hash_type::Header>
                 unseen_parents.append(&mut parents);
             };
         }
-    };
+    }
     Ok(depth)
 }
 
-pub fn generate_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<PerspectiveDiff> {
+pub fn generate_snapshot(
+    latest: HoloHash<holo_hash::hash_type::Header>,
+) -> SocialContextResult<Snapshot> {
     let mut search_position = latest;
     let mut seen = HashSet::new();
+    let mut diffs = vec![];
 
-    let mut out = PerspectiveDiff {
+    let mut snapshot_diff = PerspectiveDiff {
         additions: vec![],
-        removals: vec![]
+        removals: vec![],
     };
 
-    loop  {
-        let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
-            .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
-                SocialContextError::InternalError("Expected element to contain app entry data"),
-            )?;
-        debug!("Checking: {:#?}", diff);
+    loop {
+        let diff = get(search_position.clone(), GetOptions::latest())?
+            .ok_or(SocialContextError::InternalError(
+                "Could not find entry while populating search",
+            ))?
+            .entry()
+            .to_app_option::<PerspectiveDiffEntryReference>()?
+            .ok_or(SocialContextError::InternalError(
+                "Expected element to contain app entry data",
+            ))?;
         let diff_entry_hash = hash_entry(&diff)?;
         let mut snapshot_links = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
-        if snapshot_links.len() != 0 {
+        if snapshot_links.len() > 0 {
             //get snapshot and add elements to out
-            let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
-                .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
-                    SocialContextError::InternalError("Expected element to contain app entry data"),
-                )?;
-            out.additions.append(&mut snapshot.additions.clone());
-            out.removals.append(&mut snapshot.removals.clone());
+            let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find diff entry for given diff entry reference",
+                ))?
+                .entry()
+                .to_app_option::<Snapshot>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
+            let diff = get(snapshot.diff, GetOptions::latest())?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find diff entry for given diff entry reference",
+                ))?
+                .entry()
+                .to_app_option::<PerspectiveDiff>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
+            snapshot_diff.additions.append(&mut diff.additions.clone());
+            snapshot_diff.removals.append(&mut diff.removals.clone());
+            diffs.append(&mut snapshot.diff_graph);
             debug!("Breaking at snapshot");
+            //Be careful breaking here where there is still unseen parents
             break;
         } else {
             //Check if entry is already in graph
             if !seen.contains(&search_position) {
                 seen.insert(search_position.clone());
-                let diff_entry = get(diff.diff.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
-                    .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
-                        SocialContextError::InternalError("Expected element to contain app entry data"),
-                    )?;
-                out.additions.append(&mut diff_entry.additions.clone());
-                out.removals.append(&mut diff_entry.removals.clone());
+                diffs.push((search_position.clone(), diff.clone()));
+                let diff_entry = get(diff.diff.clone(), GetOptions::latest())?
+                    .ok_or(SocialContextError::InternalError(
+                        "Could not find diff entry for given diff entry reference",
+                    ))?
+                    .entry()
+                    .to_app_option::<PerspectiveDiff>()?
+                    .ok_or(SocialContextError::InternalError(
+                        "Expected element to contain app entry data",
+                    ))?;
+                snapshot_diff
+                    .additions
+                    .append(&mut diff_entry.additions.clone());
+                snapshot_diff
+                    .removals
+                    .append(&mut diff_entry.removals.clone());
             };
         }
 
@@ -115,23 +155,36 @@ pub fn generate_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> Soci
         }
     }
 
-    Ok(out)
+    let diff_create = create_entry(snapshot_diff)?;
+    let snapshot = Snapshot {
+        diff: diff_create,
+        diff_graph: diffs,
+    };
+
+    Ok(snapshot)
 }
 
-pub fn get_latest_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> SocialContextResult<PerspectiveDiff> {
+pub fn get_latest_snapshot(
+    latest: HoloHash<holo_hash::hash_type::Header>,
+) -> SocialContextResult<PerspectiveDiff> {
     let mut search_position = latest;
     let mut seen = HashSet::new();
 
     let mut out = PerspectiveDiff {
         additions: vec![],
-        removals: vec![]
+        removals: vec![],
     };
 
-    loop  {
-        let diff = get(search_position.clone(), GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find entry while populating search"))?
-            .entry().to_app_option::<PerspectiveDiffEntryReference>()?.ok_or(
-                SocialContextError::InternalError("Expected element to contain app entry data"),
-            )?;
+    loop {
+        let diff = get(search_position.clone(), GetOptions::latest())?
+            .ok_or(SocialContextError::InternalError(
+                "Could not find entry while populating search",
+            ))?
+            .entry()
+            .to_app_option::<PerspectiveDiffEntryReference>()?
+            .ok_or(SocialContextError::InternalError(
+                "Expected element to contain app entry data",
+            ))?;
         debug!("Checking: {:#?}", diff);
         if !seen.contains(&search_position) {
             seen.insert(search_position.clone());
@@ -139,10 +192,15 @@ pub fn get_latest_snapshot(latest: HoloHash<holo_hash::hash_type::Header>) -> So
             let mut snapshot_links = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
             if snapshot_links.len() != 0 {
                 //get snapshot and add elements to out
-                let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?.ok_or(SocialContextError::InternalError("Could not find diff entry for given diff entry reference"))?
-                    .entry().to_app_option::<PerspectiveDiff>()?.ok_or(
-                        SocialContextError::InternalError("Expected element to contain app entry data"),
-                    )?;
+                let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
+                    .ok_or(SocialContextError::InternalError(
+                        "Could not find diff entry for given diff entry reference",
+                    ))?
+                    .entry()
+                    .to_app_option::<PerspectiveDiff>()?
+                    .ok_or(SocialContextError::InternalError(
+                        "Expected element to contain app entry data",
+                    ))?;
                 out.additions.append(&mut snapshot.additions.clone());
                 out.removals.append(&mut snapshot.removals.clone());
                 debug!("Breaking at snapshot");

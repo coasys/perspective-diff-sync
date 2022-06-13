@@ -1,6 +1,6 @@
+use chrono::{DateTime, NaiveDateTime, Utc};
 use hdk::prelude::*;
 use std::hash::Hash;
-use chrono::{Utc, DateTime, NaiveDateTime};
 
 use crate::errors::SocialContextResult;
 
