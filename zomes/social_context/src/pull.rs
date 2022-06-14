@@ -5,7 +5,7 @@ use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
 use crate::search;
-use crate::utils::get_now;
+use crate::utils::{get_now, dedup};
 use crate::{
     errors::{SocialContextError, SocialContextResult},
     PerspectiveDiff, PerspectiveDiffEntryReference,
@@ -74,7 +74,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 //ancestor status contains all paths between latest and current revision, this can be used to get all the diffs when all paths are dedup'd together
                 //Then update current revision to latest revision
                 let mut diffs: Vec<NodeIndex> = ancestor_status.into_iter().flatten().collect();
-                diffs.dedup();
+                diffs = dedup(&diffs);
                 diffs.reverse();
                 diffs.retain(|val| val != &current_index);
                 let mut out = PerspectiveDiff {
@@ -127,7 +127,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     };
                 }
                 let mut latest_paths = latest_paths.into_iter().flatten().collect::<Vec<_>>();
-                latest_paths.dedup();
+                latest_paths = dedup(&latest_paths);
                 latest_paths.retain(|val| val != &common_ancestor);
 
                 //Create the merge entry
