@@ -128,34 +128,43 @@ export function complexMerge(orchestrator) {
         //note; running this test on some machines may require more than 500ms wait
         await sleep(1000)
 
-        //1 -> bob_link(3) -> eric_link(4) -> eric_link(6)
-        //                 -> bob_link(5)
+        //1 -> bob_link(3) -> eric_link(4) -> merge(6) -> eric_link(7)
+        //                 -> bob_link(5) -> merge(6)
         //1 -> alice_link(2) 
         //Eric to commit his data, and update the latest revision, causing another fork on a fork
         let eric_link_data2 = generate_link_expression("eric2");
-        console.log("eric posting link data, child of eric last commit", eric_link_data2);
+        console.log("eric posting link data, will merge bob second and eric first entry", eric_link_data2);
         let commit_eric2 = await eric_happ.cells[0].call("social_context", "commit", {additions: [eric_link_data2], removals: []});
         console.warn("\ncommit_eric2", commit_eric2.toString("base64"));
         await eric_happ.cells[0].call("social_context", "update_latest_revision", commit_eric2);
         await eric_happ.cells[0].call("social_context", "update_current_revision", commit_eric2);
 
-        // //Connect nodes togther
-        // await s.shareAllNodes([alice, bob, eric])
-        // //note; running this test on some machines may require more than 500ms wait
-        // await sleep(1000)
+        await sleep(1000)
 
-        let bob_merge = await bob_happ.cells[0].call("social_context", "pull");
-        console.log("Bob merge result", bob_merge);
+        //1 -> bob_link(3) -> eric_link(4) -> merge(6) -> eric_link(7)
+        //                 -> bob_link(5) -> merge(6)
+        //1 -> alice_link(2) 
+        let bob_pull = await bob_happ.cells[0].call("social_context", "pull");
+        console.log("Bob pull result", bob_pull);
         //Should get two entries from Eric
+        t.isEqual(bob_pull.additions.length, 2);
         await sleep(200)
       
+        //1 -> bob_link(3) -> eric_link(4) -> merge(6) -> eric_link(7) -> merge(8)
+        //                 -> bob_link(5) -> merge(6)
+        //1 -> alice_link(2)                                           -> merge(8)
         let alice_merge = await alice_happ.cells[0].call("social_context", "pull");
         console.log("Alice merge result", alice_merge);
         //should get whole side of bob/eric graph
+        t.isEqual(alice_merge.additions.length, 4);
         await sleep(200)
         
-        //Should get alice graph and one entry from bobs
+        //1 -> bob_link(3) -> eric_link(4) -> merge(6) -> eric_link(7) -> merge(8)
+        //                 -> bob_link(5) -> merge(6)
+        //1 -> alice_link(2)                                           -> merge(8)
+        //Should get one entry from alice
         let eric_pull = await eric_happ.cells[0].call("social_context", "pull");
         console.log("Eric pull result", eric_pull);
+        t.isEqual(eric_pull.additions.length, 1);
     })
 }

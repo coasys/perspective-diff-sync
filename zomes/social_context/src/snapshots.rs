@@ -91,8 +91,7 @@ pub fn generate_snapshot(
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))?;
-        let diff_entry_hash = hash_entry(&diff)?;
-        let mut snapshot_links = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
+        let mut snapshot_links = get_links(hash_entry(&diff)?, Some(LinkTag::new("snapshot")))?;
         if snapshot_links.len() > 0 {
             //get snapshot and add elements to out
             let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
@@ -117,7 +116,6 @@ pub fn generate_snapshot(
             snapshot_diff.removals.append(&mut diff.removals.clone());
             diffs.append(&mut snapshot.diff_graph);
             debug!("Breaking at snapshot");
-            //Be careful breaking here where there is still unseen parents
             break;
         } else {
             //Check if entry is already in graph

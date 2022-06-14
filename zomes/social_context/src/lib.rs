@@ -41,7 +41,7 @@ pub struct Snapshot {
 }
 
 #[hdk_entry(id = "perspective_diff_entry_reference", visibility = "public")]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PerspectiveDiffEntryReference {
     pub diff: HoloHash<holo_hash::hash_type::Header>,
     pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Header>>>,

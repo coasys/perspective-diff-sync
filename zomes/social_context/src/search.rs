@@ -88,7 +88,6 @@ impl Search {
     ) -> Vec<Vec<NodeIndex>> {
         let paths = all_simple_paths::<Vec<_>, _>(&self.graph, child, ancestor, 0, None)
             .collect::<Vec<_>>();
-        debug!("Simple paths: {:#?}", paths);
         paths
     }
 
@@ -156,28 +155,6 @@ pub fn populate_search(
                 "Expected element to contain app entry data",
             ))?;
 
-        //check if diff has a snapshot entry
-        let mut snapshot_links = get_links(hash_entry(&diff)?, Some(LinkTag::new("snapshot")))?;
-        if snapshot_links.len() > 0 {
-            debug!("Found snapshot");
-            let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
-                .ok_or(SocialContextError::InternalError(
-                    "Could not find entry while populating search",
-                ))?
-                .entry()
-                .to_app_option::<Snapshot>()?
-                .ok_or(SocialContextError::InternalError(
-                    "Expected element to contain app entry data",
-                ))?;
-            diffs.append(&mut snapshot.diff_graph);
-            //Be careful with break here where there are still unseen parents
-            if unseen_parents.len() == 0 {
-                break;
-            } else {
-                search_position = unseen_parents.remove(0);
-            }
-        }
-        //debug!("Checking diff: {:#?} with hash: {:#?}", diff, search_position);
         //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
             diffs.push((search_position.0.clone(), diff.clone()));
@@ -203,48 +180,73 @@ pub fn populate_search(
         };
         if let Some(ref break_on_hash) = break_on {
             if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
+                debug!("Breaking on supplied hash");
                 break;
             }
         };
-        if diff.parents.is_none() {
-            //No parents, we have reached the end of the chain
-            //Now move onto traversing parents
+        //check if diff has a snapshot entry
+        let mut snapshot_links = get_links(hash_entry(&diff)?, Some(LinkTag::new("snapshot")))?;
+        if snapshot_links.len() > 0 {
+            debug!("Found snapshot");
+            let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find entry while populating search",
+                ))?
+                .entry()
+                .to_app_option::<Snapshot>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
+            diffs.append(&mut snapshot.diff_graph);
+            //Be careful with break here where there are still unseen parents
             if unseen_parents.len() == 0 {
-                debug!("No more unseen items");
+                debug!("No more unseen parents");
                 break;
             } else {
-                debug!("Moving onto unseen fork items");
                 search_position = unseen_parents.remove(0);
             }
         } else {
-            //Do the fork traversals
-            let mut parents = diff.parents.unwrap();
-            //Check if all parents have already been seen, if so then break or move onto next unseen parents
-            //TODO; we should use a seen set here versus array iter
-            if parents.iter().all(|val| {
-                diffs
-                    .clone()
-                    .into_iter()
-                    .map(|val| val.0)
-                    .collect::<Vec<_>>()
-                    .contains(val)
-            }) {
+            if diff.parents.is_none() {
+                //No parents, we have reached the end of the chain
+                //Now move onto traversing parents
                 if unseen_parents.len() == 0 {
-                    //TODO; consider what happens here where snapshot has not been found in block above
+                    debug!("No more unseen items");
                     break;
                 } else {
+                    debug!("Moving onto unseen fork items");
                     search_position = unseen_parents.remove(0);
                 }
             } else {
-                search_position = (parents.remove(0), -1);
-                unseen_parents.append(
-                    &mut parents
+                //Do the fork traversals
+                let mut parents = diff.parents.unwrap();
+                //Check if all parents have already been seen, if so then break or move onto next unseen parents
+                //TODO; we should use a seen set here versus array iter
+                if parents.iter().all(|val| {
+                    diffs
+                        .clone()
                         .into_iter()
-                        .map(|val| (val, depth - 1))
-                        .collect::<Vec<_>>(),
-                );
+                        .map(|val| val.0)
+                        .collect::<Vec<_>>()
+                        .contains(val)
+                }) {
+                    if unseen_parents.len() == 0 {
+                        debug!("Parents of item seen and unseen 0");
+                        break;
+                    } else {
+                        debug!("last moving onto unseen");
+                        search_position = unseen_parents.remove(0);
+                    }
+                } else {
+                    search_position = (parents.remove(0), -1);
+                    unseen_parents.append(
+                        &mut parents
+                            .into_iter()
+                            .map(|val| (val, depth - 1))
+                            .collect::<Vec<_>>(),
+                    );
+                };
             };
-        }
+        };
     }
 
     diffs.reverse();

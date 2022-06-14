@@ -49,6 +49,7 @@ pub fn commit(
         parents: parent.map(|val| vec![val]),
     };
     let diff_entry_reference = create_entry(diff_entry_ref_entry.clone())?;
+    debug!("Created diff entry ref: {:#?}", diff_entry_reference);
 
     if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot

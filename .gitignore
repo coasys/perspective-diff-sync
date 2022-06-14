@@ -2,3 +2,4 @@
 target
 workdir/social-context.dna
 zomes/tests/node_modules
+zomes/tests/out.log
