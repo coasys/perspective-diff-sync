@@ -383,6 +383,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9978962f8a4b158e97447a6d09d2d75e206d2994eff056c894019f362b27142"
 
 [[package]]
+name = "perspective_diff_sync"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "derive_more",
+ "hc_time_index",
+ "hdk",
+ "holo_hash",
+ "lazy_static",
+ "petgraph",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "petgraph"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -529,21 +544,6 @@ name = "smallvec"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
-
-[[package]]
-name = "social_context"
-version = "0.0.1"
-dependencies = [
- "chrono",
- "derive_more",
- "hc_time_index",
- "hdk",
- "holo_hash",
- "lazy_static",
- "petgraph",
- "serde",
- "thiserror",
-]
 
 [[package]]
 name = "subtle"

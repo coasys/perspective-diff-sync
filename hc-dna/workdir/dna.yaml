@@ -1,6 +1,6 @@
 ---
 manifest_version: 1
-name: "social-context"
+name: "perspective-diff-sync"
 uid: 00000000-0000-0000-0000-000000000000
 properties: {
   "enforce_spam_limit": 20,
@@ -9,5 +9,5 @@ properties: {
   "enable_signals": true
 }
 zomes: 
-  - name: social_context
+  - name: perspective_diff_sync
     bundled: ../target/wasm32-unknown-unknown/release/social_context.wasm

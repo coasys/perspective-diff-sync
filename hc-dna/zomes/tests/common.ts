@@ -7,6 +7,6 @@ export const installation: InstallAgentsHapps = [
   // agent 0
   [
     // happ 0
-    [path.join("../../workdir/social-context.dna")]
+    [path.join("../../workdir/perspective-diff-sync.dna")]
   ]
 ]

@@ -25,17 +25,17 @@ export function signals(orchestrator) {
         date.setTime(date.getTime() - dateOffset);
       
         //Register as active agent
-        await alice_happ.cells[0].call("social_context", "add_active_agent_link")
+        await alice_happ.cells[0].call("perspective_diff_sync", "add_active_agent_link")
       
         //Register as active agent
-        await bob_happ.cells[0].call("social_context", "add_active_agent_link")
+        await bob_happ.cells[0].call("perspective_diff_sync", "add_active_agent_link")
       
         //Sleep to give time for bob active agent link to arrive at alice
         await sleep(500)
       
         //Test case where subject object and predicate are given
         let link_data = generate_link_expression("alice");
-        await alice_happ.cells[0].call("social_context", "commit", {additions: [link_data], removals: []});
+        await alice_happ.cells[0].call("perspective_diff_sync", "commit", {additions: [link_data], removals: []});
         //Sleep to give time for signals to arrive
         await sleep(2000)
       

@@ -93,7 +93,7 @@ entry_defs![
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
     let mut functions: GrantedFunctions = BTreeSet::new();
     functions.insert((
-        ZomeName::from("social_context"),
+        ZomeName::from("perspective_diff_sync"),
         "recv_remote_signal".into(),
     ));
 

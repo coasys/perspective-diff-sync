@@ -12,6 +12,12 @@ use crate::{
     ENABLE_SIGNALS, SNAPSHOT_INTERVAL,
 };
 
+#[cfg(feature = "prod")]
+use crate::revisions::update_current_revision;
+#[cfg(feature = "prod")]
+use crate::revisions::update_latest_revision;
+
+
 pub fn commit(
     diff: PerspectiveDiff,
 ) -> SocialContextResult<HoloHash<holo_hash::hash_type::Header>> {
@@ -45,7 +51,7 @@ pub fn commit(
     let diff_entry_create = create_entry(diff.clone())?;
     debug!("Created diff entry: {:#?}", diff_entry_create);
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
-        diff: diff_entry_create,
+        diff: diff_entry_create.clone(),
         parents: parent.map(|val| vec![val]),
     };
     let diff_entry_reference = create_entry(diff_entry_ref_entry.clone())?;
@@ -70,7 +76,7 @@ pub fn commit(
     {
         let now = get_now()?;
         update_latest_revision(diff_entry_create.clone(), now.clone())?;
-        update_current_revision(diff_entry_create.clone(), now)?;
+        update_current_revision(diff_entry_create, now)?;
     }
 
     if *ENABLE_SIGNALS {
