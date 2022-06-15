@@ -1,4 +1,10 @@
 .cargo
 target
-workdir/social-context.dna
-zomes/tests/node_modules
+hc-dna/workdir/perspective-diff-sync.dna
+hc-dna/zomes/tests/node_modules
+hc-dna/zomes/tests/out.log
+node_modules
+
+*.js
+*.js.map
+!rollup.config*

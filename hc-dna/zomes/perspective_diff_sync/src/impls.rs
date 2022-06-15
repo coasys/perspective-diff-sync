@@ -1,7 +1,7 @@
-use hdk::prelude::*;
 use hc_time_index::IndexableEntry;
+use hdk::prelude::*;
 
-use crate::{HashReference, AgentReference, PerspectiveDiff};
+use crate::{AgentReference, HashReference, PerspectiveDiff};
 
 impl IndexableEntry for HashReference {
     fn entry_time(&self) -> chrono::DateTime<chrono::Utc> {

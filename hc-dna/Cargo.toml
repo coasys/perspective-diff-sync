@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "zomes/social_context"
+  "zomes/perspective_diff_sync"
 ]
 
 [profile.dev]
