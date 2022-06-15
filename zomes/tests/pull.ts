@@ -13,6 +13,8 @@ export function unSyncFetch(orchestrator) {
     
     await alice_happ.cells[0].call("social_context", "update_latest_revision", commit);
     await alice_happ.cells[0].call("social_context", "update_current_revision", commit);
+
+    await sleep(500)
     
     let pull_alice = await alice_happ.cells[0].call("social_context", "pull");
     console.warn("\npull alice", pull_alice);

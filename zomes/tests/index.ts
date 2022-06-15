@@ -6,36 +6,36 @@ import { render, renderMerges } from "./render";
 
 let orchestrator = new Orchestrator()
 
-// testRevisionUpdates(orchestrator)
-// orchestrator.run()
+testRevisionUpdates(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// unSyncFetch(orchestrator)
-// orchestrator.run()
+unSyncFetch(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// mergeFetch(orchestrator)
-// orchestrator.run()
+mergeFetch(orchestrator)
+orchestrator.run()
 
 orchestrator = new Orchestrator()
 
 complexMerge(orchestrator)
 orchestrator.run()
 
-// orchestrator = new Orchestrator()
+orchestrator = new Orchestrator()
 
-// signals(orchestrator)
-// orchestrator.run()
+signals(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator();
-// render(orchestrator)
-// orchestrator.run()
+orchestrator = new Orchestrator();
+render(orchestrator)
+orchestrator.run()
 
-// orchestrator = new Orchestrator();
-// renderMerges(orchestrator)
-// orchestrator.run()
+orchestrator = new Orchestrator();
+renderMerges(orchestrator)
+orchestrator.run()
 
 // // Run all registered scenarios as a final step, and gather the report,
 // // if you set up a reporter

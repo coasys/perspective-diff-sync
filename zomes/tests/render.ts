@@ -113,6 +113,7 @@ export function renderMerges(orchestrator) {
         
         await alice_happ.cells[0].call("social_context", "update_latest_revision", commit6);
         await alice_happ.cells[0].call("social_context", "update_current_revision", commit6);
+        await sleep(500)
 
         console.log("bob render");
         let bob_render2 = await bob_happ.cells[0].call("social_context", "render");

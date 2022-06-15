@@ -31,7 +31,7 @@ export function signals(orchestrator) {
         await bob_happ.cells[0].call("social_context", "add_active_agent_link")
       
         //Sleep to give time for bob active agent link to arrive at alice
-        await sleep(200)
+        await sleep(500)
       
         //Test case where subject object and predicate are given
         let link_data = generate_link_expression("alice");

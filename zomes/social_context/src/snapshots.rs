@@ -183,7 +183,6 @@ pub fn get_latest_snapshot(
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))?;
-        debug!("Checking: {:#?}", diff);
         if !seen.contains(&search_position) {
             seen.insert(search_position.clone());
             let diff_entry_hash = hash_entry(&diff)?;
@@ -195,18 +194,28 @@ pub fn get_latest_snapshot(
                         "Could not find diff entry for given diff entry reference",
                     ))?
                     .entry()
+                    .to_app_option::<Snapshot>()?
+                    .ok_or(SocialContextError::InternalError(
+                        "Expected element to contain app entry data",
+                    ))?;
+                let diff = get(snapshot.diff, GetOptions::latest())?
+                    .ok_or(SocialContextError::InternalError(
+                        "Could not find diff entry for given diff entry reference",
+                    ))?
+                    .entry()
                     .to_app_option::<PerspectiveDiff>()?
                     .ok_or(SocialContextError::InternalError(
                         "Expected element to contain app entry data",
                     ))?;
-                out.additions.append(&mut snapshot.additions.clone());
-                out.removals.append(&mut snapshot.removals.clone());
+                out.additions.append(&mut diff.additions.clone());
+                out.removals.append(&mut diff.removals.clone());
                 debug!("Breaking at snapshot");
                 break;
             }
         }
 
         if diff.parents.is_none() {
+            //TODO; add fork traversing
             break;
         } else {
             let mut parents = diff.parents.unwrap();
