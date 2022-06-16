@@ -1,12 +1,12 @@
 {
-  "name": "social-context",
-  "version": "0.0.21",
-  "description": "An ACAI Language for managing a perspective on holochain",
+  "name": "perspective-diff-sync",
+  "version": "0.0.1",
+  "description": "An AD4M language for syncing mutations to a share perspective",
   "main": "index.js",
   "scripts": {
     "test": "ad4m-test --test ./linkLanguage.test.js --bundle release/full_features/bundle.js --meta '{\"name\":\"social-context\",\"description\":\"\",\"sourceCodeLink\":\"\",\"possibleTemplateParams\":[\"uid\",\"name\"]}' --languageType linkLanguage",
     "build-icons": "rollup -c rollup.config.icons.js",
-    "build-dna": "cd hc-dna && nix-shell ./default.nix --run ./build.sh && cd ..",
+    "build-dna": "cd hc-dna && nix-shell ../default.nix --run ./build.sh && cd ..",
     "build": "npm run build-dna && npm run build-icons && tsc && rollup -c",
     "dev": "tsc && rollup -c rollup.config.icons.js && rollup -c -w"
   },
