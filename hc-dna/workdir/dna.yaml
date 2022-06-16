@@ -10,4 +10,4 @@ properties: {
 }
 zomes: 
   - name: perspective_diff_sync
-    bundled: ../target/wasm32-unknown-unknown/release/social_context.wasm
+    bundled: ../target/wasm32-unknown-unknown/release/perspective_diff_sync.wasm
