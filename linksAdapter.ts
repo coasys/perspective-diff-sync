@@ -1,5 +1,6 @@
-import type { Expression, LinkSyncAdapter, NewDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, Perspective } from "@perspect3vism/ad4m";
+import type { Expression, LinkSyncAdapter, NewDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff } from "@perspect3vism/ad4m";
 import type { DID } from "@perspect3vism/ad4m/lib/DID";
+import { Perspective } from "@perspect3vism/ad4m";
 import { DNA_NICK, ZOME_NAME } from "./dna";
 
 export class LinkAdapter implements LinkSyncAdapter {
@@ -40,7 +41,7 @@ export class LinkAdapter implements LinkSyncAdapter {
 
   async render(): Promise<Perspective> {
     let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "render", {});
-    return res as Perspective;
+    return new Perspective(res.links);
   }
 
   async commit(diff: PerspectiveDiff): Promise<string> {
@@ -64,14 +65,14 @@ export class LinkAdapter implements LinkSyncAdapter {
       //@ts-ignore
       return await this.call(
         DNA_NICK,
-        "social_context",
+        ZOME_NAME,
         "add_active_agent_link",
         null
       );
     } else {
       return await hcDna.call(
         DNA_NICK,
-        "social_context",
+        ZOME_NAME,
         "add_active_agent_link",
         null
       );
