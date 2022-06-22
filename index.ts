@@ -9,7 +9,7 @@ function interactions(expression: Address): Interaction[] {
 
 const activeAgentDurationSecs = 300;
 
-export async function create(context: LanguageContext): Promise<Language> {
+export default async function create(context: LanguageContext): Promise<Language> {
   const Holochain = context.Holochain as HolochainLanguageDelegate;
 
   const linksAdapter = new LinkAdapter(context);

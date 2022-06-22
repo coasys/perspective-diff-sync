@@ -75,8 +75,8 @@ pub fn commit(
     #[cfg(feature = "prod")]
     {
         let now = get_now()?;
-        update_latest_revision(diff_entry_create.clone(), now.clone())?;
-        update_current_revision(diff_entry_create, now)?;
+        update_latest_revision(diff_entry_reference.clone(), now.clone())?;
+        update_current_revision(diff_entry_reference.clone(), now)?;
     }
 
     if *ENABLE_SIGNALS {

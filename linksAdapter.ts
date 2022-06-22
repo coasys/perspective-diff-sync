@@ -1,4 +1,4 @@
-import type { Expression, LinkSyncAdapter, NewDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff } from "@perspect3vism/ad4m";
+import type { Expression, LinkSyncAdapter, NewDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression } from "@perspect3vism/ad4m";
 import type { DID } from "@perspect3vism/ad4m/lib/DID";
 import { Perspective } from "@perspect3vism/ad4m";
 import { DNA_NICK, ZOME_NAME } from "./dna";
@@ -25,27 +25,31 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async latestRevision(): Promise<string> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "latestRevision", {});
+    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "latestRevision", null);
     return res as string;
   }
 
   async currentRevision(): Promise<string> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "currentRevision", {});
+    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "currentRevision", null);
     return res as string;
   }
 
   async pull(): Promise<PerspectiveDiff> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", {});
+    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", null);
     return res as PerspectiveDiff;
   }
 
   async render(): Promise<Perspective> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "render", {});
+    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "render", null);
     return new Perspective(res.links);
   }
 
   async commit(diff: PerspectiveDiff): Promise<string> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "commit", diff);
+    let prep_diff = {
+      additions: diff.additions.map((diff) => prepareLinkExpression(diff)),
+      removals: diff.removals.map((diff) => prepareLinkExpression(diff))
+    }
+    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "commit", prep_diff);
     return res as string;
   }
 
@@ -56,7 +60,7 @@ export class LinkAdapter implements LinkSyncAdapter {
 
   handleHolochainSignal(signal: any): void {
     if (this.linkCallback) {
-      this.linkCallback(signal.data.payload.diff, signal.data.payload.revision);
+      this.linkCallback(signal.data.payload);
     }
   }
 
@@ -80,7 +84,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 }
 
-function prepareExpressionLink(link: Expression): object {
+function prepareLinkExpression(link: LinkExpression): object {
   const data = Object.assign(link);
   if (data.data.source == "") {
     data.data.source = null;
@@ -89,6 +93,15 @@ function prepareExpressionLink(link: Expression): object {
     data.data.target = null;
   }
   if (data.data.predicate == "") {
+    data.data.predicate = null;
+  }
+  if (data.data.source == undefined) {
+    data.data.source = null;
+  }
+  if (data.data.target == undefined) {
+    data.data.target = null;
+  }
+  if (data.data.predicate == undefined) {
     data.data.predicate = null;
   }
   return data;
