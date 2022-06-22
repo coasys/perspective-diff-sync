@@ -9,9 +9,7 @@ function interactions(expression: Address): Interaction[] {
 
 const activeAgentDurationSecs = 300;
 
-export const name = "perspective-diff-sync";
-
-export default async function create(context: LanguageContext): Promise<Language> {
+export async function create(context: LanguageContext): Promise<Language> {
   const Holochain = context.Holochain as HolochainLanguageDelegate;
 
   const linksAdapter = new LinkAdapter(context);
@@ -29,7 +27,7 @@ export default async function create(context: LanguageContext): Promise<Language
   );
 
   return {
-    name,
+    name: "perspective-diff-sync",
     linksAdapter,
     settingsUI,
     interactions,
