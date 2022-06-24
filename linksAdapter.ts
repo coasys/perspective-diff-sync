@@ -1,11 +1,11 @@
-import type { Expression, LinkSyncAdapter, NewDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression } from "@perspect3vism/ad4m";
+import type { Expression, LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression } from "@perspect3vism/ad4m";
 import type { DID } from "@perspect3vism/ad4m/lib/DID";
 import { Perspective } from "@perspect3vism/ad4m";
 import { DNA_NICK, ZOME_NAME } from "./dna";
 
 export class LinkAdapter implements LinkSyncAdapter {
   hcDna: HolochainLanguageDelegate;
-  linkCallback?: NewDiffObserver
+  linkCallback?: PerspectiveDiffObserver
 
   constructor(context: LanguageContext) {
     //@ts-ignore
@@ -53,7 +53,7 @@ export class LinkAdapter implements LinkSyncAdapter {
     return res as string;
   }
 
-  addCallback(callback: NewDiffObserver): number {
+  addCallback(callback: PerspectiveDiffObserver): number {
     this.linkCallback = callback;
     return 1;
   }
