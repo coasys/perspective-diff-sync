@@ -1,39 +1,40 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use hdk::prelude::*;
+use perspective_diff_sync_integrity::{EntryTypes, HashAnchor, HashReference, LocalHashReference, LinkTypes};
 
 use crate::utils::get_now;
 use crate::{
-    errors::{SocialContextError, SocialContextResult},
-    HashAnchor, HashReference, LocalHashReference,
+    errors::{SocialContextError, SocialContextResult}
 };
 
 pub fn update_latest_revision(
-    hash: HoloHash<holo_hash::hash_type::Header>,
+    hash: HoloHash<holo_hash::hash_type::Action>,
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
     let hash_ref = HashReference { hash, timestamp };
-    create_entry(hash_ref.clone())?;
+    create_entry(EntryTypes::HashReference(hash_ref.clone()))?;
     hc_time_index::index_entry(String::from("current_rev"), hash_ref, LinkTag::new(""))?;
     Ok(())
 }
 
 pub fn update_current_revision(
-    hash: HoloHash<holo_hash::hash_type::Header>,
+    hash: HoloHash<holo_hash::hash_type::Action>,
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
     let hash_anchor = hash_entry(HashAnchor(String::from("current_hashes")))?;
     let hash_ref = LocalHashReference { hash, timestamp };
-    create_entry(hash_ref.clone())?;
+    create_entry(EntryTypes::LocalHashReference(hash_ref.clone()))?;
     create_link(
         hash_anchor,
         hash_entry(hash_ref)?,
+        LinkTypes::HashRef,
         LinkTag::new(String::from("")),
     )?;
     Ok(())
 }
 
 //Latest revision as seen from the DHT
-pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Header>>> {
+pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
     let mut latest = hc_time_index::get_links_and_load_for_time_span::<HashReference>(
         String::from("current_rev"),
         get_now()?,
@@ -46,9 +47,9 @@ pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_
 }
 
 //Latest revision as seen from our local state
-pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Header>>> {
+pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
     let hash_anchor = hash_entry(HashAnchor(String::from("current_hashes")))?;
-    let links = get_links(hash_anchor.clone(), None)?;
+    let links = get_links(hash_anchor.clone(), LinkTypes::HashRef, None)?;
 
     let mut refs = links
         .into_iter()

@@ -13,5 +13,3 @@ pub struct Triple {
     pub predicate: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
-pub struct UriTag(pub String);
