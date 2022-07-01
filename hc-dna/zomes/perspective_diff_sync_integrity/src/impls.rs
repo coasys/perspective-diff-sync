@@ -8,7 +8,7 @@ impl IndexableEntry for HashReference {
         self.timestamp
     }
 
-    fn hash(&self) -> hdk::map_extern::ExternResult<holo_hash::EntryHash> {
+    fn hash(&self) -> ExternResult<hdk::prelude::HoloHash<holo_hash::hash_type::Entry>> {
         hash_entry(self)
     }
 }
@@ -18,13 +18,13 @@ impl IndexableEntry for AgentReference {
         self.timestamp
     }
 
-    fn hash(&self) -> hdk::map_extern::ExternResult<holo_hash::EntryHash> {
+    fn hash(&self) -> ExternResult<hdk::prelude::HoloHash<holo_hash::hash_type::Entry>> {
         hash_entry(self)
     }
 }
 
 impl PerspectiveDiff {
     pub fn get_sb(self) -> ExternResult<SerializedBytes> {
-        Ok(self.try_into()?)
+        self.try_into().map_err(|error| wasm_error!(WasmErrorInner::Host(String::from(error))))
     }
 }

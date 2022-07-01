@@ -17,3 +17,7 @@ pub fn dedup<T: Eq + Hash + Clone>(vs: &Vec<T>) -> Vec<T> {
 
     hs.into_iter().collect()
 }
+
+pub (crate) fn err(reason: &str) -> WasmError {
+    wasm_error!(WasmErrorInner::Host(String::from(reason)))
+}

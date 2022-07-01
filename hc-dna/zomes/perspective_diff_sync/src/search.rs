@@ -6,15 +6,15 @@ use petgraph::{
 };
 use std::collections::HashMap;
 use std::ops::Index;
+use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, Snapshot, LinkTypes};
 
 use crate::errors::{SocialContextError, SocialContextResult};
-use crate::{PerspectiveDiffEntryReference, Snapshot};
 
 pub struct Search {
-    pub graph: DiGraph<HoloHash<holo_hash::hash_type::Header>, ()>,
-    pub undirected_graph: UnGraph<HoloHash<holo_hash::hash_type::Header>, ()>,
-    pub node_index_map: HashMap<HoloHash<holo_hash::hash_type::Header>, NodeIndex<u32>>,
-    pub entry_map: HashMap<HoloHash<holo_hash::hash_type::Header>, PerspectiveDiffEntryReference>,
+    pub graph: DiGraph<HoloHash<holo_hash::hash_type::Action>, ()>,
+    pub undirected_graph: UnGraph<HoloHash<holo_hash::hash_type::Action>, ()>,
+    pub node_index_map: HashMap<HoloHash<holo_hash::hash_type::Action>, NodeIndex<u32>>,
+    pub entry_map: HashMap<HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference>,
 }
 
 impl Search {
@@ -30,7 +30,7 @@ impl Search {
     pub fn add_node(
         &mut self,
         parents: Option<Vec<NodeIndex<u32>>>,
-        diff: HoloHash<holo_hash::hash_type::Header>,
+        diff: HoloHash<holo_hash::hash_type::Action>,
     ) -> NodeIndex<u32> {
         let index = self.graph.add_node(diff.clone());
         self.undirected_graph.add_node(diff.clone());
@@ -46,7 +46,7 @@ impl Search {
 
     pub fn add_entry(
         &mut self,
-        hash: HoloHash<holo_hash::hash_type::Header>,
+        hash: HoloHash<holo_hash::hash_type::Action>,
         diff: PerspectiveDiffEntryReference,
     ) {
         self.entry_map.insert(hash, diff);
@@ -54,19 +54,19 @@ impl Search {
 
     pub fn get_entry(
         &mut self,
-        hash: &HoloHash<holo_hash::hash_type::Header>,
+        hash: &HoloHash<holo_hash::hash_type::Action>,
     ) -> Option<PerspectiveDiffEntryReference> {
         self.entry_map.remove(hash)
     }
 
     pub fn get_node_index(
         &self,
-        node: &HoloHash<holo_hash::hash_type::Header>,
+        node: &HoloHash<holo_hash::hash_type::Action>,
     ) -> Option<&NodeIndex<u32>> {
         self.node_index_map.get(node)
     }
 
-    pub fn index(&mut self, index: NodeIndex) -> HoloHash<holo_hash::hash_type::Header> {
+    pub fn index(&mut self, index: NodeIndex) -> HoloHash<holo_hash::hash_type::Action> {
         self.graph.index(index).clone()
     }
 
@@ -129,8 +129,8 @@ fn move_me<T>(arr: &mut Vec<T>, old_index: usize, new_index: usize) {
 //TODO; add ability to determine depth of recursion
 pub fn populate_search(
     search: Option<Search>,
-    latest: HoloHash<holo_hash::hash_type::Header>,
-    break_on: Option<HoloHash<holo_hash::hash_type::Header>>,
+    latest: HoloHash<holo_hash::hash_type::Action>,
+    break_on: Option<HoloHash<holo_hash::hash_type::Action>>,
 ) -> SocialContextResult<Search> {
     let mut search_position = (latest, -1 as i64);
     let mut diffs = vec![];
@@ -185,7 +185,7 @@ pub fn populate_search(
             }
         };
         //check if diff has a snapshot entry
-        let mut snapshot_links = get_links(hash_entry(&diff)?, Some(LinkTag::new("snapshot")))?;
+        let mut snapshot_links = get_links(hash_entry(&diff)?, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
         if snapshot_links.len() > 0 {
             debug!("Found snapshot");
             let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
@@ -254,10 +254,10 @@ pub fn populate_search(
 
     //Add root node
     if search
-        .get_node_index(&HeaderHash::from_raw_36(vec![0xdb; 36]))
+        .get_node_index(&ActionHash::from_raw_36(vec![0xdb; 36]))
         .is_none()
     {
-        search.add_node(None, HeaderHash::from_raw_36(vec![0xdb; 36]));
+        search.add_node(None, ActionHash::from_raw_36(vec![0xdb; 36]));
     };
     for diff in diffs {
         if !search.entry_map.contains_key(&diff.0) {

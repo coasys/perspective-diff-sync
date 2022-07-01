@@ -1,10 +1,10 @@
 use hdk::prelude::*;
+use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes, EntryTypes};
 
 use crate::errors::{SocialContextError, SocialContextResult};
-use crate::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot};
 
 pub fn get_entries_since_snapshot(
-    latest: HoloHash<holo_hash::hash_type::Header>,
+    latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<usize> {
     let mut search_position = latest;
     let mut depth = 0;
@@ -34,7 +34,7 @@ pub fn get_entries_since_snapshot(
             }
         };
         let diff_entry_hash = hash_entry(&diff)?;
-        let check_snapshot = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
+        let check_snapshot = get_links(diff_entry_hash, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
         if check_snapshot.len() != 0 {
             depth -= 1;
             break;
@@ -70,7 +70,7 @@ pub fn get_entries_since_snapshot(
 }
 
 pub fn generate_snapshot(
-    latest: HoloHash<holo_hash::hash_type::Header>,
+    latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<Snapshot> {
     let mut search_position = latest;
     let mut seen = HashSet::new();
@@ -91,7 +91,7 @@ pub fn generate_snapshot(
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))?;
-        let mut snapshot_links = get_links(hash_entry(&diff)?, Some(LinkTag::new("snapshot")))?;
+        let mut snapshot_links = get_links(hash_entry(&diff)?, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
         if snapshot_links.len() > 0 {
             //get snapshot and add elements to out
             let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
@@ -153,7 +153,7 @@ pub fn generate_snapshot(
         }
     }
 
-    let diff_create = create_entry(snapshot_diff)?;
+    let diff_create = create_entry(EntryTypes::PerspectiveDiff(snapshot_diff))?;
     let snapshot = Snapshot {
         diff: diff_create,
         diff_graph: diffs,
@@ -163,7 +163,7 @@ pub fn generate_snapshot(
 }
 
 pub fn get_latest_snapshot(
-    latest: HoloHash<holo_hash::hash_type::Header>,
+    latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<PerspectiveDiff> {
     let mut search_position = latest;
     let mut seen = HashSet::new();
@@ -186,7 +186,7 @@ pub fn get_latest_snapshot(
         if !seen.contains(&search_position) {
             seen.insert(search_position.clone());
             let diff_entry_hash = hash_entry(&diff)?;
-            let mut snapshot_links = get_links(diff_entry_hash, Some(LinkTag::new("snapshot")))?;
+            let mut snapshot_links = get_links(diff_entry_hash, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
             if snapshot_links.len() != 0 {
                 //get snapshot and add elements to out
                 let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?

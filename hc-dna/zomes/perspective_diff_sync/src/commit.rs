@@ -1,16 +1,16 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use hc_time_index::SearchStrategy;
 use hdk::prelude::*;
+use perspective_diff_sync_integrity::{
+    AgentReference, PerspectiveDiff, PerspectiveDiffEntryReference, EntryTypes, LinkTypes
+};
 
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::pull::pull;
 use crate::revisions::{current_revision, latest_revision};
 use crate::snapshots::{generate_snapshot, get_entries_since_snapshot};
 use crate::utils::{dedup, get_now};
-use crate::{
-    AgentReference, PerspectiveDiff, PerspectiveDiffEntryReference, ACTIVE_AGENT_DURATION,
-    ENABLE_SIGNALS, SNAPSHOT_INTERVAL,
-};
+use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 
 #[cfg(feature = "prod")]
 use crate::revisions::update_current_revision;
@@ -20,7 +20,7 @@ use crate::revisions::update_latest_revision;
 
 pub fn commit(
     diff: PerspectiveDiff,
-) -> SocialContextResult<HoloHash<holo_hash::hash_type::Header>> {
+) -> SocialContextResult<HoloHash<holo_hash::hash_type::Action>> {
     let pre_current_revision = current_revision()?;
     let pre_latest_revision = latest_revision()?;
     let mut entries_since_snapshot = 0;
@@ -48,13 +48,13 @@ pub fn commit(
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
-    let diff_entry_create = create_entry(diff.clone())?;
+    let diff_entry_create = create_entry(EntryTypes::PerspectiveDiff(diff.clone()))?;
     debug!("Created diff entry: {:#?}", diff_entry_create);
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create.clone(),
         parents: parent.map(|val| vec![val]),
     };
-    let diff_entry_reference = create_entry(diff_entry_ref_entry.clone())?;
+    let diff_entry_reference = create_entry(EntryTypes::PerspectiveDiffEntryReference(diff_entry_ref_entry.clone()))?;
     debug!("Created diff entry ref: {:#?}", diff_entry_reference);
 
     if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
@@ -63,17 +63,19 @@ pub fn commit(
         let snapshot = generate_snapshot(diff_entry_reference.clone())?;
         debug!("Creating snapshot");
 
-        create_entry(snapshot.clone())?;
+        create_entry(EntryTypes::Snapshot(snapshot.clone()))?;
         create_link(
             hash_entry(diff_entry_ref_entry)?,
             hash_entry(snapshot)?,
-            LinkTag::new("snapshot"),
+            LinkTypes::Snapshot,
+            LinkTag::new("snapshot")
         )?;
     };
 
     //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
     #[cfg(feature = "prod")]
     {
+        debug!("UPDATING REVISIONS");
         let now = get_now()?;
         update_latest_revision(diff_entry_reference.clone(), now.clone())?;
         update_current_revision(diff_entry_reference.clone(), now)?;
@@ -83,13 +85,15 @@ pub fn commit(
         let now = sys_time()?.as_seconds_and_nanos();
         let now = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(now.0, now.1), Utc);
         //Get recent agents (agents which have marked themselves online in time period now -> ACTIVE_AGENT_DURATION as derived from DNA properties)
-        let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference>(
+        let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference, LinkTypes, LinkTypes>(
             String::from("active_agent"),
             now - *ACTIVE_AGENT_DURATION,
             now,
             Some(LinkTag::new("")),
             SearchStrategy::Bfs,
             None,
+            LinkTypes::Index,
+            LinkTypes::TimePath
         )?;
         let recent_agents = recent_agents
             .into_iter()
@@ -109,13 +113,15 @@ pub fn commit(
 pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
     let now = get_now()?;
     //Get the recent agents so we can check that the current agent is not already
-    let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference>(
+    let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference, LinkTypes, LinkTypes>(
         String::from("active_agent"),
         now - *ACTIVE_AGENT_DURATION,
         now,
         Some(LinkTag::new("")),
         SearchStrategy::Bfs,
         None,
+        LinkTypes::Index,
+        LinkTypes::TimePath
     )?;
 
     let current_agent_online = recent_agents.iter().find(|agent| {
@@ -132,11 +138,13 @@ pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
                 agent: agent_info()?.agent_initial_pubkey,
                 timestamp: now,
             };
-            create_entry(&new_agent_ref)?;
+            create_entry(&EntryTypes::AgentReference(new_agent_ref.clone()))?;
             hc_time_index::index_entry(
                 String::from("active_agent"),
                 new_agent_ref,
                 LinkTag::new(""),
+                LinkTypes::Index,
+LinkTypes::TimePath
             )?;
             Ok(Some(agent_ref.timestamp))
         }
@@ -146,8 +154,8 @@ pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
                 agent: agent_info()?.agent_initial_pubkey,
                 timestamp: now,
             };
-            create_entry(&agent_ref)?;
-            hc_time_index::index_entry(String::from("active_agent"), agent_ref, LinkTag::new(""))?;
+            create_entry(&EntryTypes::AgentReference(agent_ref.clone()))?;
+            hc_time_index::index_entry(String::from("active_agent"), agent_ref, LinkTag::new(""), LinkTypes::Index, LinkTypes::TimePath)?;
             Ok(None)
         }
     }
