@@ -74,10 +74,6 @@ pub struct LocalHashReference {
 
 app_entry!(LocalHashReference);
 
-#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
-pub struct HashAnchor(pub String);
-
-app_entry!(HashAnchor);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct AgentReference {
@@ -98,8 +94,6 @@ pub enum EntryTypes {
     HashReference(HashReference),
     #[entry_def(visibility = "public")]
     PerspectiveDiffEntryReference(PerspectiveDiffEntryReference),
-    #[entry_def(visibility = "private")]
-    HashAnchor(HashAnchor),
     #[entry_def(visibility = "private")]
     LocalHashReference(LocalHashReference),
     #[entry_def(visibility = "public")]

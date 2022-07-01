@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 use lazy_static::lazy_static;
-use perspective_diff_sync_integrity::{EntryTypes, HashAnchor, PerspectiveDiff, Perspective};
+use perspective_diff_sync_integrity::{PerspectiveDiff, Perspective};
 
 mod commit;
 mod errors;
@@ -27,8 +27,6 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
         access: ().into(),
         functions,
     })?;
-    //Create the initial entry which will be updated to keep the current_revision
-    create_entry(EntryTypes::HashAnchor(HashAnchor(String::from("current_hashes"))))?;
     Ok(InitCallbackResult::Pass)
 }
 

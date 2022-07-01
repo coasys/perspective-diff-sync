@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use hdk::prelude::*;
-use perspective_diff_sync_integrity::{EntryTypes, HashAnchor, HashReference, LocalHashReference, LinkTypes};
+use perspective_diff_sync_integrity::{EntryTypes, HashReference, LocalHashReference, LinkTypes};
 
 use crate::utils::get_now;
 use crate::{
@@ -21,15 +21,8 @@ pub fn update_current_revision(
     hash: HoloHash<holo_hash::hash_type::Action>,
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
-    let hash_anchor = hash_entry(HashAnchor(String::from("current_hashes")))?;
     let hash_ref = LocalHashReference { hash, timestamp };
     create_entry(EntryTypes::LocalHashReference(hash_ref.clone()))?;
-    create_link(
-        hash_anchor,
-        hash_entry(hash_ref)?,
-        LinkTypes::HashRef,
-        LinkTag::new(String::from("")),
-    )?;
     Ok(())
 }
 
@@ -50,39 +43,14 @@ pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_
 
 //Latest revision as seen from our local state
 pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    // let hash_anchor = hash_entry(HashAnchor(String::from("current_hashes")))?;
-    // let links = get_links(hash_anchor.clone(), LinkTypes::HashRef, None)?;
-
-    // let mut refs = links
-    //     .into_iter()
-    //     .map(|link| match get(link.target, GetOptions::latest())? {
-    //         Some(chunk) => Ok(Some(
-    //             chunk.entry().to_app_option::<LocalHashReference>()?.ok_or(
-    //                 SocialContextError::InternalError("Expected element to contain app entry data"),
-    //             )?,
-    //         )),
-    //         None => Ok(None),
-    //     })
-    //     .filter_map(|val| {
-    //         if val.is_ok() {
-    //             let val = val.unwrap();
-    //             if val.is_some() {
-    //                 Some(Ok(val.unwrap()))
-    //             } else {
-    //                 None
-    //             }
-    //         } else {
-    //             Some(Err(val.err().unwrap()))
-    //         }
-    //     })
-    //     .collect::<SocialContextResult<Vec<LocalHashReference>>>()?;
-    let filter = ChainQueryFilter::new().entry_type(EntryType::App(EntryTypes::LocalHashReference.into()));
+    let app_entry = AppEntryType::new(4.into(), 0.into(), EntryVisibility::Private);
+    let filter = ChainQueryFilter::new().entry_type(EntryType::App(app_entry)).include_entries(true);
     let mut refs = query(filter)?
         .into_iter()
         .map(|val| {
             val.entry().to_app_option::<LocalHashReference>()?.ok_or(
                 SocialContextError::InternalError("Expected element to contain app entry data"),
-            )?
+            )
         })
         .collect::<SocialContextResult<Vec<LocalHashReference>>>()?;
     refs.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
