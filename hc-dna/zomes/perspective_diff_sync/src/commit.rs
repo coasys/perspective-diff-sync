@@ -75,6 +75,7 @@ pub fn commit(
     //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
     #[cfg(feature = "prod")]
     {
+        debug!("UPDATING REVISIONS");
         let now = get_now()?;
         update_latest_revision(diff_entry_reference.clone(), now.clone())?;
         update_current_revision(diff_entry_reference.clone(), now)?;

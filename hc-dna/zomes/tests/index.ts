@@ -1,41 +1,57 @@
-import { Orchestrator } from '@holochain/tryorama'
-import { testRevisionUpdates } from "./revisions"
-import { unSyncFetch, mergeFetch, complexMerge } from "./pull";
-import { signals } from "./signals";
-import { render, renderMerges } from "./render";
+// import { testRevisionUpdates } from "./revisions"
+// import { unSyncFetch, mergeFetch, complexMerge } from "./pull";
+// import { signals } from "./signals";
+// import { render, renderMerges } from "./render";
 
-let orchestrator = new Orchestrator()
+import { unSyncFetch, mergeFetch } from "./pull";
+import { testRevisionUpdates } from "./revisions";
+import test from "tape-promise/tape.js";
 
-testRevisionUpdates(orchestrator)
-orchestrator.run()
+// test("unsynced fetch", async (t) => {
+//     await unSyncFetch(t);
+// })
 
-orchestrator = new Orchestrator()
+test("merge fetch", async (t) => {
+    await mergeFetch(t);
+})
 
-unSyncFetch(orchestrator)
-orchestrator.run()
+// test("test revision updates", async (t) => {
+//     await testRevisionUpdates(t);
+// })
 
-orchestrator = new Orchestrator()
 
-mergeFetch(orchestrator)
-orchestrator.run()
+// let orchestrator = new Orchestrator()
 
-orchestrator = new Orchestrator()
+// testRevisionUpdates(orchestrator)
+// orchestrator.run()
 
-complexMerge(orchestrator)
-orchestrator.run()
+// orchestrator = new Orchestrator()
 
-orchestrator = new Orchestrator()
+// unSyncFetch(orchestrator)
+// orchestrator.run()
 
-signals(orchestrator)
-orchestrator.run()
+// orchestrator = new Orchestrator()
 
-orchestrator = new Orchestrator();
-render(orchestrator)
-orchestrator.run()
+// mergeFetch(orchestrator)
+// orchestrator.run()
 
-orchestrator = new Orchestrator();
-renderMerges(orchestrator)
-orchestrator.run()
+// orchestrator = new Orchestrator()
+
+// complexMerge(orchestrator)
+// orchestrator.run()
+
+// orchestrator = new Orchestrator()
+
+// signals(orchestrator)
+// orchestrator.run()
+
+// orchestrator = new Orchestrator();
+// render(orchestrator)
+// orchestrator.run()
+
+// orchestrator = new Orchestrator();
+// renderMerges(orchestrator)
+// orchestrator.run()
 
 // // Run all registered scenarios as a final step, and gather the report,
 // // if you set up a reporter
