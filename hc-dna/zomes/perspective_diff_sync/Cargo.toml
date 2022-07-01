@@ -13,12 +13,12 @@ derive_more = "0"
 serde = "1"
 lazy_static = "*"
 chrono = { version = "0.4", features=["serde"] }
-hc_time_index = { path = "../../../../../holochain-time-index" }
+hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index" }
 thiserror = "1.0.20"
 petgraph = "0.6.2"
 perspective_diff_sync_integrity = { path = "../perspective_diff_sync_integrity" }
 
-hdk = "0.0.138"
+hdk = "0.0.139"
 holo_hash = "0.0.29"
 
 [features]

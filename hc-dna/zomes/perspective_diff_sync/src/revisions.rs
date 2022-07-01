@@ -13,7 +13,7 @@ pub fn update_latest_revision(
 ) -> SocialContextResult<()> {
     let hash_ref = HashReference { hash, timestamp };
     create_entry(EntryTypes::HashReference(hash_ref.clone()))?;
-    hc_time_index::index_entry(String::from("current_rev"), hash_ref, LinkTag::new(""))?;
+    hc_time_index::index_entry(String::from("current_rev"), hash_ref, LinkTag::new(""), LinkTypes::Index, LinkTypes::TimePath)?;
     Ok(())
 }
 
@@ -35,13 +35,15 @@ pub fn update_current_revision(
 
 //Latest revision as seen from the DHT
 pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    let mut latest = hc_time_index::get_links_and_load_for_time_span::<HashReference>(
+    let mut latest = hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
         String::from("current_rev"),
         get_now()?,
         DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
         None,
         hc_time_index::SearchStrategy::Dfs,
         Some(1),
+        LinkTypes::Index, 
+        LinkTypes::TimePath
     )?;
     Ok(latest.pop().map(|val| val.hash))
 }

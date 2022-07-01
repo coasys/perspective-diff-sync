@@ -84,13 +84,15 @@ pub fn commit(
         let now = sys_time()?.as_seconds_and_nanos();
         let now = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(now.0, now.1), Utc);
         //Get recent agents (agents which have marked themselves online in time period now -> ACTIVE_AGENT_DURATION as derived from DNA properties)
-        let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference>(
+        let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference, LinkTypes, LinkTypes>(
             String::from("active_agent"),
             now - *ACTIVE_AGENT_DURATION,
             now,
             Some(LinkTag::new("")),
             SearchStrategy::Bfs,
             None,
+            LinkTypes::Index,
+            LinkTypes::TimePath
         )?;
         let recent_agents = recent_agents
             .into_iter()
@@ -110,13 +112,15 @@ pub fn commit(
 pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
     let now = get_now()?;
     //Get the recent agents so we can check that the current agent is not already
-    let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference>(
+    let recent_agents = hc_time_index::get_links_and_load_for_time_span::<AgentReference, LinkTypes, LinkTypes>(
         String::from("active_agent"),
         now - *ACTIVE_AGENT_DURATION,
         now,
         Some(LinkTag::new("")),
         SearchStrategy::Bfs,
         None,
+        LinkTypes::Index,
+        LinkTypes::TimePath
     )?;
 
     let current_agent_online = recent_agents.iter().find(|agent| {
@@ -138,6 +142,8 @@ pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
                 String::from("active_agent"),
                 new_agent_ref,
                 LinkTag::new(""),
+                LinkTypes::Index,
+LinkTypes::TimePath
             )?;
             Ok(Some(agent_ref.timestamp))
         }
@@ -148,7 +154,7 @@ pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
                 timestamp: now,
             };
             create_entry(&EntryTypes::AgentReference(agent_ref.clone()))?;
-            hc_time_index::index_entry(String::from("active_agent"), agent_ref, LinkTag::new(""))?;
+            hc_time_index::index_entry(String::from("active_agent"), agent_ref, LinkTag::new(""), LinkTypes::Index, LinkTypes::TimePath)?;
             Ok(None)
         }
     }

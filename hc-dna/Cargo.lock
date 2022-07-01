@@ -472,6 +472,7 @@ dependencies = [
 [[package]]
 name = "hc_time_index"
 version = "0.1.0"
+source = "git+https://github.com/holochain-open-dev/holochain-time-index#bb67f7ce9c3d2e928c4fe014b1d0a3b2e28a3b82"
 dependencies = [
  "chrono",
  "hdk",
@@ -486,9 +487,9 @@ dependencies = [
 
 [[package]]
 name = "hdk"
-version = "0.0.138"
+version = "0.0.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "187ae183ddd5cd381a6f2a0c4a9dbe9048fbdbff4fc72316f69d927d5c3e0b32"
+checksum = "cfbd42fed957c98b425898d28d95304e8dc8e61f5d74715026613c7080ea217a"
 dependencies = [
  "getrandom",
  "hdk_derive",
@@ -506,9 +507,9 @@ dependencies = [
 
 [[package]]
 name = "hdk_derive"
-version = "0.0.37"
+version = "0.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81ebeefd67938656e6fc9482f552d3e5526af8ff82714d6041c1f46dbce602e6"
+checksum = "321a1e095e773d2e1dfc7769e096e2bd40d84f369ba1dc97e044480d9fa062c2"
 dependencies = [
  "darling 0.14.1",
  "heck",
@@ -550,9 +551,9 @@ dependencies = [
 
 [[package]]
 name = "holochain_deterministic_integrity"
-version = "0.0.10"
+version = "0.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a05da70e7054c69825250c6fde4fd9681def1f00557b79e9ef1968df6c11fcd3"
+checksum = "945200b6d26ba5945f600c015a25efa1435bf0e254dae0c1ee31127bdcf7ae33"
 dependencies = [
  "hdk_derive",
  "holo_hash",
@@ -567,9 +568,9 @@ dependencies = [
 
 [[package]]
 name = "holochain_integrity_types"
-version = "0.0.9"
+version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bd76c76feb26c255f0886da841c69c005ebf0d6f50deba4520b272fcce0c720"
+checksum = "0ef9a376ad260e451b3645c15acd7211eacf9da5cfaa6aed21c6c35c96bf3fc2"
 dependencies = [
  "holo_hash",
  "holochain_serialized_bytes",
@@ -634,9 +635,9 @@ dependencies = [
 
 [[package]]
 name = "holochain_zome_types"
-version = "0.0.37"
+version = "0.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ec72c24d61eb81d562aea4db82573976e0c21c0fbf3dba6676b40614ef79fa9"
+checksum = "35389780795ffb8030d4989ae60d3ef62739e5c16ab569b5c3fca7e633ad0741"
 dependencies = [
  "holo_hash",
  "holochain_integrity_types",

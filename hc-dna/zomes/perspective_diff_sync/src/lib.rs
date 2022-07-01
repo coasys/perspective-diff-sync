@@ -75,7 +75,7 @@ pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) ->
     #[cfg(feature = "test")]
     {
         revisions::update_current_revision(_hash, utils::get_now().unwrap())
-            .map_err(|err| WasmError::Host(err.to_string()))?;
+            .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
 }
@@ -85,7 +85,7 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> 
     #[cfg(feature = "test")]
     {
         revisions::update_latest_revision(_hash, utils::get_now().unwrap())
-            .map_err(|err| WasmError::Host(err.to_string()))?;
+            .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
 }

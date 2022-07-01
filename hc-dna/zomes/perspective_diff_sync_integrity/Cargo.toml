@@ -13,7 +13,7 @@ derive_more = "0"
 serde = "1"
 chrono = { version = "0.4", features=["serde"] }
 
-holochain_deterministic_integrity = "0.0.10"
+holochain_deterministic_integrity = "0.0.11"
 holo_hash = "0.0.29"
-hdk = "0.0.138"
-hc_time_index = { path = "../../../../../holochain-time-index" }
+hdk = "0.0.139"
+hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index" }

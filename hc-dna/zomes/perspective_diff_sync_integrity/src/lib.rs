@@ -110,5 +110,7 @@ pub enum EntryTypes {
 pub enum LinkTypes {
     Snapshot,
     ActiveAgent,
-    HashRef
+    HashRef,
+    TimePath,
+    Index
 }
