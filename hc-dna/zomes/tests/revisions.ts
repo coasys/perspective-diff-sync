@@ -1,5 +1,5 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { sleep, generate_link_expression, createConductors} from "./utils";
+import { sleep, createConductors} from "./utils";
 
 //@ts-ignore
 export async function testRevisionUpdates(t) {

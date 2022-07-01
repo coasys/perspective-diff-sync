@@ -1,46 +1,56 @@
-import { conductorConfig, installation } from './common';
-import {sleep, generate_link_expression} from "./utils";
+import { Scenario } from "@holochain/tryorama";
+import { sleep, generate_link_expression } from "./utils";
+import { dnas } from "./common";
 
-
-export function signals(orchestrator) {
-    orchestrator.registerScenario("test signals", async (s, t) => {
-        const [alice, bob] = await s.players([conductorConfig, conductorConfig])
-        const [[alice_happ]] = await alice.installAgentsHapps(installation)
-        const [[bob_happ]] = await bob.installAgentsHapps(installation)
-        await s.shareAllNodes([alice, bob])
-      
-        let aliceSignalCount = 0;
-        let bobSignalCount = 0;
-        alice.setSignalHandler((signal) => {
+//@ts-ignore
+export async function signals(t) {
+    const scenario = new Scenario();
+    let aliceSignalCount = 0;
+    let bobSignalCount = 0;
+    
+    const aliceHapps = await scenario.addPlayerWithHapp({
+        dnas: dnas, 
+        signalHandler: (signal) => {
             console.log("Alice Received Signal:",signal)
             aliceSignalCount += 1;
-        });
-        bob.setSignalHandler((signal) => {
+        }
+    });
+    const bobHapps = await scenario.addPlayerWithHapp({
+        dnas: dnas, 
+        signalHandler: (signal) => {
             console.log("Bob Received Signal:",signal)
             bobSignalCount += 1;
-        });
-        //Create another index for one day ago
-        var dateOffset = (24*60*60*1000) / 2; //12 hr ago
-        var date = new Date();
-        date.setTime(date.getTime() - dateOffset);
-      
-        //Register as active agent
-        await alice_happ.cells[0].call("perspective_diff_sync", "add_active_agent_link")
-      
-        //Register as active agent
-        await bob_happ.cells[0].call("perspective_diff_sync", "add_active_agent_link")
-      
-        //Sleep to give time for bob active agent link to arrive at alice
-        await sleep(500)
-      
-        //Test case where subject object and predicate are given
-        let link_data = generate_link_expression("alice");
-        await alice_happ.cells[0].call("perspective_diff_sync", "commit", {additions: [link_data], removals: []});
-        //Sleep to give time for signals to arrive
-        await sleep(2000)
-      
-        t.deepEqual(aliceSignalCount, 1);
-        t.deepEqual(bobSignalCount, 1);
-      })
-      
+        }
+    });
+
+    await scenario.shareAllAgents();
+    //Register as active agent
+    await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "add_active_agent_link"
+    })
+    
+    //Register as active agent
+    await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "add_active_agent_link"
+    })
+    
+    //Sleep to give time for bob active agent link to arrive at alice
+    await sleep(500)
+    
+    //Test case where subject object and predicate are given
+    let link_data = generate_link_expression("alice");
+    await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "commit", 
+        payload: {additions: [link_data], removals: []}
+    });
+    //Sleep to give time for signals to arrive
+    await sleep(1000)
+    
+    t.deepEqual(aliceSignalCount, 1);
+    t.deepEqual(bobSignalCount, 1);    
+
+    await scenario.cleanUp();
 }
