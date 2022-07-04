@@ -9,6 +9,9 @@ function interactions(expression: Address): Interaction[] {
 
 const activeAgentDurationSecs = 300;
 
+//@ad4m-template-variable
+const name = "perspective-diff-sync";
+
 export default async function create(context: LanguageContext): Promise<Language> {
   const Holochain = context.Holochain as HolochainLanguageDelegate;
 
@@ -27,7 +30,7 @@ export default async function create(context: LanguageContext): Promise<Language
   );
 
   return {
-    name: "perspective-diff-sync",
+    name,
     linksAdapter,
     settingsUI,
     interactions,
