@@ -1,6 +1,5 @@
 import type { Address, Language, Interaction, HolochainLanguageDelegate, LanguageContext } from "@perspect3vism/ad4m";
 import { LinkAdapter } from "./linksAdapter";
-import { JuntoSettingsUI } from "./settingsUI";
 import { DNA, DNA_NICK } from "./dna";
 
 function interactions(expression: Address): Interaction[] {
@@ -16,7 +15,6 @@ export default async function create(context: LanguageContext): Promise<Language
   const Holochain = context.Holochain as HolochainLanguageDelegate;
 
   const linksAdapter = new LinkAdapter(context);
-  const settingsUI = new JuntoSettingsUI();
 
   await Holochain.registerDNAs(
     [{ file: DNA, nick: DNA_NICK }],
@@ -32,7 +30,6 @@ export default async function create(context: LanguageContext): Promise<Language
   return {
     name,
     linksAdapter,
-    settingsUI,
     interactions,
   } as Language;
 }

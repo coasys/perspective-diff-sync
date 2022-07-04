@@ -5,10 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "ad4m-test --test ./linkLanguage.test.js --bundle release/full_features/bundle.js --meta '{\"name\":\"social-context\",\"description\":\"\",\"sourceCodeLink\":\"\",\"possibleTemplateParams\":[\"uid\",\"name\"]}' --languageType linkLanguage",
-    "build-icons": "rollup -c rollup.config.icons.js",
     "build-dna": "cd hc-dna && nix-shell ../default.nix --run ./build.sh && cd ..",
-    "build": "npm run build-dna && npm run build-icons && tsc && rollup -c",
-    "dev": "tsc && rollup -c rollup.config.icons.js && rollup -c -w"
+    "build": "npm run build-dna && tsc && rollup -c",
+    "dev": "tsc && rollup -c -w"
   },
   "author": "",
   "license": "ISC",
