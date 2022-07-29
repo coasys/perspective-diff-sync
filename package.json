@@ -4,7 +4,6 @@
   "description": "An AD4M language for syncing mutations to a share perspective",
   "main": "index.js",
   "scripts": {
-    "test": "ad4m-test --test ./linkLanguage.test.js --bundle release/full_features/bundle.js --meta '{\"name\":\"social-context\",\"description\":\"\",\"sourceCodeLink\":\"\",\"possibleTemplateParams\":[\"uid\",\"name\"]}' --languageType linkLanguage",
     "build-dna": "cd hc-dna && nix-shell ./default.nix --run ./build.sh && cd ..",
     "build": "npm run build-dna && tsc && rollup -c",
     "dev": "tsc && rollup -c -w"
@@ -13,7 +12,6 @@
   "license": "ISC",
   "devDependencies": {
     "@perspect3vism/ad4m": "0.1.32",
-    "@perspect3vism/ad4m-test": "0.0.5",
     "@perspect3vism/rollup-plugin-dna": "^0.0.2",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-json": "^4.1.0",
