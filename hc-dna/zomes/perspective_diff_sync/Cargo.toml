@@ -18,8 +18,8 @@ thiserror = "1.0.20"
 petgraph = "0.6.2"
 perspective_diff_sync_integrity = { path = "../perspective_diff_sync_integrity" }
 
-hdk = "0.0.139"
-holo_hash = "0.0.29"
+hdk = "0.0.143"
+holo_hash = "0.0.31"
 
 [features]
 prod = []

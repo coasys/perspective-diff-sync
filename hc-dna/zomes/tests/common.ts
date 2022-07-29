@@ -1,5 +1,6 @@
 import path from "path";
+import {Dna} from "@holochain/tryorama";
 
-const dnas = [{ path: path.join("../../workdir/perspective-diff-sync.dna") }];
+const dnas: Dna[] = [{ source: {path: path.join("../../workdir/perspective-diff-sync.dna")} }];
 
 export { dnas };

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "ad4m-test --test ./linkLanguage.test.js --bundle release/full_features/bundle.js --meta '{\"name\":\"social-context\",\"description\":\"\",\"sourceCodeLink\":\"\",\"possibleTemplateParams\":[\"uid\",\"name\"]}' --languageType linkLanguage",
-    "build-dna": "cd hc-dna && nix-shell ../default.nix --run ./build.sh && cd ..",
+    "build-dna": "cd hc-dna && nix-shell ./default.nix --run ./build.sh && cd ..",
     "build": "npm run build-dna && tsc && rollup -c",
     "dev": "tsc && rollup -c -w"
   },
