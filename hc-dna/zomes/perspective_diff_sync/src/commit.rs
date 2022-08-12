@@ -8,9 +8,9 @@ use perspective_diff_sync_integrity::{
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::pull::pull;
 use crate::revisions::{current_revision, latest_revision};
-use crate::snapshots::{generate_snapshot, get_entries_since_snapshot};
+use crate::snapshots::{/*generate_snapshot,*/ get_entries_since_snapshot};
 use crate::utils::{dedup, get_now};
-use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
+use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, /*SNAPSHOT_INTERVAL*/};
 
 #[cfg(feature = "prod")]
 use crate::revisions::update_current_revision;
@@ -44,7 +44,7 @@ pub fn commit(
     }
     debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
     //Add one since we are comitting an entry here
-    entries_since_snapshot += 1;
+    //entries_since_snapshot += 1;
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
@@ -57,6 +57,8 @@ pub fn commit(
     let diff_entry_reference = create_entry(EntryTypes::PerspectiveDiffEntryReference(diff_entry_ref_entry.clone()))?;
     debug!("Created diff entry ref: {:#?}", diff_entry_reference);
 
+    // Deactivate snapshots for now since it seems to be broken
+    /*
     if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
         //create new snapshot linked from above diff_entry_reference
@@ -71,6 +73,7 @@ pub fn commit(
             LinkTag::new("snapshot")
         )?;
     };
+     */
 
     //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
     #[cfg(feature = "prod")]

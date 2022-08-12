@@ -1,5 +1,5 @@
 use hdk::prelude::*;
-use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes, EntryTypes};
+use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes, /*EntryTypes*/};
 
 use crate::errors::{SocialContextError, SocialContextResult};
 
@@ -69,6 +69,7 @@ pub fn get_entries_since_snapshot(
     Ok(depth)
 }
 
+/*
 pub fn generate_snapshot(
     latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<Snapshot> {
@@ -160,7 +161,7 @@ pub fn generate_snapshot(
     };
 
     Ok(snapshot)
-}
+} */
 
 pub fn get_latest_snapshot(
     latest: HoloHash<holo_hash::hash_type::Action>,
