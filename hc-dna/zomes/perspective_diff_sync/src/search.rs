@@ -200,7 +200,7 @@ pub fn populate_search(
             diffs.append(&mut snapshot.diff_graph);
             //Be careful with break here where there are still unseen parents
             if unseen_parents.len() == 0 {
-                debug!("No more unseen parents");
+                debug!("No more unseen parents within snapshot block");
                 break;
             } else {
                 search_position = unseen_parents.remove(0);
@@ -208,12 +208,12 @@ pub fn populate_search(
         } else {
             if diff.parents.is_none() {
                 //No parents, we have reached the end of the chain
-                //Now move onto traversing parents
+                //Now move onto traversing unseen parents, or break if we dont have any other paths to search
                 if unseen_parents.len() == 0 {
-                    debug!("No more unseen items");
+                    debug!("No more unseen items within parent block");
                     break;
                 } else {
-                    debug!("Moving onto unseen fork items");
+                    debug!("Moving onto unseen fork items within parent block");
                     search_position = unseen_parents.remove(0);
                 }
             } else {
@@ -250,7 +250,7 @@ pub fn populate_search(
     }
 
     diffs.reverse();
-    // debug!("Got diff list: {:#?}", diffs);
+    debug!("Got diff list: {:#?}", diffs);
 
     //Add root node
     if search

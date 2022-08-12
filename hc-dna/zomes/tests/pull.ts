@@ -1,5 +1,5 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { sleep, generate_link_expression, createConductors} from "./utils";
+import { sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
 
 //@ts-ignore
 export async function unSyncFetch(t) {
@@ -48,6 +48,115 @@ export async function unSyncFetch(t) {
     await conductor2.shutDown();
     await cleanAllConductors();
 };
+
+//@ts-ignore
+export async function mergeFetchDeep(t) {
+    let installs = await createConductors(2);
+    let aliceHapps = installs[0].agent_happ;
+    let aliceConductor = installs[0].conductor;
+    let bobHapps = installs[1].agent_happ;
+    let bobConductor = installs[1].conductor;
+    
+    //Create new commit whilst bob is not connected
+    let create = await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    let create2 = await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    let create3 = await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    
+    //Pull from bob and make sure he does not have the latest state
+    let pull_bob = await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "pull"
+    });
+    //@ts-ignore
+    t.isEqual(pull_bob.additions.length, 0);
+    
+    //Bob to commit his data, and update the latest revision, causing a fork
+    let bob_create = await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    let bob_create2 = await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    let bob_create3 = await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    let bob_create4 = await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+
+    let pull_bob2 = await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "pull"
+    });
+    //@ts-ignore
+    t.isEqual(pull_bob2.additions.length, 0);
+    
+    //Connect nodes togther
+    await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
+    //note; running this test on some machines may require more than 200ms wait
+    await sleep(500)
+    
+    //Alice tries to merge
+    let merge_alice = await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "pull"
+    });
+    //@ts-ignore
+    t.isEqual(merge_alice.additions.length, 7);
+    //@ts-ignore
+    t.isEqual(JSON.stringify(merge_alice.additions[0]), JSON.stringify(bob_create.data));
+    
+    //note; running this test on some machines may require more than 200ms wait
+    await sleep(2000)
+    
+    let pull_bob3 = await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "pull"
+    });
+    console.warn("bob pull3", pull_bob3);
+    //@ts-ignore
+    t.isEqual(pull_bob3.additions.length, 7);
+    //@ts-ignore
+    console.log(pull_bob3.additions[0].data);
+    //@ts-ignore
+    t.isEqual(JSON.stringify(pull_bob3.additions[0]), JSON.stringify(create.data));
+    //@ts-ignore
+    t.isEqual(JSON.stringify(pull_bob3.additions[1]), JSON.stringify(create2.data));
+
+    //Shutdown alice conductor
+    await aliceConductor.shutDown();
+
+    //Have bob write three links
+    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+
+    //shutdown bobs conductor
+    await bobConductor.shutDown();
+
+    //Have alice write three links
+    await aliceConductor.startUp();
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+
+    //start bobs conductor and pull to see if merge happens correctly
+    await bobConductor.startUp();
+    let pull_bob4 = await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "pull"
+    });
+    console.warn("bob pull4", pull_bob4);
+    //@ts-ignore
+    t.isEqual(pull_bob4.additions.length, 3);
+    //@ts-ignore
+    console.log(pull_bob4.additions[0].data);
+    //@ts-ignore
+    t.isEqual(JSON.stringify(pull_bob4.additions[0]), JSON.stringify(create.data));
+    //@ts-ignore
+    t.isEqual(JSON.stringify(pull_bob4.additions[1]), JSON.stringify(create2.data));
+
+    await cleanAllConductors();
+}
 
 //@ts-ignore 
 export async function mergeFetch(t) {

@@ -93,5 +93,5 @@ lazy_static! {
     pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
     pub static ref ENABLE_SIGNALS: bool = true;
     //TODO: 1 is a test value; this should be updated to a higher value for production
-    pub static ref SNAPSHOT_INTERVAL: usize = 2;
+    pub static ref SNAPSHOT_INTERVAL: usize = 100;
 }
