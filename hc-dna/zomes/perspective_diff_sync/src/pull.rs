@@ -26,7 +26,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             //Populate the search algorithm
             let mut search = search::populate_search(None, latest.clone(), None)?;
             debug!("Completed latest search population");
-            search.print();
+            //search.print();
 
             if current.is_none() {
                 let mut out = PerspectiveDiff {
@@ -54,7 +54,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             //TODO; likely this population is only required when current is on an un-merged fork
             search = search::populate_search(Some(search), current.clone(), None)?;
             debug!("completed current search population");
-            search.print();
+            //search.print();
 
             //Get index for current and latest indexes
             let current_index = search
@@ -68,7 +68,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
             //Check if latest diff is a child of current diff
             let ancestor_status = search.get_paths(latest_index.clone(), current_index.clone());
-            debug!("Ancestor status: {:#?}", ancestor_status);
+            //debug!("Ancestor status: {:#?}", ancestor_status);
 
             if ancestor_status.len() > 0 {
                 //Latest diff contains in its chain our current diff, fast forward and get all changes between now and then
@@ -118,9 +118,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 let latest_paths = search.get_paths(latest_index.clone(), common_ancestor.clone());
                 let mut fork_direction: Option<Vec<NodeIndex>> = None;
 
-                debug!("Paths of fork: {:#?}", fork_paths);
-                debug!("Paths of latest: {:#?}", latest_paths);
-                debug!("Common ancestor: {:#?}", common_ancestor);
+                //debug!("Paths of fork: {:#?}", fork_paths);
+                //debug!("Paths of latest: {:#?}", latest_paths);
+                //debug!("Common ancestor: {:#?}", common_ancestor);
 
                 //Use items in path to recurse from common_ancestor going in direction of fork
                 for path in fork_paths.clone() {
@@ -164,10 +164,10 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     }
                 }
 
-                debug!(
-                    "Will merge entries: {:#?} and {:#?}. With diff data: {:#?}",
-                    latest, current, merge_entry
-                );
+                //debug!(
+                //    "Will merge entries: {:#?} and {:#?}. With diff data: {:#?}",
+                //    latest, current, merge_entry
+                //);
                 let merge_entry = create_entry(EntryTypes::PerspectiveDiff(merge_entry))?;
                 //Create the merge entry
                 let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(PerspectiveDiffEntryReference {

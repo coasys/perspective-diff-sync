@@ -49,7 +49,7 @@ pub fn commit(
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
     let diff_entry_create = create_entry(EntryTypes::PerspectiveDiff(diff.clone()))?;
-    debug!("Created diff entry: {:#?}", diff_entry_create);
+    //debug!("Created diff entry: {:#?}", diff_entry_create);
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create.clone(),
         parents: parent.map(|val| vec![val]),

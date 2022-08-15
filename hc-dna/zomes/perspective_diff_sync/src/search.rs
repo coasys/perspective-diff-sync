@@ -270,9 +270,9 @@ pub fn populate_search(
         };
     }
 
-    debug!("diff list BEFORE sort: {:#?}", diffs);
+    //debug!("diff list BEFORE sort: {:#?}", diffs);
     bubble_sort_diff_references(&mut diffs);
-    debug!("diff list AFTER sort: {:#?}", diffs);
+    //debug!("diff list AFTER sort: {:#?}", diffs);
 
     //Add root node
     if search
