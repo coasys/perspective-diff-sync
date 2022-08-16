@@ -25,7 +25,6 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             debug!("Starting to populate search");
             let mut search = search::populate_search(None, latest.clone(), None)?;
             debug!("Completed latest search population");
-            search.print();
 
             if current.is_none() {
                 let mut out = PerspectiveDiff {
@@ -53,7 +52,6 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             //TODO; likely this population is only required when current is on an un-merged fork
             search = search::populate_search(Some(search), current.clone(), None)?;
             debug!("completed current search population");
-            search.print();
 
             //Get index for current and latest indexes
             let current_index = search

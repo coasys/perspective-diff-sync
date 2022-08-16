@@ -11,7 +11,6 @@ async function call(happ: AgentHapp, fn_name: string, payload?: any) {
 
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {
     for(let i=0; i < count; i++) {
-        console.log("Making commit number: ", i);
         await create_link_expression(happ.cells[0], agentName, true, true);
     }
 }
@@ -52,10 +51,11 @@ export async function stressTest(t) {
         let pullSuccessful = false
         while(!pullSuccessful) {
             try {
-                let pull_alice = await call(aliceHapps, "pull");
-                console.warn("Alice pull result", pull_alice);
-                let pull_bob = await call(bobHapps, "pull");
-                console.warn("Bob pull result", pull_bob);
+                await call(aliceHapps, "pull");
+                await call(bobHapps, "pull");
+
+                await call(aliceHapps, "pull");
+                await call(bobHapps, "pull");
                 pullSuccessful = true
             } catch(e) {
                 console.error("Pulling failed with error:", e)
