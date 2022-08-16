@@ -11,7 +11,8 @@ use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, Snapshot, L
 use crate::errors::{SocialContextError, SocialContextResult};
 
 pub fn bubble_sort_diff_references(mut arr: &mut Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>) {
-    for i in 0..arr.len() {
+    let mut i = 0;
+    while i < arr.len() {
         let mut j = i;
         while j < arr.len() {
             if i!=j { 
@@ -21,6 +22,7 @@ pub fn bubble_sort_diff_references(mut arr: &mut Vec<(HoloHash<holo_hash::hash_t
                 if let Some(parents) = current_parents{
                     if parents.contains(next_hash) {
                         move_me(&mut arr, i, j);
+                        i = i-1;
                         j=i;
                     }
                 }
