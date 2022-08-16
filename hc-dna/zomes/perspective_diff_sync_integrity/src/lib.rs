@@ -1,5 +1,5 @@
-use hdi::prelude::*;
 use chrono::{DateTime, Utc};
+use hdi::prelude::*;
 
 pub mod impls;
 
@@ -15,7 +15,6 @@ pub struct Triple {
     pub target: Option<String>,
     pub predicate: Option<String>,
 }
-
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
 pub struct LinkExpression {
@@ -74,7 +73,6 @@ pub struct LocalHashReference {
 
 app_entry!(LocalHashReference);
 
-
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct AgentReference {
     pub agent: AgentPubKey,
@@ -106,5 +104,5 @@ pub enum LinkTypes {
     ActiveAgent,
     HashRef,
     TimePath,
-    Index
+    Index,
 }

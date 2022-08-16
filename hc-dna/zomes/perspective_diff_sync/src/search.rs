@@ -1,34 +1,39 @@
 use hdk::prelude::*;
 //use petgraph::dot::{Config, Dot};
+use perspective_diff_sync_integrity::{LinkTypes, PerspectiveDiffEntryReference, Snapshot};
 use petgraph::{
     algo::{all_simple_paths, dominators::simple_fast},
     graph::{DiGraph, Graph, NodeIndex, UnGraph},
 };
 use std::collections::HashMap;
 use std::ops::Index;
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, Snapshot, LinkTypes};
 
 use crate::errors::{SocialContextError, SocialContextResult};
 
-pub fn bubble_sort_diff_references(mut arr: &mut Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>) {
+pub fn bubble_sort_diff_references(
+    mut arr: &mut Vec<(
+        HoloHash<holo_hash::hash_type::Action>,
+        PerspectiveDiffEntryReference,
+    )>,
+) {
     let mut i = 0;
     while i < arr.len() {
         let mut j = i;
         while j < arr.len() {
-            if i!=j { 
+            if i != j {
                 let current_parents = &arr[i].1.parents;
                 let next_hash = &arr[j].0;
-    
-                if let Some(parents) = current_parents{
+
+                if let Some(parents) = current_parents {
                     if parents.contains(next_hash) {
                         move_me(&mut arr, i, j);
-                        i = i-1;
-                        j=i;
+                        i = i - 1;
+                        j = i;
                     }
                 }
             };
 
-            j = j+1;
+            j = j + 1;
         }
     }
 }
@@ -208,7 +213,11 @@ pub fn populate_search(
             }
         };
         //check if diff has a snapshot entry
-        let mut snapshot_links = get_links(hash_entry(&diff)?, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
+        let mut snapshot_links = get_links(
+            hash_entry(&diff)?,
+            LinkTypes::Snapshot,
+            Some(LinkTag::new("snapshot")),
+        )?;
         if snapshot_links.len() > 0 {
             debug!("Found snapshot");
             let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 use lazy_static::lazy_static;
-use perspective_diff_sync_integrity::{PerspectiveDiff, Perspective};
+use perspective_diff_sync_integrity::{Perspective, PerspectiveDiff};
 
 mod commit;
 mod errors;
@@ -32,7 +32,8 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 
 #[hdk_extern]
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone()).map_err(|error| utils::err(&format!("{}", error)))?;
+    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone())
+        .map_err(|error| utils::err(&format!("{}", error)))?;
     Ok(emit_signal(&sig)?)
 }
 
