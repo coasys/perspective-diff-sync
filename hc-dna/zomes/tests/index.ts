@@ -1,6 +1,7 @@
 import { render, renderMerges } from "./render";
 import { unSyncFetch, mergeFetch, complexMerge, mergeFetchDeep } from "./pull";
 import { testRevisionUpdates } from "./revisions";
+import { stressTest } from "./stress"
 import { signals } from "./signals";
 
 import test from "tape-promise/tape.js";
@@ -13,9 +14,14 @@ import test from "tape-promise/tape.js";
 //     await mergeFetch(t);
 // })
 
-test("merge fetch deep", async (t) => {
-    await mergeFetchDeep(t);
+//test("merge fetch deep", async (t) => {
+//    await mergeFetchDeep(t);
+//})
+
+test("stress", async (t) => {
+    await stressTest(t);
 })
+
 
 // test("complex merge", async (t) => {
 //     await complexMerge(t);
