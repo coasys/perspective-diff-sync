@@ -77,7 +77,6 @@ pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash
         if refs.len() != 10 {
             break;
         }
-        i += 1;
     }
 
     if revisions.len() > 0 {
