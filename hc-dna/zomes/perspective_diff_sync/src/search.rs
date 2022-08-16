@@ -364,11 +364,10 @@ pub fn populate_search(
                     "Expected element to contain app entry data",
                 ))?;
 
-            let snapshot_diff = PerspectiveDiffEntryReference {
-                diff: snapshot.diff,
-                parents: None,
+            diffs_set.insert((search_position.0.clone(), diff.clone()));
+            for diff_ref in snapshot.diff_graph {
+                diffs_set.insert((diff_ref.0, diff_ref.1));
             };
-            diffs_set.insert((search_position.0.clone(), snapshot_diff.clone()));
             
             //Be careful with break here where there are still unseen parents
             if unseen_parents.len() == 0 {
