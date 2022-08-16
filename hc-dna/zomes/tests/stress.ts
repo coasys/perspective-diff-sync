@@ -11,6 +11,7 @@ async function call(happ: AgentHapp, fn_name: string, payload?: any) {
 
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {
     for(let i=0; i < count; i++) {
+        console.log("Making commit number: ", i);
         await create_link_expression(happ.cells[0], agentName, true, true);
     }
 }
@@ -28,7 +29,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 10; i++) {
+    for(let i=0; i < 1; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
@@ -45,16 +46,16 @@ export async function stressTest(t) {
         await sleep(1000)
 
         console.log("-------------------------");
-        console.log("Now pulling on both agens...");
+        console.log("Now pulling on both agents...");
         console.log("-------------------------");
 
         let pullSuccessful = false
         while(!pullSuccessful) {
             try {
-                await Promise.all([
-                    call(aliceHapps, "pull"),
-                    call(bobHapps, "pull")
-                ])
+                let pull_alice = await call(aliceHapps, "pull");
+                console.warn("Alice pull result", pull_alice);
+                let pull_bob = await call(bobHapps, "pull");
+                console.warn("Bob pull result", pull_bob);
                 pullSuccessful = true
             } catch(e) {
                 console.error("Pulling failed with error:", e)
@@ -62,6 +63,7 @@ export async function stressTest(t) {
             }
         }
         
+        await sleep(5000)
         
 
         let alice_latest_revision = await call(aliceHapps, "latest_revision")
@@ -69,9 +71,12 @@ export async function stressTest(t) {
         let alice_current_revision = await call(aliceHapps, "current_revision")
         let bob_current_revision = await call(bobHapps, "current_revision")
 
-        t.isEqual(alice_latest_revision, bob_latest_revision)
-        t.isEqual(alice_current_revision, bob_current_revision)
-        t.isEqual(alice_latest_revision, alice_current_revision)
+        //@ts-ignore
+        t.isEqual(alice_latest_revision.toString("base64"), bob_latest_revision.toString("base64"))
+        //@ts-ignore
+        t.isEqual(alice_current_revision.toString("base64"), bob_current_revision.toString("base64"))
+        //@ts-ignore
+        t.isEqual(alice_latest_revision.toString("base64"), alice_current_revision.toString("base64"))
 
         console.log("-------------------------");
         console.log("All good :)))))))))))))))");
