@@ -48,55 +48,17 @@ pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_
 
 //Latest revision as seen from our local state
 pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    let mut end_index = 10;
-    let mut revisions = vec![];
-    let mut i = 0;
-    loop {
-        debug!("Iter: {:#?}", i);
-        let start_index = if end_index == 10 { 1 } else { end_index - 10 };
-        let filter = ChainQueryFilter::new().sequence_range(ChainQueryFilterRange::ActionSeqRange(
-            start_index,
-            end_index,
-        ));
-        let refs = query(filter)?;
-        end_index += 10;
+    let app_entry = AppEntryType::new(4.into(), 0.into(), EntryVisibility::Private);
+    let filter = ChainQueryFilter::new().entry_type(EntryType::App(app_entry)).include_entries(true);
+    let mut refs = query(filter)?
+        .into_iter()
+        .map(|val| {
+            val.entry().to_app_option::<LocalHashReference>()?.ok_or(
+                SocialContextError::InternalError("Expected element to contain app entry data"),
+            )
+        })
+        .collect::<SocialContextResult<Vec<LocalHashReference>>>()?;
+    refs.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
 
-        for entry in refs.clone() {
-            match entry.signed_action.hashed.content {
-                Action::Create(create_data) => match create_data.entry_type {
-                    EntryType::App(app_entry) => {
-                        if app_entry.visibility == EntryVisibility::Private {
-                            revisions.push(create_data.entry_hash);
-                        }
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-            //debug!("{:#?}", entry.signed_action.hashed.content);
-        }
-
-        if refs.len() != 10 {
-            break;
-        }
-        i += 1;
-    }
-
-    if revisions.len() > 0 {
-        debug!("Got some revisions");
-        Ok(Some(
-            get(revisions.pop().unwrap(), GetOptions::latest())?
-                .ok_or(SocialContextError::InternalError(
-                    "Could not find local revision reference entry",
-                ))?
-                .entry()
-                .to_app_option::<LocalHashReference>()?
-                .ok_or(SocialContextError::InternalError(
-                    "Expected element to contain app entry data",
-                ))?
-                .hash,
-        ))
-    } else {
-        Ok(None)
-    }
+    Ok(refs.pop().map(|val| val.hash))
 }
