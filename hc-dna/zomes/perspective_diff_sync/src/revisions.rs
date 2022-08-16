@@ -50,7 +50,6 @@ pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_
 pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
     let mut end_index = 10;
     let mut revisions = vec![];
-    let mut i = 0;
     loop {
         let start_index = if end_index == 10 { 1 } else { end_index - 9 };
         let filter = ChainQueryFilter::new().sequence_range(ChainQueryFilterRange::ActionSeqRange(
