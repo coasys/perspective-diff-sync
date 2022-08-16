@@ -81,6 +81,7 @@ pub fn generate_snapshot(
     let mut search_position = latest;
     let mut seen = HashSet::new();
     let mut diffs = vec![];
+    let mut unseen_parents = vec![];
 
     let mut snapshot_diff = PerspectiveDiff {
         additions: vec![],
@@ -125,8 +126,14 @@ pub fn generate_snapshot(
             snapshot_diff.additions.append(&mut diff.additions.clone());
             snapshot_diff.removals.append(&mut diff.removals.clone());
             diffs.append(&mut snapshot.diff_graph);
-            debug!("Breaking at snapshot");
-            break;
+
+            //Be careful with break here where there are still unseen parents
+            if unseen_parents.len() == 0 {
+                debug!("No more unseen parents within snapshot block");
+                break;
+            } else {
+                search_position = unseen_parents.remove(0);
+            }
         } else {
             //Check if entry is already in graph
             if !seen.contains(&search_position) {
@@ -148,18 +155,44 @@ pub fn generate_snapshot(
                     .removals
                     .append(&mut diff_entry.removals.clone());
             };
-        }
-
-        if diff.parents.is_none() {
-            break;
-        } else {
-            let mut parents = diff.parents.unwrap();
-            //Check if all parents have already been seen, if so then break or move onto next unseen parents
-            if parents.iter().all(|val| seen.contains(val)) {
-                break;
+            if diff.parents.is_none() {
+                //No parents, we have reached the end of the chain
+                //Now move onto traversing unseen parents, or break if we dont have any other paths to search
+                if unseen_parents.len() == 0 {
+                    debug!("No more unseen items within parent block");
+                    break;
+                } else {
+                    debug!("Moving onto unseen fork items within parent block");
+                    search_position = unseen_parents.remove(0);
+                }
             } else {
-                search_position = parents.remove(0);
-            };
+                //Do the fork traversals
+                let mut parents = diff.parents.unwrap();
+                //Check if all parents have already been seen, if so then break or move onto next unseen parents
+                //TODO; we should use a seen set here versus array iter
+                if parents.iter().all(|val| {
+                    diffs
+                        .clone()
+                        .into_iter()
+                        .map(|val| val.0)
+                        .collect::<Vec<_>>()
+                        .contains(val)
+                }) {
+                    if unseen_parents.len() == 0 {
+                        debug!("Parents of item seen and unseen 0");
+                        break;
+                    } else {
+                        debug!("last moving onto unseen");
+                        search_position = unseen_parents.remove(0);
+                    }
+                } else {
+                    search_position = parents.remove(0);
+                    debug!("Appending parents to look up: {:?}", parents);
+                    unseen_parents.append(
+                        &mut parents
+                    );
+                };
+            }
         }
     }
 
