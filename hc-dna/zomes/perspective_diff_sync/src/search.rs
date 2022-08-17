@@ -338,7 +338,7 @@ pub fn populate_search(
                 move_me(&mut diffs, len, move_index);
             }
         } else {
-            debug!("Not adding diff {} because it is already in!\n\nsearch.entry_map.len(): {}, diffs.len(): {}, Full map: {:?}", search_position.0, search.entry_map.len(), diffs.len(), search.entry_map);
+            debug!("Not adding diff {} because it is already in!\n\nsearch.entry_map.len(): {}, diffs.len(): {}", search_position.0, search.entry_map.len(), diffs.len());
         };
         if let Some(ref break_on_hash) = break_on {
             if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
@@ -424,10 +424,10 @@ pub fn populate_search(
     diffs = diffs_set.iter().cloned().collect();
 
     debug!("populate_search diffs.len() {}", diffs.len());
-    debug!("diff list BEFORE sort: {:#?}", diffs);
+    //debug!("diff list BEFORE sort: {:#?}", diffs);
     //bubble_sort_diff_references(&mut diffs);
     diffs = topo_sort_diff_references(&diffs)?;
-    debug!("diff list AFTER sort: {:#?}", diffs);
+    //debug!("diff list AFTER sort: {:#?}", diffs);
 
     //Add root node
     if search
