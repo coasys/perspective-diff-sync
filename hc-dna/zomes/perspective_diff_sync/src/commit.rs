@@ -6,7 +6,7 @@ use perspective_diff_sync_integrity::{
 };
 
 use crate::errors::{SocialContextError, SocialContextResult};
-use crate::pull::pull;
+//use crate::pull::pull;
 use crate::revisions::{current_revision, latest_revision};
 use crate::snapshots::{generate_snapshot, get_entries_since_snapshot};
 use crate::utils::{dedup, get_now};
@@ -29,8 +29,8 @@ pub fn commit(
         //TODO; should any data that gets pulled here be returned by the commit function?
         //Otherwise how will the UI ever get it if we have already pulled and updated
         //maybe ommit as a signal?
-        let new_diffs = pull()?;
-        emit_signal(new_diffs)?;
+        //let new_diffs = pull()?;
+        //emit_signal(new_diffs)?;
         if pre_latest_revision.is_some() {
             entries_since_snapshot = get_entries_since_snapshot(latest_revision()?.ok_or(
                 SocialContextError::InternalError("Expected to have latest revision"),
