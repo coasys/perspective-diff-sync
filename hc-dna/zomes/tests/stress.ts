@@ -1,5 +1,5 @@
 import { AgentHapp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { sleep, createConductors, create_link_expression} from "./utils";
+import { sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 
 async function call(happ: AgentHapp, fn_name: string, payload?: any) {
     return await happ.cells[0].callZome({
@@ -16,6 +16,35 @@ async function createLinks(happ: AgentHapp, agentName: string, count: number) {
 }
 
 //@ts-ignore
+export async function latestRevisionStress(t) {
+    let installs = await createConductors(2);
+    let aliceHapps = installs[0].agent_happ;
+    let aliceConductor = installs[0].conductor;
+    let bobHapps = installs[1].agent_happ;
+    let bobConductor = installs[1].conductor;
+
+    await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
+
+    let link_data = generate_link_expression("alice");
+    let commit = await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name: "commit", 
+        payload: {additions: [link_data], removals: []}
+    });
+
+    for (let i = 0; i < 1000; i++) {
+        console.log("Latest update revision", i);
+        let now = performance.now();
+        let create = await aliceHapps.cells[0].callZome({zome_name: "perspective_diff_sync", fn_name: "update_latest_revision", payload: commit});
+        let after = performance.now();
+        console.log(" Create execution took: ", after - now);
+        let fetch = await aliceHapps.cells[0].callZome({zome_name: "perspective_diff_sync", fn_name: "latest_revision"});
+        let after2 = performance.now();
+        console.log("Fetch execution took: ", after2 - after);
+    }
+}
+
+//@ts-ignore
 export async function stressTest(t) {
     let installs = await createConductors(2);
     let aliceHapps = installs[0].agent_happ;
@@ -28,7 +57,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 20; i++) {
+    for(let i=0; i < 10; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
