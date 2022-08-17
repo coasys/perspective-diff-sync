@@ -315,8 +315,6 @@ pub fn populate_search(
                 "Expected element to contain app entry data",
             ))?;
 
-        diffs_set.insert((search_position.0.clone(), diff.clone()));
-
         //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
             diffs.push((search_position.0.clone(), diff.clone()));
@@ -361,10 +359,12 @@ pub fn populate_search(
                 .ok_or(SocialContextError::InternalError(
                     "Expected element to contain app entry data",
                 ))?;
-            //diffs.append(&mut snapshot.diff_graph);
-            for d in snapshot.diff_graph {
-                diffs_set.insert(d);
-            }
+
+            let snapshot_diff = PerspectiveDiffEntryReference {
+                diff: snapshot.diff,
+                parents: None,
+            };
+            diffs_set.insert((search_position.0.clone(), snapshot_diff.clone()));
             
             //Be careful with break here where there are still unseen parents
             if unseen_parents.len() == 0 {
@@ -374,6 +374,7 @@ pub fn populate_search(
                 search_position = unseen_parents.remove(0);
             }
         } else {
+            diffs_set.insert((search_position.0.clone(), diff.clone()));
             if diff.parents.is_none() {
                 //No parents, we have reached the end of the chain
                 //Now move onto traversing unseen parents, or break if we dont have any other paths to search
