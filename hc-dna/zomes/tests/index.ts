@@ -18,18 +18,18 @@ import test from "tape-promise/tape.js";
 //    await mergeFetchDeep(t);
 //})
 
-// test("stress", async (t) => {
-//     await stressTest(t);
-// })
+test("stress", async (t) => {
+    await stressTest(t);
+})
 
 
 // test("complex merge", async (t) => {
 //     await complexMerge(t);
 // })
 
-test("test revision updates", async (t) => {
-    await testRevisionUpdates(t);
-})
+//test("test revision updates", async (t) => {
+//    await testRevisionUpdates(t);
+//})
 
 // test("render", async (t) => {
 //     await render(t)
