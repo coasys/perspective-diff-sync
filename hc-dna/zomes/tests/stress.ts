@@ -42,15 +42,27 @@ export async function stressTest(t) {
         console.log("waiting a second");
         console.log("-------------------------");
 
-        sleep(1000)
+        await sleep(1000)
 
         console.log("-------------------------");
         console.log("Now pulling on both agens...");
         console.log("-------------------------");
-        await Promise.all([
-            call(aliceHapps, "pull"),
-            call(bobHapps, "pull")
-        ])
+
+        let pullSuccessful = false
+        while(!pullSuccessful) {
+            try {
+                await Promise.all([
+                    call(aliceHapps, "pull"),
+                    call(bobHapps, "pull")
+                ])
+                pullSuccessful = true
+            } catch(e) {
+                console.error("Pulling failed with error:", e)
+                await sleep(2000)
+            }
+        }
+        
+        
 
         let alice_latest_revision = await call(aliceHapps, "latest_revision")
         let bob_latest_revision = await call(bobHapps, "latest_revision")
