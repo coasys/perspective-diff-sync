@@ -1,5 +1,7 @@
 use hdk::prelude::*;
-use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes, EntryTypes};
+use perspective_diff_sync_integrity::{
+    EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot,
+};
 
 use crate::errors::{SocialContextError, SocialContextResult};
 
@@ -34,7 +36,11 @@ pub fn get_entries_since_snapshot(
             }
         };
         let diff_entry_hash = hash_entry(&diff)?;
-        let check_snapshot = get_links(diff_entry_hash, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
+        let check_snapshot = get_links(
+            diff_entry_hash,
+            LinkTypes::Snapshot,
+            Some(LinkTag::new("snapshot")),
+        )?;
         if check_snapshot.len() != 0 {
             depth -= 1;
             break;
@@ -91,7 +97,11 @@ pub fn generate_snapshot(
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))?;
-        let mut snapshot_links = get_links(hash_entry(&diff)?, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
+        let mut snapshot_links = get_links(
+            hash_entry(&diff)?,
+            LinkTypes::Snapshot,
+            Some(LinkTag::new("snapshot")),
+        )?;
         if snapshot_links.len() > 0 {
             //get snapshot and add elements to out
             let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
@@ -186,7 +196,11 @@ pub fn get_latest_snapshot(
         if !seen.contains(&search_position) {
             seen.insert(search_position.clone());
             let diff_entry_hash = hash_entry(&diff)?;
-            let mut snapshot_links = get_links(diff_entry_hash, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
+            let mut snapshot_links = get_links(
+                diff_entry_hash,
+                LinkTypes::Snapshot,
+                Some(LinkTag::new("snapshot")),
+            )?;
             if snapshot_links.len() != 0 {
                 //get snapshot and add elements to out
                 let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?

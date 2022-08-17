@@ -25,6 +25,7 @@ impl IndexableEntry for AgentReference {
 
 impl PerspectiveDiff {
     pub fn get_sb(self) -> ExternResult<SerializedBytes> {
-        self.try_into().map_err(|error| wasm_error!(WasmErrorInner::Host(String::from(error))))
+        self.try_into()
+            .map_err(|error| wasm_error!(WasmErrorInner::Host(String::from(error))))
     }
 }
