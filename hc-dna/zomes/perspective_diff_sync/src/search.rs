@@ -295,6 +295,8 @@ pub fn populate_search(
     let mut unseen_parents = vec![];
     let mut depth = 0 as i64;
 
+    let mut diffs_set = BTreeSet::new();
+
     let mut search = if search.is_none() {
         Search::new()
     } else {
@@ -312,6 +314,8 @@ pub fn populate_search(
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))?;
+
+        diffs_set.insert((search_position.0.clone(), diff.clone()));
 
         //Check if entry is already in graph
         if !search.entry_map.contains_key(&search_position.0) {
@@ -335,6 +339,8 @@ pub fn populate_search(
                 };
                 move_me(&mut diffs, len, move_index);
             }
+        } else {
+            debug!("Not adding diff {} because it is already in!\n\nsearch.entry_map.len(): {}, diffs.len(): {}, Full map: {:?}", search_position.0, search.entry_map.len(), diffs.len(), search.entry_map);
         };
         if let Some(ref break_on_hash) = break_on {
             if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
@@ -396,6 +402,7 @@ pub fn populate_search(
                     }
                 } else {
                     search_position = (parents.remove(0), -1);
+                    debug!("Appending parents to look up: {:?}", parents);
                     unseen_parents.append(
                         &mut parents
                             .into_iter()
@@ -408,6 +415,8 @@ pub fn populate_search(
     }
 
     //debug!("diff list BEFORE sort: {:#?}", diffs);
+
+    diffs = diffs_set.iter().cloned().collect();
 
     debug!("populate_search diffs.len() {}", diffs.len());
     debug!("diff list BEFORE sort: {:#?}", diffs);

@@ -1,5 +1,6 @@
 use hdi::prelude::*;
 use chrono::{DateTime, Utc};
+use core::cmp::Ordering;
 
 pub mod impls;
 
@@ -48,6 +49,18 @@ app_entry!(Snapshot);
 pub struct PerspectiveDiffEntryReference {
     pub diff: HoloHash<holo_hash::hash_type::Action>,
     pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
+}
+
+impl PartialOrd for PerspectiveDiffEntryReference {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.diff.partial_cmp(&other.diff)
+    }
+}
+
+impl Ord for PerspectiveDiffEntryReference {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.diff.cmp(&other.diff)
+    }
 }
 
 app_entry!(PerspectiveDiffEntryReference);
