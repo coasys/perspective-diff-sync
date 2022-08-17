@@ -352,7 +352,7 @@ pub fn populate_search(
         let mut snapshot_links = get_links(hash_entry(&diff)?, LinkTypes::Snapshot, Some(LinkTag::new("snapshot")))?;
         if snapshot_links.len() > 0 {
             debug!("Found snapshot");
-            let mut snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
+            let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
                     "Could not find entry while populating search",
                 ))?
@@ -361,7 +361,11 @@ pub fn populate_search(
                 .ok_or(SocialContextError::InternalError(
                     "Expected element to contain app entry data",
                 ))?;
-            diffs.append(&mut snapshot.diff_graph);
+            //diffs.append(&mut snapshot.diff_graph);
+            for d in snapshot.diff_graph {
+                diffs_set.insert(d);
+            }
+            
             //Be careful with break here where there are still unseen parents
             if unseen_parents.len() == 0 {
                 debug!("No more unseen parents within snapshot block");
