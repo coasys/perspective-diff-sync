@@ -1,15 +1,13 @@
 use hdk::prelude::*;
+use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference};
 use petgraph::graph::NodeIndex;
-use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, EntryTypes};
 
+use crate::errors::{SocialContextError, SocialContextResult};
 use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
 use crate::search;
-use crate::utils::{get_now, dedup};
-use crate::{
-    errors::{SocialContextError, SocialContextResult}
-};
+use crate::utils::{dedup, get_now};
 
 pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let latest = latest_revision()?;
@@ -170,10 +168,12 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 //);
                 let merge_entry = create_entry(EntryTypes::PerspectiveDiff(merge_entry))?;
                 //Create the merge entry
-                let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(PerspectiveDiffEntryReference {
-                    parents: Some(vec![latest, current]),
-                    diff: merge_entry.clone(),
-                }))?;
+                let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(
+                    PerspectiveDiffEntryReference {
+                        parents: Some(vec![latest, current]),
+                        diff: merge_entry.clone(),
+                    },
+                ))?;
                 debug!("Commited merge entry: {:#?}", hash);
                 let now = get_now()?;
                 update_current_revision(hash.clone(), now)?;

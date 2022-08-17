@@ -12,4 +12,3 @@ pub struct Triple {
     pub target: Option<String>,
     pub predicate: Option<String>,
 }
-
