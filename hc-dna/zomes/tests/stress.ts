@@ -6,7 +6,7 @@ async function call(happ: AgentHapp, fn_name: string, payload?: any) {
         zome_name: "perspective_diff_sync", 
         fn_name,
         payload
-    });
+    }, 60000);
 }
 
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {

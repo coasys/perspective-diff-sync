@@ -18,19 +18,19 @@ export async function create_link_expression(cell: CallableCell, agent: string, 
         zome_name: "perspective_diff_sync", 
         fn_name: "commit", 
         payload: {additions: [link_data], removals: []}
-    });
+    }, 60000);
     //@ts-ignore
     console.warn("\nCreated link expression with commit hash: ", commit.toString("base64"));
     await cell.callZome({
         zome_name: "perspective_diff_sync", 
         fn_name: "update_latest_revision", 
         payload: commit
-    });
+    }, 60000);
     await cell.callZome({
         zome_name: "perspective_diff_sync", 
         fn_name: "update_current_revision", 
         payload: commit
-    });
+    }, 60000);
     //@ts-ignore
     return {commit: commit.toString("base64"), data: link_data}
 }
