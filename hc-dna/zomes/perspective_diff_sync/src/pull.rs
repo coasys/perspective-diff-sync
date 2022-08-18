@@ -23,7 +23,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
             //Populate the search algorithm
             debug!("Starting to populate search");
-            let mut search = search::populate_search(None, latest.clone(), None)?;
+            let mut search = search::populate_search(None, latest.clone(), current.clone())?;
             debug!("Completed latest search population");
 
             if current.is_none() {
