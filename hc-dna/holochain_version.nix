@@ -3,9 +3,9 @@
 # For usage instructions please visit https://github.com/holochain/holochain-nixpkgs/#readme
 
 {
-    url = "https://github.com/holochain/holochain";
-    rev = "holochain-0.0.151";
-    sha256 = "sha256-llnVcv9zVnFI1CgzhYEoGQKWLG2uGHJIAJtMwfHPN4Y=";
+    url = "https://github.com/perspect3vism/holochain";
+    rev = "fc297f466a3035e7d54050f1f3deefa3b2f70374";
+    sha256 = "sha256-Z+F+OIHH8aNJ05/uYNVWdEKCadLhAWy0S0/7daJZZDY=";
     cargoLock = {
         outputHashes = {
         };
