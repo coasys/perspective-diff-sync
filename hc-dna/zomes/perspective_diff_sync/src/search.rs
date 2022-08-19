@@ -173,6 +173,7 @@ pub struct Search {
     pub undirected_graph: UnGraph<HoloHash<holo_hash::hash_type::Action>, ()>,
     pub node_index_map: HashMap<HoloHash<holo_hash::hash_type::Action>, NodeIndex<u32>>,
     pub entry_map: HashMap<HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference>,
+    pub sorted_diffs: Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>,
 }
 
 impl Search {
@@ -182,6 +183,7 @@ impl Search {
             undirected_graph: Graph::new_undirected(),
             node_index_map: HashMap::new(),
             entry_map: HashMap::new(),
+            sorted_diffs: Vec::new(),
         }
     }
 
@@ -288,7 +290,8 @@ fn move_me<T>(arr: &mut Vec<T>, old_index: usize, new_index: usize) {
 pub fn populate_search(
     search: Option<Search>,
     latest: HoloHash<holo_hash::hash_type::Action>,
-    break_on: Option<HoloHash<holo_hash::hash_type::Action>>,
+    break_on_revision: Option<HoloHash<holo_hash::hash_type::Action>>,
+    break_on_nearest_snapshot: bool,
 ) -> SocialContextResult<Search> {
     let mut search_position = (latest, -1 as i64);
     let mut diffs = vec![];
@@ -340,7 +343,7 @@ pub fn populate_search(
         } else {
             debug!("Not adding diff {} because it is already in!\n\nsearch.entry_map.len(): {}, diffs.len(): {}", search_position.0, search.entry_map.len(), diffs.len());
         };
-        if let Some(ref break_on_hash) = break_on {
+        if let Some(ref break_on_hash) = break_on_revision {
             if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
                 debug!("Breaking on supplied hash");
                 break;
@@ -364,17 +367,25 @@ pub fn populate_search(
                     "Expected element to contain app entry data",
                 ))?;
 
-            diffs_set.insert((search_position.0.clone(), diff.clone()));
-            for diff_ref in snapshot.diff_graph {
-                diffs_set.insert((diff_ref.0, diff_ref.1));
-            };
-            
-            //Be careful with break here where there are still unseen parents
-            if unseen_parents.len() == 0 {
-                debug!("No more unseen parents within snapshot block");
-                break;
+            if break_on_nearest_snapshot {
+                let snapshot_diff = PerspectiveDiffEntryReference {
+                    diff: snapshot.diff,
+                    parents: None,
+                };
+                diffs_set.insert((search_position.0.clone(), snapshot_diff.clone()));
+
+                //Be careful with break here where there are still unseen parents
+                if unseen_parents.len() == 0 {
+                    debug!("No more unseen parents within snapshot block");
+                    break;
+                } else {
+                    search_position = unseen_parents.remove(0);
+                }
             } else {
-                search_position = unseen_parents.remove(0);
+                diffs_set.insert((search_position.0.clone(), diff.clone()));
+                for diff_ref in snapshot.diff_graph {
+                    diffs_set.insert((diff_ref.0, diff_ref.1));
+                };
             }
         } else {
             diffs_set.insert((search_position.0.clone(), diff.clone()));
@@ -431,6 +442,7 @@ pub fn populate_search(
     //bubble_sort_diff_references(&mut diffs);
     diffs = topo_sort_diff_references(&diffs)?;
     //debug!("diff list AFTER sort: {:#?}", diffs);
+    
 
     //Add root node
     if search
@@ -439,23 +451,25 @@ pub fn populate_search(
     {
         search.add_node(None, ActionHash::from_raw_36(vec![0xdb; 36]));
     };
-    for diff in diffs {
+    for diff in &diffs {
         if !search.entry_map.contains_key(&diff.0) {
             search.add_entry(diff.0.clone(), diff.1.clone());
             if diff.1.parents.is_some() {
                 let mut parents = vec![];
-                for parent in diff.1.parents.unwrap() {
+                for parent in diff.1.parents.as_ref().unwrap() {
                     let parent = search
                         .get_node_index(&parent)
                         .ok_or(SocialContextError::InternalError("Did not find parent"))?;
                     parents.push(parent.clone());
                 }
-                search.add_node(Some(parents), diff.0);
+                search.add_node(Some(parents), diff.0.clone());
             } else {
-                search.add_node(Some(vec![NodeIndex::from(0)]), diff.0);
+                search.add_node(Some(vec![NodeIndex::from(0)]), diff.0.clone());
             }
         }
     }
+
+    search.sorted_diffs = diffs;
 
     Ok(search)
 }

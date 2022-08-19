@@ -205,7 +205,7 @@ pub fn generate_snapshot(
     Ok(snapshot)
 }
 
-pub fn get_latest_snapshot(
+pub fn _get_latest_snapshot(
     latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<PerspectiveDiff> {
     let mut search_position = latest;
