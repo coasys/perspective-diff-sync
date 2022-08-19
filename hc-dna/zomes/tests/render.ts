@@ -45,7 +45,8 @@ export async function render(t) {
         fn_name: "latest_revision"
     });
 
-    t.isEqual(bob_latest_revision, commit2)
+    //@ts-ignore
+    t.isEqual(bob_latest_revision.toString(), commit2.toString())
 
     // Bob hasn't pulled yet, so render on Bob should fail
     let firstRenderFailed = false
