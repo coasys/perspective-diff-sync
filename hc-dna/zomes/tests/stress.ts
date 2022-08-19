@@ -4,8 +4,10 @@ import { call, sleep, createConductors, create_link_expression, generate_link_ex
 let createdLinks = new Map<string, Array<object>>()
 
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {
+    if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
     for(let i=0; i < count; i++) {
-        await create_link_expression(happ.cells[0], agentName, true, true);
+        let { data } = await create_link_expression(happ.cells[0], agentName, true, true);
+        createdLinks.get(agentName)!.push(data)
     }
 }
 
@@ -51,7 +53,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 10; i++) {
+    for(let i=0; i < 3; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
@@ -105,6 +107,20 @@ export async function stressTest(t) {
         console.log("All good :)))))))))))))))");
         console.log("-------------------------");
 
+    }
+
+
+    let alice_rendered = await call(aliceHapps, "render")
+    let bob_rendered = await call(bobHapps, "render")
+
+    t.isEqual(alice_rendered, bob_rendered)
+
+
+    for(let link in createdLinks.get("alice")) {
+        //@ts-ignore
+        t.assert(alice_rendered.links.includes(link))
+        //@ts-ignore
+        t.assert(bob_rendered.links.includes(link))
     }
 
     await aliceConductor.shutDown();
