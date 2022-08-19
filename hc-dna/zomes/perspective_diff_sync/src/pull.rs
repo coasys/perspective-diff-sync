@@ -44,6 +44,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                     out.additions.append(&mut diff_entry.additions.clone());
                     out.removals.append(&mut diff_entry.removals.clone());
                 }
+                update_current_revision(latest, get_now()?)?;
                 return Ok(out);
             }
 
