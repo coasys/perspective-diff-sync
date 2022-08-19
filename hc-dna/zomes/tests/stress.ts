@@ -1,7 +1,8 @@
 import { AgentHapp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
+import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
 
-let createdLinks = new Map<string, Array<object>>()
+let createdLinks = new Map<string, Array<LinkExpression>>()
 
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {
     if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
@@ -110,17 +111,18 @@ export async function stressTest(t) {
     }
 
 
-    let alice_rendered = await call(aliceHapps, "render")
-    let bob_rendered = await call(bobHapps, "render")
+    let alice_rendered = await call(aliceHapps, "render") as Perspective
+    let bob_rendered = await call(bobHapps, "render") as Perspective
 
-    t.isEqual(alice_rendered, bob_rendered)
+    t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 
+    function includes(perspective: Perspective, link: LinkExpression) {
+        return perspective.links.find(l => ad4m.linkEqual(l,link))
+    }
 
-    for(let link in createdLinks.get("alice")) {
-        //@ts-ignore
-        t.assert(alice_rendered.links.includes(link))
-        //@ts-ignore
-        t.assert(bob_rendered.links.includes(link))
+    for(let link of createdLinks.get("alice")!) {
+        t.assert(includes(alice_rendered, link))
+        t.assert(includes(bob_rendered, link))
     }
 
     await aliceConductor.shutDown();
