@@ -3,6 +3,14 @@ import faker from "faker";
 import { dnas } from './common';
 import { createConductor } from "@holochain/tryorama";
 
+export async function call(happ: AgentHapp, fn_name: string, payload?: any) {
+    return await happ.cells[0].callZome({
+        zome_name: "perspective_diff_sync", 
+        fn_name,
+        payload
+    }, 60000);
+}
+
 export function generate_link_expression(agent: string) {
     return {
       data: {source: faker.name.findName(), target: faker.name.findName(), predicate: faker.name.findName()},

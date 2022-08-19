@@ -1,13 +1,7 @@
 import { AgentHapp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
+import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 
-async function call(happ: AgentHapp, fn_name: string, payload?: any) {
-    return await happ.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name,
-        payload
-    }, 60000);
-}
+let createdLinks = new Map<string, Array<object>>()
 
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {
     for(let i=0; i < count; i++) {
