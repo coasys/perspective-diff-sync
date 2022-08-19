@@ -346,6 +346,9 @@ pub fn populate_search(
         if let Some(ref break_on_hash) = break_on_revision {
             if &search_position.0 == break_on_hash && unseen_parents.len() == 0 {
                 debug!("Breaking on supplied hash");
+                let mut break_diff = diff.clone();
+                break_diff.parents = None;
+                diffs_set.insert((search_position.0.clone(), break_diff));
                 break;
             }
         };
