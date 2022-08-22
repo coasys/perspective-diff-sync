@@ -11,7 +11,7 @@ on:
 
 jobs:
   pull:
-    name: Pull tests
+    name: Pull
 
     strategy:
       matrix:
@@ -36,13 +36,14 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm
-    - run: cd hc-dna/zomes/tests
-    - run: npm i
-    - run: nix-shell ../../default.nix --run "npm run test-pull"
+    - run: |
+      npm install -g npm
+      cd hc-dna/zomes/tests
+      npm i
+      nix-shell ../../default.nix --run "npm run test-pull"
 
   render:
-    name: Render tests
+    name: Render
 
     strategy:
       matrix:
@@ -67,13 +68,14 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm
-    - run: cd hc-dna/zomes/tests
-    - run: npm i
-    - run: nix-shell ../../default.nix --run "npm run test-render"
+    - run: |
+      npm install -g npm
+      cd hc-dna/zomes/tests
+      npm i
+      nix-shell ../../default.nix --run "npm run test-render"
 
   revisions:
-    name: Revisions tests
+    name: Revisions
 
     strategy:
       matrix:
@@ -98,13 +100,14 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm
-    - run: cd hc-dna/zomes/tests
-    - run: npm i
-    - run: nix-shell ../../default.nix --run "npm run test-revisions"
+    - run: |
+      npm install -g npm
+      cd hc-dna/zomes/tests
+      npm i
+      nix-shell ../../default.nix --run "npm run test-revisions"
 
   signals:
-    name: Signals tests
+    name: Signals
 
     strategy:
       matrix:
@@ -129,14 +132,15 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm
-    - run: cd hc-dna/zomes/tests
-    - run: npm i
-    - run: nix-shell ../../default.nix --run "npm run test-signals"
+    - run: |
+      npm install -g npm
+      cd hc-dna/zomes/tests
+      npm i
+      nix-shell ../../default.nix --run "npm run test-signals"
 
 
   stress:
-    name: Stress tests
+    name: Stress
 
     strategy:
       matrix:
@@ -161,7 +165,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm
-    - run: cd hc-dna/zomes/tests
-    - run: npm i
-    - run: nix-shell ../../default.nix --run "npm run test-stress"
+    - run: |
+      npm install -g npm
+      cd hc-dna/zomes/tests
+      npm i
+      nix-shell ../../default.nix --run "npm run test-stress"
