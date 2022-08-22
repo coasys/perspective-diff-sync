@@ -37,7 +37,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install -g npm
-    - run: cd hc-dna/zomes/test
+    - run: cd hc-dna/zomes/tests
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-pull"
 
@@ -68,7 +68,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install -g npm
-    - run: cd hc-dna/zomes/test
+    - run: cd hc-dna/zomes/tests
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-render"
 
@@ -99,7 +99,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install -g npm
-    - run: cd hc-dna/zomes/test
+    - run: cd hc-dna/zomes/tests
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-revisions"
 
@@ -130,7 +130,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install -g npm
-    - run: cd hc-dna/zomes/test
+    - run: cd hc-dna/zomes/tests
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-signals"
 
@@ -162,6 +162,6 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install -g npm
-    - run: cd hc-dna/zomes/test
+    - run: cd hc-dna/zomes/tests
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-stress"
