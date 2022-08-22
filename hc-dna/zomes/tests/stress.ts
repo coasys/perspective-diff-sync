@@ -1,6 +1,7 @@
 import { AgentHapp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
+import test from "tape-promise/tape.js";
 
 let createdLinks = new Map<string, Array<LinkExpression>>()
 
@@ -129,3 +130,7 @@ export async function stressTest(t) {
     await bobConductor.shutDown();
     await cleanAllConductors();
 }
+
+test("stress", async (t) => {
+    await stressTest(t);
+})

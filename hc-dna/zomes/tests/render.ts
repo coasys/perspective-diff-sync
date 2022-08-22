@@ -1,5 +1,6 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
 import { call, sleep, generate_link_expression, createConductors} from "./utils";
+import test from "tape-promise/tape.js";
 
 //NOTE; these tests are dependant on the SNAPSHOT_INTERVAL in lib.rs being set to 2
 //@ts-ignore
@@ -274,3 +275,7 @@ export async function renderMerges(t) {
     await conductor2.shutDown();
     await cleanAllConductors();
 }
+
+test("render", async (t) => {
+    await render(t)
+})

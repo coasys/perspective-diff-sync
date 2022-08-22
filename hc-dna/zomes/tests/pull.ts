@@ -1,5 +1,6 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
 import { sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
+import test from "tape-promise/tape.js";
 
 //@ts-ignore
 export async function unSyncFetch(t) {
@@ -446,3 +447,20 @@ export async function complexMerge(t) {
     await ericConductor.shutDown();
     await cleanAllConductors();
 }
+
+
+test("unsynced fetch", async (t) => {
+    await unSyncFetch(t);
+})
+
+test("merge fetch", async (t) => {
+    await mergeFetch(t);
+})
+
+test("merge fetch deep", async (t) => {
+    await mergeFetchDeep(t);
+})
+
+test("complex merge", async (t) => {
+    await complexMerge(t);
+})

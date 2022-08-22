@@ -1,5 +1,6 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
 import { sleep, createConductors} from "./utils";
+import test from "tape-promise/tape.js";
 
 //@ts-ignore
 export async function testRevisionUpdates(t) {
@@ -130,3 +131,7 @@ export async function testRevisionUpdates(t) {
     await bobConductor.shutDown();
     await cleanAllConductors();
 }
+
+test("test revision updates", async (t) => {
+    await testRevisionUpdates(t);
+})
