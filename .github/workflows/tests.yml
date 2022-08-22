@@ -10,8 +10,8 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Pull
+  pull:
+    name: Pull tests
 
     strategy:
       matrix:
@@ -41,8 +41,8 @@ jobs:
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-pull"
 
-  test:
-    name: Render
+  render:
+    name: Render tests
 
     strategy:
       matrix:
@@ -72,8 +72,8 @@ jobs:
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-render"
 
-  test:
-    name: Revisions
+  revisions:
+    name: Revisions tests
 
     strategy:
       matrix:
@@ -103,8 +103,8 @@ jobs:
     - run: npm i
     - run: nix-shell ../../default.nix --run "npm run test-revisions"
 
-  test:
-    name: Signals
+  signals:
+    name: Signals tests
 
     strategy:
       matrix:
@@ -135,7 +135,7 @@ jobs:
     - run: nix-shell ../../default.nix --run "npm run test-signals"
 
 
-  test:
+  stress:
     name: Stress tests
 
     strategy:
