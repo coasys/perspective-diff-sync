@@ -16,4 +16,4 @@ chrono = { version = "=0.4.19", features=["serde"] }
 hdi = "0.0.15"
 holo_hash = "0.0.31"
 hdk = "0.0.143"
-hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index" }
+hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index", rev = "ae97ee9384861d77843761b0af6dfe2686058eb7" }
