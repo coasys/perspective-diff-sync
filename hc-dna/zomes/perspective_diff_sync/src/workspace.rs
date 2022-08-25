@@ -81,44 +81,58 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn collect_until_common_ancestor(&mut self, latest: Hash, current: Hash)
+    pub fn collect_until_common_ancestor(&mut self, theirs: Hash, ours: Hash)
         -> SocialContextResult<()>
     {
 
         // Initializing with only one branch starting from the given hash.
-        let mut unprocessed_branches = VecDeque::new();
-        unprocessed_branches.push_back(latest);
+        let mut breadth_first_branches = VecDeque::new();
+        breadth_first_branches.push_back(theirs);
+        breadth_first_branches.push_back(ours);
 
-        while !unprocessed_branches.is_empty() {
-            let current_hash = unprocessed_branches[0].clone();
-            
-            if let Some(snapshot) = Self::get_snapshot(current_hash.clone())? {
-                self.entry_map.insert(current_hash.clone(), PerspectiveDiffEntryReference {
-                    diff: snapshot.diff,
-                    parents: None,
-                });
-            } else {
-                let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
-                if let Some(parents) = &current_diff.parents {
-                    for i in 0..parents.len() {
-                        // Depth-first search:
-                        // We are replacing our search position (==current_hash==unprocessed_branches[0])
-                        // with the first parent.
-                        // Other parents are pushed on the vec as new branches to search later..
-                        if i==0 {
-                            unprocessed_branches[0] = parents[i].clone();
-                        } else {
-                            unprocessed_branches.push_back(parents[i].clone())
-                        }
-                    }
+        let mut common_ancestor_found = false;
+
+        while !common_ancestor_found && !breadth_first_branches.is_empty() {
+
+            for branch_index in 0..breadth_first_branches.len() {
+                let current_hash = breadth_first_branches[branch_index].clone();
+                let already_seen = self.entry_map.contains_key(current_hash);
+                if already_seen {
+                    // current hash is already in, so it must be our common ancestor!
+                    common_ancestor_found = true;
+                    // Update diff in our map to remove parents 
+                    // (so we know where to start when sorting)
+                    let mut diff = self.entry_map.get(current_hash).unwrap().clone();
+                    diff.parents = None;
+                    self.entry_map.insert(current_hash, diff);
                 } else {
-                    // We arrived at a leaf/orphan (no parents).
-                    // So we can close this branch and potentially continue
-                    // with other unprocessed branches, if they exist.
-                    unprocessed_branches.pop_front();
+                    let current_diff = Self::get_p_diff_reference(current_hash)?;
+                    let filtered_parents = current_diff.parents
+                        .iter()
+                        .filter(|p| !self.entry_map.contains_key(p))
+                        .collect::<Vec<Hash>>();
+        
+                    if let Some(parents) = &current_diff.parents {
+                        for parent_index in 0..parents.len() {
+                            // Depth-first search:
+                            // We are replacing our search position (==current_hash==unprocessed_branches[0])
+                            // with the first parent.
+                            // Other parents are pushed on the vec as new branches to search later..
+                            if i==0 {
+                                breadth_first_branches[branch_index] = parents[parent_index].clone();
+                            } else {
+                                breadth_first_branches.push_back(parents[parent_index].clone())
+                            }
+                        }
+                    } else {
+                        // We arrived at a leaf/orphan (no parents).
+                        // So we can close this branch and potentially continue
+                        // with other unprocessed branches, if they exist.
+                        breadth_first_branches.remove(branch_index);
+                    }
+        
+                    self.entry_map.insert(current_hash, current_diff);
                 }
-
-                self.entry_map.insert(current_hash, current_diff);
             }
         }
 
@@ -135,7 +149,7 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn _build_graph(&mut self) -> SocialContextResult<()>  {
+    pub fn build_graph(&mut self) -> SocialContextResult<()>  {
         match self.sorted_diffs.clone() {
             None => Err(SocialContextError::InternalError("Need to 1. collect diffs and then 2. sort them before building the graph")),
             Some(sorted_diffs) => {
@@ -206,7 +220,7 @@ impl Workspace {
 
 
 
-    fn _add_node(
+    fn add_node(
         &mut self,
         parents: Option<Vec<NodeIndex<u32>>>,
         diff: HoloHash<holo_hash::hash_type::Action>,
@@ -240,7 +254,7 @@ impl Workspace {
         ancestor: &Hash,
     ) -> Vec<Vec<NodeIndex>> {
         let child_node = get_node_index(child).unwrap();
-        let ancestor_node = get_node_index(ancestor).unwrap()
+        let ancestor_node = get_node_index(ancestor).unwrap();
         let paths = all_simple_paths::<Vec<_>, _>(&self.graph, child_node, ancestor_node, 0, None)
             .collect::<Vec<_>>();
         paths

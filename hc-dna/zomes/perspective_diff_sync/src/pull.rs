@@ -45,6 +45,8 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let current = current.exepct("No current handled above");
 
     workspace.collect_until_common_ancestor(latest, current)?;
+    workspace.topo_sort_graph()?;
+    workspace.build_graph()?;
     debug!("completed current search population");
 
 
