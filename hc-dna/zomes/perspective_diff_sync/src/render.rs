@@ -1,24 +1,25 @@
 use hdk::prelude::*;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::revisions::current_revision;
-use crate::search::populate_search;
 use crate::Perspective;
 use perspective_diff_sync_integrity::PerspectiveDiff;
+use crate::workspace::Workspace;
 
 pub fn render() -> SocialContextResult<Perspective> {
-    let current = current_revision()?;
+    let current = current_revision()?
+        .ok_or(SocialContextError::InternalError("Can't render when we have no current revision"))?;
+    
     debug!("render() current: {:?}", current);
-    if current.is_none() {
-        return Err(SocialContextError::InternalError("Can't render when we have no current revision"));
-    }
 
+    let mut workspace = Workspace::new();
+    workspace.collect_only_from_latest(current)?;
+    workspace.topo_sort_graph()?;
+    let sorted_diffs = &workspace.sorted_diffs.expect("must have sorted diffs after calling topo_sort_graph()");
 
-    let search = populate_search(None, current.expect("must be some since we checked above"), None, true)?;
     let mut perspective = Perspective { links: vec![] };
-    for diff_node in search.sorted_diffs {
+    for diff_node in sorted_diffs {
         debug!("render() adding diff_node: {:?}", diff_node);
-        let diff_entry_ref = diff_node.1;
-        let diff_entry = get(diff_entry_ref.diff.clone(), GetOptions::latest())?
+        let diff_entry = get(diff_node.1.diff.clone(), GetOptions::latest())?
             .ok_or(SocialContextError::InternalError(
                 "Could not find diff entry for given diff entry reference",
             ))?

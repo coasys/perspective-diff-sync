@@ -7,35 +7,9 @@ use petgraph::{
 use std::collections::{HashMap, BTreeSet};
 use std::ops::Index;
 use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, Snapshot, LinkTypes};
-//use topological_sort::TopologicalSort;
 use crate::errors::{SocialContextError, SocialContextResult};
+use crate::topo_sort::topo_sort_diff_references;
 
-
-
-
-/*
-pub fn bubble_sort_diff_references(mut arr: &mut Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>) {
-    let mut i = 0;
-    while i < arr.len() {
-        let mut j = i;
-        while j < arr.len() {
-            if i != j {
-                let current_parents = &arr[i].1.parents;
-                let next_hash = &arr[j].0;
-
-                if let Some(parents) = current_parents {
-                    if parents.contains(next_hash) {
-                        move_me(&mut arr, i, j);
-                        i = i - 1;
-                        j = i;
-                    }
-                }
-            };
-
-            j = j + 1;
-        }
-    }
-} */
 
 pub struct Search {
     pub graph: DiGraph<HoloHash<holo_hash::hash_type::Action>, ()>,

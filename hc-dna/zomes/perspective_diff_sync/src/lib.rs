@@ -11,7 +11,9 @@ mod render;
 mod revisions;
 mod search;
 mod snapshots;
+mod topo_sort;
 mod utils;
+mod workspace;
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {

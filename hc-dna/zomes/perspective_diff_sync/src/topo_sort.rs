@@ -1,10 +1,10 @@
-use std::collections::{HashMap, BTreeSet};
-use std::ops::Index;
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, Snapshot, LinkTypes};
+use hdk::prelude::*;
+use std::collections::{BTreeSet};
+use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference};
 use crate::errors::{SocialContextError, SocialContextResult};
 
 // Applies Kahn's algorithm for topologically sorting a graph
-fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>) 
+pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>) 
     -> SocialContextResult<Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>>
 {
     type Hash = HoloHash<holo_hash::hash_type::Action>;   
