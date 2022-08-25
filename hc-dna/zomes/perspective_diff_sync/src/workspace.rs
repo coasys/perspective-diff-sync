@@ -84,6 +84,44 @@ impl Workspace {
     pub fn collect_until_common_ancestor(&mut self, latest: Hash, current: Hash)
         -> SocialContextResult<()>
     {
+
+        // Initializing with only one branch starting from the given hash.
+        let mut unprocessed_branches = VecDeque::new();
+        unprocessed_branches.push_back(latest);
+
+        while !unprocessed_branches.is_empty() {
+            let current_hash = unprocessed_branches[0].clone();
+            
+            if let Some(snapshot) = Self::get_snapshot(current_hash.clone())? {
+                self.entry_map.insert(current_hash.clone(), PerspectiveDiffEntryReference {
+                    diff: snapshot.diff,
+                    parents: None,
+                });
+            } else {
+                let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
+                if let Some(parents) = &current_diff.parents {
+                    for i in 0..parents.len() {
+                        // Depth-first search:
+                        // We are replacing our search position (==current_hash==unprocessed_branches[0])
+                        // with the first parent.
+                        // Other parents are pushed on the vec as new branches to search later..
+                        if i==0 {
+                            unprocessed_branches[0] = parents[i].clone();
+                        } else {
+                            unprocessed_branches.push_back(parents[i].clone())
+                        }
+                    }
+                } else {
+                    // We arrived at a leaf/orphan (no parents).
+                    // So we can close this branch and potentially continue
+                    // with other unprocessed branches, if they exist.
+                    unprocessed_branches.pop_front();
+                }
+
+                self.entry_map.insert(current_hash, current_diff);
+            }
+        }
+
         Ok(())
     }
 
