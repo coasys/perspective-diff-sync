@@ -5,7 +5,7 @@ use petgraph::{
 };
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Index;
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, Snapshot, LinkTypes};
+use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes};
 use crate::errors::{SocialContextError, SocialContextResult};
 //use crate::snapshots::get_snapshot;
 use crate::topo_sort::topo_sort_diff_references;
@@ -96,40 +96,45 @@ impl Workspace {
 
             for branch_index in 0..breadth_first_branches.len() {
                 let current_hash = breadth_first_branches[branch_index].clone();
-                let already_seen = self.entry_map.contains_key(current_hash);
+                let already_seen = self.entry_map.contains_key(&current_hash);
                 if already_seen {
                     // current hash is already in, so it must be our common ancestor!
                     common_ancestor_found = true;
                     // Update diff in our map to remove parents 
                     // (so we know where to start when sorting)
-                    let mut diff = self.entry_map.get(current_hash).unwrap().clone();
+                    let mut diff = self.entry_map.get(&current_hash).unwrap().clone();
                     diff.parents = None;
                     self.entry_map.insert(current_hash, diff);
                 } else {
-                    let current_diff = Self::get_p_diff_reference(current_hash)?;
-                    let filtered_parents = current_diff.parents
-                        .iter()
-                        .filter(|p| !self.entry_map.contains_key(p))
-                        .collect::<Vec<Hash>>();
-        
-                    if let Some(parents) = &current_diff.parents {
-                        for parent_index in 0..parents.len() {
-                            // Depth-first search:
-                            // We are replacing our search position (==current_hash==unprocessed_branches[0])
-                            // with the first parent.
-                            // Other parents are pushed on the vec as new branches to search later..
-                            if i==0 {
-                                breadth_first_branches[branch_index] = parents[parent_index].clone();
-                            } else {
-                                breadth_first_branches.push_back(parents[parent_index].clone())
+                    let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
+                    
+                    match &current_diff.parents {
+                        None => {
+                            // We arrived at a leaf/orphan (no parents).
+                            // So we can close this branch and potentially continue
+                            // with other unprocessed branches, if they exist.
+                            breadth_first_branches.remove(branch_index);
+                        },
+                        Some(parents) => {
+                            let filtered_parents = parents
+                                .iter()
+                                .filter(|p| !self.entry_map.contains_key(p))
+                                .cloned()
+                                .collect::<Vec<Hash>>();
+
+                            for parent_index in 0..filtered_parents.len() {
+                                // Depth-first search:
+                                // We are replacing our search position (==current_hash==unprocessed_branches[0])
+                                // with the first parent.
+                                // Other parents are pushed on the vec as new branches to search later..
+                                if parent_index == 0 {
+                                    breadth_first_branches[branch_index] = parents[parent_index].clone();
+                                } else {
+                                    breadth_first_branches.push_back(parents[parent_index].clone())
+                                }
                             }
                         }
-                    } else {
-                        // We arrived at a leaf/orphan (no parents).
-                        // So we can close this branch and potentially continue
-                        // with other unprocessed branches, if they exist.
-                        breadth_first_branches.remove(branch_index);
-                    }
+                    };
         
                     self.entry_map.insert(current_hash, current_diff);
                 }
@@ -155,10 +160,10 @@ impl Workspace {
             Some(sorted_diffs) => {
                         //Add root node
                 if self
-                    ._get_node_index(&ActionHash::from_raw_36(vec![0xdb; 36]))
+                    .get_node_index(&ActionHash::from_raw_36(vec![0xdb; 36]))
                     .is_none()
                 {
-                    self._add_node(None, ActionHash::from_raw_36(vec![0xdb; 36]));
+                    self.add_node(None, ActionHash::from_raw_36(vec![0xdb; 36]));
                 };
 
                 for diff in sorted_diffs {
@@ -166,13 +171,13 @@ impl Workspace {
                         let mut parents = vec![];
                         for parent in diff.1.parents.as_ref().unwrap() {
                             let parent = self
-                                ._get_node_index(&parent)
+                                .get_node_index(&parent)
                                 .ok_or(SocialContextError::InternalError("Did not find parent"))?;
                             parents.push(parent.clone());
                         }
-                        self._add_node(Some(parents), diff.0.clone());
+                        self.add_node(Some(parents), diff.0.clone());
                     } else {
-                        self._add_node(Some(vec![NodeIndex::from(0)]), diff.0.clone());
+                        self.add_node(Some(vec![NodeIndex::from(0)]), diff.0.clone());
                     }
                 }
                 Ok(())
@@ -244,7 +249,7 @@ impl Workspace {
         self.node_index_map.get(node)
     }
 
-    pub fn _index(&mut self, index: NodeIndex) -> HoloHash<holo_hash::hash_type::Action> {
+    pub fn index(&self, index: NodeIndex) -> HoloHash<holo_hash::hash_type::Action> {
         self.graph.index(index).clone()
     }
 
@@ -253,9 +258,9 @@ impl Workspace {
         child: &Hash,
         ancestor: &Hash,
     ) -> Vec<Vec<NodeIndex>> {
-        let child_node = get_node_index(child).unwrap();
-        let ancestor_node = get_node_index(ancestor).unwrap();
-        let paths = all_simple_paths::<Vec<_>, _>(&self.graph, child_node, ancestor_node, 0, None)
+        let child_node = self.get_node_index(child).unwrap();
+        let ancestor_node = self.get_node_index(ancestor).unwrap();
+        let paths = all_simple_paths::<Vec<_>, _>(&self.graph, *child_node, *ancestor_node, 0, None)
             .collect::<Vec<_>>();
         paths
     }
@@ -291,7 +296,7 @@ impl Workspace {
             additions: vec![],
             removals: vec![],
         };
-        for (_key, value) in workspace.entry_map.iter() {
+        for (_key, value) in self.entry_map.iter() {
             let diff_entry = get(value.diff.clone(), GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
                     "Could not find diff entry for given diff entry reference",
@@ -306,5 +311,39 @@ impl Workspace {
         }
 
         Ok(out)
+    }
+
+    pub fn squashed_fast_forward_from(&self, base: Hash) -> SocialContextResult<PerspectiveDiff> {
+        match &self.sorted_diffs {
+            None => Err(SocialContextError::InternalError("Need to sort first for this fast-forward optimzed squash")),
+            Some(sorted_diffs) => {
+                let mut base_found = false;
+                let mut out = PerspectiveDiff {
+                    additions: vec![],
+                    removals: vec![],
+                };
+                for i in 0..sorted_diffs.len() {
+                    let current = &sorted_diffs[i];
+                    if !base_found {
+                        if current.0 == base {
+                            base_found = true;
+                        }
+                    } else {
+                        let diff_entry = get(current.1.diff.clone(), GetOptions::latest())?
+                            .ok_or(SocialContextError::InternalError(
+                                "Could not find diff entry for given diff entry reference",
+                            ))?
+                            .entry()
+                            .to_app_option::<PerspectiveDiff>()?
+                            .ok_or(SocialContextError::InternalError(
+                                "Expected element to contain app entry data",
+                            ))?;
+                        out.additions.append(&mut diff_entry.additions.clone());
+                        out.removals.append(&mut diff_entry.removals.clone());
+                    }
+                }
+                Ok(out)
+            }
+        }
     }
 }

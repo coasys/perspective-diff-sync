@@ -9,7 +9,7 @@ mod inputs;
 mod pull;
 mod render;
 mod revisions;
-mod search;
+//mod search;
 mod snapshots;
 mod topo_sort;
 mod utils;
