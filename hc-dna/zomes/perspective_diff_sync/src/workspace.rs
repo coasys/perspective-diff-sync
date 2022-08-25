@@ -81,6 +81,12 @@ impl Workspace {
         Ok(())
     }
 
+    pub fn collect_until_common_ancestor(&mut self, latest: Hash, current: Hash)
+        -> SocialContextResult<()>
+    {
+        Ok(())
+    }
+
     pub fn topo_sort_graph(&mut self) -> SocialContextResult<()> {
         let entry_vec = self.entry_map
             .clone()
@@ -179,7 +185,7 @@ impl Workspace {
         index
     }
 
-    pub fn _get_node_index(
+    pub fn get_node_index(
         &self,
         node: &HoloHash<holo_hash::hash_type::Action>,
     ) -> Option<&NodeIndex<u32>> {
@@ -190,12 +196,14 @@ impl Workspace {
         self.graph.index(index).clone()
     }
 
-    pub fn _get_paths(
+    pub fn get_paths(
         &self,
-        child: NodeIndex<u32>,
-        ancestor: NodeIndex<u32>,
+        child: &Hash,
+        ancestor: &Hash,
     ) -> Vec<Vec<NodeIndex>> {
-        let paths = all_simple_paths::<Vec<_>, _>(&self.graph, child, ancestor, 0, None)
+        let child_node = get_node_index(child).unwrap();
+        let ancestor_node = get_node_index(ancestor).unwrap()
+        let paths = all_simple_paths::<Vec<_>, _>(&self.graph, child_node, ancestor_node, 0, None)
             .collect::<Vec<_>>();
         paths
     }
@@ -224,5 +232,27 @@ impl Workspace {
             None => {}
         };
         index
+    }
+
+    pub fn squashed_diff(&self) -> SocialContextResult<PerspectiveDiff> {
+        let mut out = PerspectiveDiff {
+            additions: vec![],
+            removals: vec![],
+        };
+        for (_key, value) in workspace.entry_map.iter() {
+            let diff_entry = get(value.diff.clone(), GetOptions::latest())?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find diff entry for given diff entry reference",
+                ))?
+                .entry()
+                .to_app_option::<PerspectiveDiff>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
+            out.additions.append(&mut diff_entry.additions.clone());
+            out.removals.append(&mut diff_entry.removals.clone());
+        }
+
+        Ok(out)
     }
 }
