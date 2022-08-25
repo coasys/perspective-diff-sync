@@ -53,6 +53,10 @@ impl Workspace {
                     diff: snapshot.diff,
                     parents: None,
                 });
+                // Snapshot terminates like an orphan.
+                // So we can close this branch and potentially continue
+                // with other unprocessed branches, if they exist.
+                unprocessed_branches.pop_front();
             } else {
                 let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
                 if let Some(parents) = &current_diff.parents {
