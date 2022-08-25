@@ -457,9 +457,9 @@ test("merge fetch", async (t) => {
     await mergeFetch(t);
 })
 
-test("merge fetch deep", async (t) => {
-    await mergeFetchDeep(t);
-})
+//test("merge fetch deep", async (t) => {
+//    await mergeFetchDeep(t);
+//})
 
 test("complex merge", async (t) => {
     await complexMerge(t);
