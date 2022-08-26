@@ -211,11 +211,12 @@ impl Workspace {
         // And then we terminate any remaining open branches by just removing the parents.
         for branch_index in 0..breadth_first_branches.len() {
             let hash = breadth_first_branches[branch_index].clone();
-            let mut diff = self.entry_map.get(&hash).unwrap().clone();
-            diff.parents = None;
-            self.entry_map.insert(hash, diff);
+            if let Some(diff_ref) = self.entry_map.get(&hash) {
+                let mut diff = diff_ref.clone();
+                diff.parents = None;
+                self.entry_map.insert(hash, diff);
+            }
         }
-
 
         Ok(())
     }
