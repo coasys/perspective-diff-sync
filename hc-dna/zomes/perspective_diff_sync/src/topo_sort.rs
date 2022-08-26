@@ -76,7 +76,8 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
 
         debug!("Number of unresolved parent links {:?}", edges.len());
         debug!("Number of items to sort: {:?}", arr.len());
-        Err(SocialContextError::InternalError("Cycle or missing nodes detected. Unresolved parent links after topologically sorting."))
+        //Err(SocialContextError::InternalError("Cycle or missing nodes detected. Unresolved parent links after topologically sorting."))
+        Ok(result)
     } else {
         Ok(result)
     }    
