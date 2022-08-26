@@ -119,6 +119,8 @@ impl Workspace {
                             // So we can close this branch and potentially continue
                             // with other unprocessed branches, if they exist.
                             breadth_first_branches.remove(branch_index);
+                            // We have to break out of loop to avoid having branch_index run out of bounds
+                            break;
                         },
                         Some(parents) => {
                             let filtered_parents = parents
