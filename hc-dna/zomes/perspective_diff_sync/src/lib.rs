@@ -17,6 +17,8 @@ mod workspace;
 
 #[macro_use] extern crate maplit;
 
+pub type Hash = HoloHash<holo_hash::hash_type::Action>;
+
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
     let mut functions: GrantedFunctions = BTreeSet::new();

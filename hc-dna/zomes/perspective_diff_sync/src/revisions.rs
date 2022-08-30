@@ -4,9 +4,10 @@ use perspective_diff_sync_integrity::{EntryTypes, HashReference, LinkTypes, Loca
 
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::utils::get_now;
+use crate::Hash;
 
 pub fn update_latest_revision(
-    hash: HoloHash<holo_hash::hash_type::Action>,
+    hash: Hash,
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
     let hash_ref = HashReference { hash, timestamp };
@@ -22,7 +23,7 @@ pub fn update_latest_revision(
 }
 
 pub fn update_current_revision(
-    hash: HoloHash<holo_hash::hash_type::Action>,
+    hash: Hash,
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
     let hash_ref = LocalHashReference { hash, timestamp };
@@ -31,7 +32,7 @@ pub fn update_current_revision(
 }
 
 //Latest revision as seen from the DHT
-pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
+pub fn latest_revision() -> SocialContextResult<Option<Hash>> {
     let mut latest =
         hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
             String::from("current_rev"),
@@ -47,7 +48,7 @@ pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_
 }
 
 //Latest revision as seen from our local state
-pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
+pub fn current_revision() -> SocialContextResult<Option<Hash>> {
     let mut end_index = 10;
     let mut revisions = vec![];
     loop {
