@@ -222,39 +222,36 @@ impl Workspace {
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);
         };
-
-        let mut common_ancestor_diff = diffs.iter().find(|p_ref| p_ref.0 == &common_ancestor.clone().unwrap())
-            .ok_or(SocialContextError::InternalError("Common ancestor must have been added to map above"))?
-            .clone()
-            .1
-            .to_owned();
+        
+        let common_ancestor = common_ancestor.unwrap();
 
         // Remove everything after the common ancestor
         for side in vec![SearchSide::Theirs, SearchSide::Ours] {
             let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
-            let position = search.found_ancestors.borrow().iter().position(|a| a == &common_ancestor.clone().expect("Handled above")).ok_or(SocialContextError::InternalError("common ancestor not found in one side - that should not be possible"))?;
+            let position = search.found_ancestors.borrow().iter().position(|a| a == &common_ancestor).ok_or(SocialContextError::InternalError("common ancestor not found in one side - that should not be possible"))?;
             while search.found_ancestors.borrow().len() > position + 1 {
                 search.found_ancestors.get_mut().pop();
             }
         };
 
-        common_ancestor_diff.parents = None;
-        // Let's store the common ancestor in self for later use.    
-        self.common_ancestor = common_ancestor.clone();
-
-        self.entry_map.insert(
-            common_ancestor.ok_or(SocialContextError::InternalError("None case handled above"))?, 
-            common_ancestor_diff
-        );
-
         // Add both paths to entry_map
         for side in vec![SearchSide::Theirs, SearchSide::Ours] {
             let search = searches.get(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
-            for hash in search.found_ancestors.borrow().iter() {
-                let diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?;
+            let position = search.found_ancestors.borrow().iter().position(|a| a == &common_ancestor).ok_or(SocialContextError::InternalError("common ancestor not found in one side - that should not be possible"))?;
+            for (index, hash) in search.found_ancestors.borrow().iter().enumerate() {
+                let mut diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?.to_owned();
+                if index == position {
+                    debug!("Replacing parents on common ancestor");
+                    diff.parents = None;
+                };
                 self.entry_map.insert(hash.clone(), diff.clone());
             }
         };
+
+        //Set the common ancestors parents to None
+        let mut diff = self.entry_map.get(&common_ancestor).expect("Should get the common ancestor").to_owned();
+        diff.parents = None;
+        self.entry_map.insert(common_ancestor, diff);
 
         Ok(())
     }
