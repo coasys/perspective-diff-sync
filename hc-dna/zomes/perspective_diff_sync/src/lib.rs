@@ -15,6 +15,8 @@ mod topo_sort;
 mod utils;
 mod workspace;
 
+#[macro_use] extern crate maplit;
+
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
     let mut functions: GrantedFunctions = BTreeSet::new();
