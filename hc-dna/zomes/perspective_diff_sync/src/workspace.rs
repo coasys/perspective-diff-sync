@@ -6,21 +6,48 @@ use petgraph::{
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Index;
 use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes};
+use std::cell::RefCell;
+
+use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
-//use crate::snapshots::get_snapshot;
 use crate::topo_sort::topo_sort_diff_references;
-use enum_iterator::all;
-
-type Hash = HoloHash<holo_hash::hash_type::Action>;
-
 
 pub struct Workspace {
-    pub graph: DiGraph<HoloHash<holo_hash::hash_type::Action>, ()>,
-    pub undirected_graph: UnGraph<HoloHash<holo_hash::hash_type::Action>, ()>,
-    pub node_index_map: BTreeMap<HoloHash<holo_hash::hash_type::Action>, NodeIndex<u32>>,
-    pub entry_map: BTreeMap<HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference>,
-    pub sorted_diffs: Option<Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>>,
+    pub graph: DiGraph<Hash, ()>,
+    pub undirected_graph: UnGraph<Hash, ()>,
+    pub node_index_map: BTreeMap<Hash, NodeIndex<u32>>,
+    pub entry_map: BTreeMap<Hash, PerspectiveDiffEntryReference>,
+    pub sorted_diffs: Option<Vec<(Hash, PerspectiveDiffEntryReference)>>,
     pub common_ancestor: Option<Hash>,
+}
+
+#[derive(Clone, Debug)]
+struct BfsSearch {
+    pub found_ancestors: RefCell<Vec<Hash>>,
+    pub bfs_branches: RefCell<VecDeque<Hash>>,
+}
+
+impl BfsSearch {
+    pub fn new(start: Hash) -> BfsSearch {
+        let branches = RefCell::new(VecDeque::from([start]));
+        BfsSearch {
+            found_ancestors: RefCell::new(Vec::new()),
+            bfs_branches: branches,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+enum SearchSide {
+    Theirs,
+    Ours,
+}
+
+fn other_side(side: &SearchSide) -> SearchSide {
+    match side {
+        SearchSide::Theirs => SearchSide::Ours,
+        SearchSide::Ours => SearchSide::Theirs,
+    }
 }
 
 impl Workspace {
@@ -95,67 +122,30 @@ impl Workspace {
         -> SocialContextResult<()>
     {
         debug!("WORKSPACE collect_until_common_ancestor 1");
-        // Initializing with only one branch starting from the given hash.
-        //let mut theirs_ancestors = Vec::<Hash>::new();
-        //let mut ours_ancestors = Vec::<Hash>::new();
-
-        //let mut theirs_branches = VecDeque::<Vec<Hash>>::new();
-        //let mut ours_branches = VecDeque::<Vec<Hash>>::new();
-        //theirs_branches.push_back(theirs);
-        //ours_branches.push_back(ours);
-
         let mut common_ancestor: Option<Hash> = None;
 
         let mut diffs = BTreeMap::<Hash, PerspectiveDiffEntryReference>::new();
 
-        struct BfsSearch {
-            pub found_ancestors: Vec<Hash>;
-            pub bfs_branches: VecDeque<Hash>;
-        }
+        let mut searches = btreemap! {
+            SearchSide::Theirs => BfsSearch::new(theirs),
+            SearchSide::Ours => BfsSearch::new(ours),
+        };
 
-        impl BfsSearch {
-            pub fn new(start: Hash) -> BfsSearch {
-                let mut branches = VecDeque::new();
-                BfsSearch {
-                    found_ancestors: Vec::new(),
-                    bfs_branches: branches,
-                }
-            }
-        }
-
-        enum SearchSide {
-            Theirs,
-            Ours,
-        }
-
-        fn other_side(side: SearchSide) -> SearchSide {
-            match side {
-                Theirs => Ours,
-                Ours => Theirs,
-            }
-        }
-
-        let searches = btreemap! {
-            Theirs => BfsSearch::new(theirs),
-            Ours => BfsSearch::new(ours),
-        }
-
-        let theirs_and_ours_branches = vec![&mut theirs_branches, &mut ours_branches];
-
-        while common_ancestor.is_none() && !theirs_branches.is_empty() && !ours_branches.is_empty() {
+        while common_ancestor.is_none() && (!searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow().is_empty() && !searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow().is_empty()) {
             debug!("WORKSPACE collect_until_common_ancestor 2");
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-                let &mut search = searches.get_mut(side).ok_or(SocialContextError::InternalError("search side not found"))?;
-                let &other = searches.get(other_side(side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
-                let &mut branches = search.bfs_branches;
+                let search_clone = searches.clone();
+                let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
+                let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
+                let branches = search.bfs_branches.get_mut();
 
                 for branch_index in 0..branches.len() {
                     debug!("WORKSPACE collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
 
-                    let already_visited = search.found_ancestors.contains(current_hash);
-                    let seen_on_other_side = other.found_ancestors.contains(current_hash);
+                    let already_visited = search.found_ancestors.borrow().contains(&current_hash);
+                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
 
                     if already_visited {
                         debug!("WORKSPACE collect_until_common_ancestor 2.2 ALREADY VISITED");
@@ -167,6 +157,18 @@ impl Workspace {
                     
                     if seen_on_other_side {
                         debug!("WORKSPACE collect_until_common_ancestor 2.2 SEEN ON OTHER SIDE");
+
+                        //Add the diff to both searches if it is not there 
+                        if !search.found_ancestors.borrow().contains(&current_hash) {
+                            search.found_ancestors.get_mut().push(current_hash.clone());
+                        };
+                        if !other.found_ancestors.borrow().contains(&current_hash) {
+                            searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(current_hash.clone());
+                        };
+                        if diffs.get(&current_hash).is_none() {
+                            let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
+                            diffs.insert(current_hash.clone(), current_diff.clone());
+                        };
                         // current hash is already in, so it must be our common ancestor!
                         common_ancestor = Some(current_hash);
                         break;
@@ -176,8 +178,8 @@ impl Workspace {
                     debug!("WORKSPACE collect_until_common_ancestor 2.3");
                     let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
 
-                    search.found_ancestors.push(current_hash);
-                    diffs.insert(current_hash, current_diff);
+                    search.found_ancestors.get_mut().push(current_hash.clone());
+                    diffs.insert(current_hash, current_diff.clone());
                     
                     match &current_diff.parents {
                         None => {
@@ -215,37 +217,44 @@ impl Workspace {
             }
         }
 
-        debug!("WORKSPACE collect_until_common_ancestor 3");
+        debug!("WORKSPACE collect_until_common_ancestor 3: {:#?}", searches);
 
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);
-        }
+        };
 
-        
-        let mut common_ancestor_diff = diffs
-            .get(common_ancestor.as_ref().ok_or(SocialContextError::InternalError("None handled above"))?)
+        let mut common_ancestor_diff = diffs.iter().find(|p_ref| p_ref.0 == &common_ancestor.clone().unwrap())
             .ok_or(SocialContextError::InternalError("Common ancestor must have been added to map above"))?
-            .clone();
-        
+            .clone()
+            .1
+            .to_owned();
 
-        // Remove everything after the common ancenstor
+        // Remove everything after the common ancestor
         for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-            let &mut search = searches.get_mut(side).ok_or(SocialContextError::InternalError("search side not found"))?;
-            let position = search.found_ancestors.iter().position(|&a| a == common_ancestor).ok_or(SocialContextError::InternalError("common ancenstor not found in one side - that should not be possible"))?;
-            while search.found_ancestors.len() > position + 1 {
-                search.found_ancestors.pop();
+            let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
+            let position = search.found_ancestors.borrow().iter().position(|a| a == &common_ancestor.clone().expect("Handled above")).ok_or(SocialContextError::InternalError("common ancestor not found in one side - that should not be possible"))?;
+            while search.found_ancestors.borrow().len() > position + 1 {
+                search.found_ancestors.get_mut().pop();
             }
-        }
+        };
+
+        common_ancestor_diff.parents = None;
+        // Let's store the common ancestor in self for later use.    
+        self.common_ancestor = common_ancestor.clone();
+
+        self.entry_map.insert(
+            common_ancestor.ok_or(SocialContextError::InternalError("None case handled above"))?, 
+            common_ancestor_diff
+        );
 
         // Add both paths to entry_map
         for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-            let search = searches.get(side).ok_or(SocialContextError::InternalError("search side not found"))?;
-            for hash in serarch.found_ancestors.iter() {
+            let search = searches.get(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
+            for hash in search.found_ancestors.borrow().iter() {
                 let diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?;
-                self.entry_map.insert(hash, diff);
+                self.entry_map.insert(hash.clone(), diff.clone());
             }
-        }
-
+        };
 
         Ok(())
     }
@@ -254,7 +263,7 @@ impl Workspace {
         let entry_vec = self.entry_map
             .clone()
             .into_iter()
-            .collect::<Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>>();
+            .collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
         
         self.sorted_diffs = Some(topo_sort_diff_references(&entry_vec)?);
         Ok(())
@@ -334,7 +343,7 @@ impl Workspace {
     fn add_node(
         &mut self,
         parents: Option<Vec<NodeIndex<u32>>>,
-        diff: HoloHash<holo_hash::hash_type::Action>,
+        diff: Hash,
     ) -> NodeIndex<u32> {
         let index = self.graph.add_node(diff.clone());
         self.undirected_graph.add_node(diff.clone());
@@ -350,12 +359,12 @@ impl Workspace {
 
     pub fn get_node_index(
         &self,
-        node: &HoloHash<holo_hash::hash_type::Action>,
+        node: &Hash,
     ) -> Option<&NodeIndex<u32>> {
         self.node_index_map.get(node)
     }
 
-    pub fn index(&self, index: NodeIndex) -> HoloHash<holo_hash::hash_type::Action> {
+    pub fn index(&self, index: NodeIndex) -> Hash {
         self.graph.index(index).clone()
     }
 
