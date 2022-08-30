@@ -17,6 +17,13 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         latest, current
     );
 
+    if latest == current {
+        return Ok(PerspectiveDiff {
+            removals: vec![],
+            additions: vec![],
+        })
+    }
+
     if latest.is_none() {
         return Ok(PerspectiveDiff {
             removals: vec![],
