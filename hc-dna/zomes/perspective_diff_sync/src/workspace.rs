@@ -237,13 +237,8 @@ impl Workspace {
         // Add both paths to entry_map
         for side in vec![SearchSide::Theirs, SearchSide::Ours] {
             let search = searches.get(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
-            let position = search.found_ancestors.borrow().iter().position(|a| a == &common_ancestor).ok_or(SocialContextError::InternalError("common ancestor not found in one side - that should not be possible"))?;
-            for (index, hash) in search.found_ancestors.borrow().iter().enumerate() {
-                let mut diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?.to_owned();
-                if index == position {
-                    debug!("Replacing parents on common ancestor");
-                    diff.parents = None;
-                };
+            for hash in search.found_ancestors.borrow().iter() {
+                let diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?;
                 self.entry_map.insert(hash.clone(), diff.clone());
             }
         };
