@@ -217,7 +217,7 @@ impl Workspace {
             }
         }
 
-        debug!("WORKSPACE collect_until_common_ancestor 3: {:#?}", searches);
+        debug!("WORKSPACE collect_until_common_ancestor 3: {:#?} and common ancestor is: {:#?}", searches, common_ancestor);
 
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);
@@ -246,6 +246,7 @@ impl Workspace {
         //Set the common ancestors parents to None
         let mut diff = self.entry_map.get(&common_ancestor).expect("Should get the common ancestor").to_owned();
         diff.parents = None;
+        self.entry_map.remove(&common_ancestor);
         self.entry_map.insert(common_ancestor, diff);
 
         Ok(())
