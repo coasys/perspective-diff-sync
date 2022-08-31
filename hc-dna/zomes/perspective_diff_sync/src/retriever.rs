@@ -82,29 +82,8 @@ impl MockPerspectiveGraph {
 
 lazy_static!{
     static ref GLOBAL_MOCKED_GRAPH: Mutex<MockPerspectiveGraph> = Mutex::new(MockPerspectiveGraph::new(GraphInput {
-        nodes: 6,
-        associations: vec![
-            Associations {
-                node_source: 1,
-                node_targets: vec![0]
-            },
-            Associations {
-                node_source: 2,
-                node_targets: vec![0]
-            },
-            Associations {
-                node_source: 3,
-                node_targets: vec![1]
-            },
-            Associations {
-                node_source: 4,
-                node_targets: vec![2]
-            },
-            Associations {
-                node_source: 5,
-                node_targets: vec![3, 4]
-            }
-        ]
+        nodes: 1,
+        associations: vec![]
     }));
 }
 
@@ -142,7 +121,37 @@ fn can_create_graph() {
 #[test]
 fn example_test() {
     use crate::workspace::Workspace;
-    
+
+    fn update() {
+        let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+        *graph = MockPerspectiveGraph::new(GraphInput {
+            nodes: 6,
+            associations: vec![
+                Associations {
+                    node_source: 1,
+                    node_targets: vec![0]
+                },
+                Associations {
+                    node_source: 2,
+                    node_targets: vec![0]
+                },
+                Associations {
+                    node_source: 3,
+                    node_targets: vec![1]
+                },
+                Associations {
+                    node_source: 4,
+                    node_targets: vec![2]
+                },
+                Associations {
+                    node_source: 5,
+                    node_targets: vec![3, 4]
+                }
+            ]
+        });
+    }
+    update();
+
     let mut workspace = Workspace::new();
     let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(ActionHash::from_raw_36(vec![5; 36]), ActionHash::from_raw_36(vec![4; 36]));
     println!("Got result: {:#?}", res);
