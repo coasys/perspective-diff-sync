@@ -243,13 +243,15 @@ impl Workspace {
         for side in vec![SearchSide::Theirs, SearchSide::Ours] {
             let search = searches.get(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
             for hash in search.found_ancestors.borrow().iter() {
-                let diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?;
-                self.entry_map.insert(hash.clone(), diff.clone());
+                if hash != &common_ancestor {
+                    let diff = diffs.get(hash).ok_or(SocialContextError::InternalError("Diff not found in diffs"))?;
+                    self.entry_map.insert(hash.clone(), diff.clone());
+                }
             }
         };
 
         //Set the common ancestors parents to None
-        let mut diff = self.entry_map.get(&common_ancestor).expect("Should get the common ancestor").to_owned();
+        let mut diff = diffs.get(&common_ancestor).expect("Should get the common ancestor").to_owned();
         diff.parents = None;
         self.entry_map.remove(&common_ancestor);
         self.entry_map.insert(common_ancestor, diff);
