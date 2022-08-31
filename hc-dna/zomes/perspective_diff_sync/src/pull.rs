@@ -80,6 +80,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
             workspace.topo_sort_graph()?;
             workspace.build_graph()?;
             debug!("completed current search population");
+            workspace.print_graph_debug();
         
         
             //Check if latest diff is a child of current diff

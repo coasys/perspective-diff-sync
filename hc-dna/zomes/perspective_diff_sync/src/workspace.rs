@@ -1,6 +1,7 @@
 use hdk::prelude::*;
 use petgraph::{
     algo::{all_simple_paths, dominators::simple_fast},
+    dot::{Config, Dot},
     graph::{DiGraph, Graph, NodeIndex, UnGraph},
 };
 use std::collections::{BTreeMap, VecDeque};
@@ -457,5 +458,16 @@ impl Workspace {
                 Ok(out)
             }
         }
+    }
+
+    pub fn print_graph_debug(&self) {
+        debug!(
+            "Directed: {:?}\n",
+            Dot::with_config(&self.graph, &[Config::NodeIndexLabel])
+        );
+        //debug!(
+        //    "Undirected: {:?}\n",
+        //    Dot::with_config(&self.undirected_graph, &[])
+        //);
     }
 }
