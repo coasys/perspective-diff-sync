@@ -35,6 +35,10 @@ impl BfsSearch {
             bfs_branches: branches,
         }
     }
+
+    pub fn has_open_branches(&self) -> bool {
+        !self.bfs_branches.borrow().is_empty()
+    }
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
@@ -131,7 +135,7 @@ impl Workspace {
             SearchSide::Ours => BfsSearch::new(ours),
         };
 
-        while common_ancestor.is_none() && (!searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow().is_empty() && !searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow().is_empty()) {
+        while searches.get(&SearchSide::Theirs).unwrap().has_open_branches() || searches.get(&SearchSide::Ours).unwrap().has_open_branches() {
             debug!("WORKSPACE collect_until_common_ancestor 2");
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
