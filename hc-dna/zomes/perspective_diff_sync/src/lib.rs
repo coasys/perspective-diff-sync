@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 use lazy_static::lazy_static;
@@ -14,6 +17,7 @@ mod snapshots;
 mod topo_sort;
 mod utils;
 mod workspace;
+mod retriever;
 
 #[macro_use] extern crate maplit;
 

@@ -12,6 +12,7 @@ use std::cell::RefCell;
 use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::topo_sort::topo_sort_diff_references;
+use crate::retriever::PerspectiveDiffRetreiver;
 
 pub struct Workspace {
     pub graph: DiGraph<Hash, ()>,
@@ -73,7 +74,7 @@ impl Workspace {
     // diff and terminate at leafs and snapshots.
     // Since we don't have to detect and handle forks, we don't need
     // to unroll snapshots and just treat them as leafs.
-    pub fn collect_only_from_latest(&mut self, latest: Hash) 
+    pub fn collect_only_from_latest<Retriever: PerspectiveDiffRetreiver>(&mut self, latest: Hash) 
         -> SocialContextResult<()> 
     {
         debug!("WORKSPACE collect_only_from_latest 1");
@@ -94,7 +95,7 @@ impl Workspace {
                 // with other unprocessed branches, if they exist.
                 unprocessed_branches.pop_front();
             } else {
-                let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
+                let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
                 if let Some(parents) = &current_diff.parents {
                     for i in 0..parents.len() {
                         // Depth-first search:
@@ -123,7 +124,7 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn collect_until_common_ancestor(&mut self, theirs: Hash, ours: Hash)
+    pub fn collect_until_common_ancestor<Retriever: PerspectiveDiffRetreiver>(&mut self, theirs: Hash, ours: Hash)
         -> SocialContextResult<()>
     {
         debug!("WORKSPACE collect_until_common_ancestor 1");
@@ -140,6 +141,7 @@ impl Workspace {
             debug!("WORKSPACE collect_until_common_ancestor 2");
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
+                debug!("Checking side: {:#?}", side);
                 let search_clone = searches.clone();
                 let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
                 let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
@@ -149,7 +151,7 @@ impl Workspace {
                     debug!("WORKSPACE collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
 
-                    let already_visited = search.found_ancestors.borrow().contains(&current_hash);
+                    let already_visited = search.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
                     let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
 
                     if already_visited {
@@ -171,7 +173,7 @@ impl Workspace {
                             searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(current_hash.clone());
                         };
                         if diffs.get(&current_hash).is_none() {
-                            let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
+                            let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
                             diffs.insert(current_hash.clone(), current_diff.clone());
                         };
                         // current hash is already in, so it must be our common ancestor!
@@ -181,7 +183,7 @@ impl Workspace {
 
 
                     debug!("WORKSPACE collect_until_common_ancestor 2.3");
-                    let current_diff = Self::get_p_diff_reference(current_hash.clone())?;
+                    let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
 
                     search.found_ancestors.get_mut().push(current_hash.clone());
                     diffs.insert(current_hash, current_diff.clone());
@@ -191,13 +193,13 @@ impl Workspace {
                             // We arrived at a leaf/orphan (no parents).
                             // So we can close this branch and potentially continue
                             // with other unprocessed branches, if they exist.
-                            debug!("WORKSPACE collect_until_common_ancestor 2.4");
+                            debug!("WORKSPACE collect_until_common_ancestor 2.4, no more parents");
                             branches.remove(branch_index);
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
                         },
                         Some(parents) => {
-                            debug!("WORKSPACE collect_until_common_ancestor 2.4");
+                            debug!("WORKSPACE collect_until_common_ancestor 2.4, more parents");
                             let filtered_parents = parents
                                 .iter()
                                 .filter(|p| !self.entry_map.contains_key(p))
@@ -205,7 +207,7 @@ impl Workspace {
                                 .collect::<Vec<Hash>>();
 
                             for parent_index in 0..filtered_parents.len() {
-                                debug!("WORKSPACE collect_until_common_ancestor 2.5");
+                                debug!("WORKSPACE collect_until_common_ancestor 2.5, more parents after filter");
                                 // The first parent is taken as the successor for the current branch.
                                 // If there are multiple parents (i.e. merge commit), we create a new branch..
                                 if parent_index == 0 {
@@ -264,7 +266,6 @@ impl Workspace {
             .clone()
             .into_iter()
             .collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
-        
         self.sorted_diffs = Some(topo_sort_diff_references(&entry_vec)?);
         Ok(())
     }
@@ -300,16 +301,8 @@ impl Workspace {
         }
     }
 
-    fn get_p_diff_reference(address: Hash) -> SocialContextResult<PerspectiveDiffEntryReference> {
-        get(address, GetOptions::latest())?
-            .ok_or(SocialContextError::InternalError(
-                "Could not find entry while populating search",
-            ))?
-            .entry()
-            .to_app_option::<PerspectiveDiffEntryReference>()?
-            .ok_or(SocialContextError::InternalError(
-                "Expected element to contain app entry data",
-            ))
+    fn get_p_diff_reference<Retriever: PerspectiveDiffRetreiver>(address: Hash) -> SocialContextResult<PerspectiveDiffEntryReference> {
+        Retriever::get(address)
     }
 
     fn get_snapshot(address: Hash) 
@@ -373,8 +366,8 @@ impl Workspace {
         child: &Hash,
         ancestor: &Hash,
     ) -> Vec<Vec<NodeIndex>> {
-        let child_node = self.get_node_index(child).unwrap();
-        let ancestor_node = self.get_node_index(ancestor).unwrap();
+        let child_node = self.get_node_index(child).expect("Could not get child node index");
+        let ancestor_node = self.get_node_index(ancestor).expect("Could not get ancestor node index");
         let paths = all_simple_paths::<Vec<_>, _>(&self.graph, *child_node, *ancestor_node, 0, None)
             .collect::<Vec<_>>();
         paths
@@ -467,9 +460,9 @@ impl Workspace {
             "Directed: {:?}\n",
             Dot::with_config(&self.graph, &[Config::NodeIndexLabel])
         );
-        //debug!(
-        //    "Undirected: {:?}\n",
-        //    Dot::with_config(&self.undirected_graph, &[])
-        //);
+        debug!(
+           "Undirected: {:?}\n",
+           Dot::with_config(&self.undirected_graph, &[])
+        );
     }
 }

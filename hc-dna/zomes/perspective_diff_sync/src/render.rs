@@ -1,9 +1,11 @@
 use hdk::prelude::*;
+use perspective_diff_sync_integrity::PerspectiveDiff;
+
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::revisions::current_revision;
 use crate::Perspective;
-use perspective_diff_sync_integrity::PerspectiveDiff;
 use crate::workspace::Workspace;
+use crate::retriever::HolochainRetreiver;
 
 pub fn render() -> SocialContextResult<Perspective> {
     let current = current_revision()?
@@ -12,7 +14,7 @@ pub fn render() -> SocialContextResult<Perspective> {
     debug!("render() current: {:?}", current);
 
     let mut workspace = Workspace::new();
-    workspace.collect_only_from_latest(current)?;
+    workspace.collect_only_from_latest::<HolochainRetreiver>(current)?;
     workspace.topo_sort_graph()?;
     let sorted_diffs = &workspace.sorted_diffs.expect("must have sorted diffs after calling topo_sort_graph()");
 

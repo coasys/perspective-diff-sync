@@ -8,6 +8,7 @@ use crate::revisions::{
 };
 use crate::utils::{dedup, get_now};
 use crate::workspace::Workspace;
+use crate::retriever::HolochainRetreiver;
 
 pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let latest = latest_revision()?;
@@ -35,7 +36,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let mut workspace = Workspace::new();
 
     if current.is_none() {
-        workspace.collect_only_from_latest(latest.clone())?;
+        workspace.collect_only_from_latest::<HolochainRetreiver>(latest.clone())?;
         let diff = workspace.squashed_diff()?;
         update_current_revision(latest, get_now()?)?;
         return Ok(diff);
@@ -43,7 +44,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
     let current = current.expect("current missing handled above");
 
-    match workspace.collect_until_common_ancestor(latest.clone(), current.clone()) {
+    match workspace.collect_until_common_ancestor::<HolochainRetreiver>(latest.clone(), current.clone()) {
         Err(SocialContextError::NoCommonAncestorFound) => {
             // Just merge
             let diff_entry = create_entry(
@@ -70,7 +71,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
             // Return all of the foreign branch as changes
             let mut ws2 = Workspace::new();
-            ws2.collect_only_from_latest(latest)?;
+            ws2.collect_only_from_latest::<HolochainRetreiver>(latest)?;
             Ok(ws2.squashed_diff()?)
         },
         // pass through other errors
@@ -84,8 +85,8 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         
         
             //Check if latest diff is a child of current diff
-            let ancestor_status = workspace.get_paths(&latest, &current);
-            //debug!("Ancestor status: {:#?}", ancestor_status);
+            let ancestor_status = workspace.get_paths(&latest, &workspace.common_ancestor.clone().unwrap());
+            debug!("Ancestor status: {:#?}", ancestor_status);
         
             if ancestor_status.len() > 0 {
                 //Latest diff contains in its chain our current diff, fast forward and get all changes between now and then
@@ -100,7 +101,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 //Since we used workspace.collect_until_common_ancestor(..) above and sorted afterwards,
                 //the first entry in sorted_diffs must be our common ancestor.
                 //Common ancestor is then used as the starting point of gathering diffs on a fork
-                let common_ancestor_hash = &workspace.sorted_diffs.as_ref().expect("sorted before")[0].0;
+                let common_ancestor_hash = &workspace.common_ancestor.clone().unwrap();
                 //search
                 //    .find_common_ancestor(latest_index, current_index)
                 //    .expect("Could not find common ancestor");
