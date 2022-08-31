@@ -33,66 +33,54 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
         }
     }
     
-    loop {
-        // Starting from the nodes without parents...
-        while let Some(n) = orphaned_nodes.pop() {
-            //.. we put them into the result list.
-            result.push(n.clone());
+    // Starting from the nodes without parents...
+    while let Some(n) = orphaned_nodes.pop() {
+        //.. we put them into the result list.
+        result.push(n.clone());
 
-            println!("Added orphan {:?}", n);
+        println!("Added orphan {:?}", n);
 
-            // and then we look for any nodes that have it as parent
-            // (using the edges set)
-            let edges_with_n_as_parent = edges.iter().filter(|&e| e.1 == n.0).cloned().collect::<Vec<(Hash, Hash)>>();
+        // and then we look for any nodes that have it as parent
+        // (using the edges set)
+        let edges_with_n_as_parent = edges.iter().filter(|&e| e.1 == n.0).cloned().collect::<Vec<(Hash, Hash)>>();
 
-            println!("Edges with orphan as parent {:?}", edges_with_n_as_parent);
+        println!("Edges with orphan as parent {:?}", edges_with_n_as_parent);
 
-            // So for every parent relationship with n as parent...
-            for edge in &edges_with_n_as_parent {
-                println!("Removing edge {:?}", edge);
-                // we remove that edge
-                edges.remove(edge);
+        // So for every parent relationship with n as parent...
+        for edge in &edges_with_n_as_parent {
+            println!("Removing edge {:?}", edge);
+            // we remove that edge
+            edges.remove(edge);
 
-                // and then check if that child of n has any other parents...
-                let child = edge.0.clone();
+            // and then check if that child of n has any other parents...
+            let child = edge.0.clone();
 
-                println!("Found child {:?}", child);
-                let edges_with_child_as_child = edges.iter().filter(|&e| e.0 == child).cloned().collect::<Vec<(Hash, Hash)>>();
+            println!("Found child {:?}", child);
+            let edges_with_child_as_child = edges.iter().filter(|&e| e.0 == child).cloned().collect::<Vec<(Hash, Hash)>>();
 
-                println!("Edges with child as child {:?}", edges_with_child_as_child);
+            println!("Edges with child as child {:?}", edges_with_child_as_child);
 
-                // if the child does not have any other parents (left unprocessed)
-                if edges_with_child_as_child.len() == 0 {
-                    // we're good to add the child to the results as well.
-                    let child_item = arr.iter().find(|&e| e.0 == child).ok_or(SocialContextError::InternalError("Topological sort couldn't find child in input vector, which was mentioned in an edge. This can only be an error in the topological sorting code.."))?;
-                    println!("Adding newly orphaned child {:?}", child_item);
-                    orphaned_nodes.push((child.clone(), child_item.1.clone()));
-                }
+            // if the child does not have any other parents (left unprocessed)
+            if edges_with_child_as_child.len() == 0 {
+                // we're good to add the child to the results as well.
+                let child_item = arr.iter().find(|&e| e.0 == child).ok_or(SocialContextError::InternalError("Topological sort couldn't find child in input vector, which was mentioned in an edge. This can only be an error in the topological sorting code.."))?;
+                println!("Adding newly orphaned child {:?}", child_item);
+                orphaned_nodes.push((child.clone(), child_item.1.clone()));
             }
         }
+    }
 
-        if edges.len() > 0 {
-            debug!("Unresolved parent links after topologically sorting! Will redirect to null node and continue sorting...");
-            //debug!("Unresolved parent links after topologically sorting: {:?}", edges);
-            //debug!("Input list: {:?}", arr);
+    if edges.len() > 0 {
+        debug!("Unresolved parent links after topologically sorting: {:?}", edges);
+        debug!("Input list: {:?}", arr);
 
-            debug!("Number of unresolved parent links {:?}", edges.len());
-            debug!("Number of items to sort: {:?}", arr.len());
-            //Err(SocialContextError::InternalError("Cycle or missing nodes detected. Unresolved parent links after topologically sorting."))
-            
-            let null_node = ActionHash::from_raw_36(vec![0xdb; 36]);
-            orphaned_nodes.push((null_node.clone(), PerspectiveDiffEntryReference {
-                diff: null_node.clone(),
-                parents: None,
-            }));
-            edges = edges.into_iter().map(|e| (e.0, null_node.clone())).collect();
-        } else {
-            break;
-        }
-    };
-
-    Ok(result)
-    
+        debug!("Number of unresolved parent links {:?}", edges.len());
+        debug!("Number of items to sort: {:?}", arr.len());
+        //Err(SocialContextError::InternalError("Cycle or missing nodes detected. Unresolved parent links after topologically sorting."))
+        Ok(result)
+    } else {
+        Ok(result)
+    }    
 }
 
 #[cfg(test)]
