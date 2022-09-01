@@ -38,9 +38,8 @@ pub fn test_merge_fast_forward() {
 
     let mut workspace = Workspace::new();
     let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(ActionHash::from_raw_36(vec![5; 36]), ActionHash::from_raw_36(vec![4; 36]));
-    println!("Got result: {:#?}", res);
     assert!(res.is_ok());
-    
+    assert_eq!(res.unwrap(), ActionHash::from_raw_36(vec![0; 36]));
 }
 
 #[test]
@@ -67,6 +66,6 @@ pub fn test_merge_fast_forward_none_source() {
 
     let mut workspace = Workspace::new();
     let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(ActionHash::from_raw_36(vec![2; 36]), ActionHash::from_raw_36(vec![1; 36]));
-    println!("Got result: {:#?}", res);
     assert!(res.is_ok());
+    assert_eq!(res.unwrap(), ActionHash::from_raw_36(vec![0xdb; 36]));
 }
