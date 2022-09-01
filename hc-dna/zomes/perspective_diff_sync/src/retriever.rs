@@ -26,6 +26,7 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
     }
 }
 
+#[derive(Debug)]
 pub struct MockPerspectiveGraph {
     pub graph: Vec<PerspectiveDiffEntryReference>,
     pub graph_map: BTreeMap<Hash, PerspectiveDiffEntryReference>,
@@ -38,8 +39,8 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
 }
 
 pub struct GraphInput {
-    nodes: u8,
-    associations: Vec<Associations>
+    pub nodes: u8,
+    pub associations: Vec<Associations>
 }
 
 pub struct Associations {
@@ -76,12 +77,13 @@ impl MockPerspectiveGraph {
             graph.graph.push(mocked_diff.clone());
             graph.graph_map.insert(mocked_hash, mocked_diff);
         }
+
         graph
     }
 }
 
 lazy_static!{
-    static ref GLOBAL_MOCKED_GRAPH: Mutex<MockPerspectiveGraph> = Mutex::new(MockPerspectiveGraph::new(GraphInput {
+    pub static ref GLOBAL_MOCKED_GRAPH: Mutex<MockPerspectiveGraph> = Mutex::new(MockPerspectiveGraph::new(GraphInput {
         nodes: 1,
         associations: vec![]
     }));
