@@ -43,6 +43,34 @@ pub fn test_merge_fast_forward() {
 }
 
 #[test]
+pub fn test_fork_with_none_source() {
+    use hdk::prelude::*;
+
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, GraphInput};
+    use crate::workspace::Workspace;
+
+
+    fn update() {
+        let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+        *graph = MockPerspectiveGraph::new(GraphInput {
+            nodes: 2,
+            associations: vec![]
+        });
+    }
+    update();
+
+    let mut workspace = Workspace::new();
+    let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(ActionHash::from_raw_36(vec![0; 36]), ActionHash::from_raw_36(vec![1; 36]));
+    assert!(res.is_ok());
+    //TODO; this is a problem since our pull code is not expecting to find a common ancestor, since both tips are forks
+    //but in the case below where we have a merge entry we need to register the None node as a common ancestor so we can traverse the "their" branch back until the root
+    //and not break the traversal with common ancestor as the "ours" node as was happening before
+    //
+    //So what do we actually need to return here?
+    assert_eq!(res.unwrap(), ActionHash::from_raw_36(vec![0xdb; 36]));
+}
+
+#[test]
 pub fn test_merge_fast_forward_none_source() {
     use hdk::prelude::*;
 
