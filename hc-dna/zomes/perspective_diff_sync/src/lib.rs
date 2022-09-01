@@ -18,6 +18,7 @@ mod topo_sort;
 mod utils;
 mod workspace;
 mod retriever;
+mod tests;
 
 #[macro_use] extern crate maplit;
 
