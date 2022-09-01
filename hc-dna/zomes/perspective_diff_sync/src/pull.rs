@@ -77,7 +77,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         // pass through other errors
         Err(error) => return Err(error),
         // 
-        Ok(_common_ancestor) => {
+        Ok(common_ancestor) => {
             workspace.topo_sort_graph()?;
             workspace.build_graph()?;
             debug!("completed current search population");
@@ -85,7 +85,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         
         
             //Check if latest diff is a child of current diff
-            let ancestor_status = workspace.get_paths(&latest, &workspace.common_ancestor.clone().unwrap());
+            let ancestor_status = workspace.get_paths(&latest, &common_ancestor);
             debug!("Ancestor status: {:#?}", ancestor_status);
         
             if ancestor_status.len() > 0 {
@@ -101,16 +101,15 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 //Since we used workspace.collect_until_common_ancestor(..) above and sorted afterwards,
                 //the first entry in sorted_diffs must be our common ancestor.
                 //Common ancestor is then used as the starting point of gathering diffs on a fork
-                let common_ancestor_hash = &workspace.common_ancestor.clone().unwrap();
                 //search
                 //    .find_common_ancestor(latest_index, current_index)
                 //    .expect("Could not find common ancestor");
-                let fork_paths = workspace.get_paths(&current, common_ancestor_hash);
-                let latest_paths = workspace.get_paths(&latest, common_ancestor_hash);
+                let fork_paths = workspace.get_paths(&current, &common_ancestor);
+                let latest_paths = workspace.get_paths(&latest, &common_ancestor);
                 let mut fork_direction: Option<Vec<NodeIndex>> = None;
         
                 let current_index = workspace.get_node_index(&current).expect("to get index after build_graph()");
-                let common_ancestor = workspace.get_node_index(common_ancestor_hash).expect("to get index after build_graph()");
+                let common_ancestor = workspace.get_node_index(&common_ancestor).expect("to get index after build_graph()");
         
                 //debug!("Paths of fork: {:#?}", fork_paths);
                 //debug!("Paths of latest: {:#?}", latest_paths);
