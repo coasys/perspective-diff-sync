@@ -493,3 +493,162 @@ impl Workspace {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use dot_structures;
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash};
+    use crate::workspace::Workspace;
+
+    #[test]
+    fn test_collect_until_common_ancestor_forked() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot("digraph {
+                0 [ label = \"0\" ]
+                1 [ label = \"1\" ]
+                2 [ label = \"2\" ]
+                3 [ label = \"3\" ]
+                4 [ label = \"4\" ]
+                5 [ label = \"5\" ]
+                6 [ label = \"6\" ]
+                7 [ label = \"7\" ]
+                8 [ label = \"8\" ]
+                9 [ label = \"9\" ]
+                10 [ label = \"10\" ]
+                11 [ label = \"11\" ]
+                12 [ label = \"12\" ]
+                1 -> 0 [ label = \"()\" ]
+                2 -> 1 [ label = \"()\" ]
+                3 -> 2 [ label = \"()\" ]
+                4 -> 3 [ label = \"()\" ]
+                5 -> 4 [ label = \"()\" ]
+                6 -> 5 [ label = \"()\" ]
+                7 -> 1 [ label = \"()\" ]
+                8 -> 7 [ label = \"()\" ]
+                9 -> 8 [ label = \"()\" ]
+                10 -> 9 [ label = \"()\" ]
+                11 -> 10 [ label = \"()\" ]
+                12 -> 11 [ label = \"()\" ]
+            }").unwrap();
+        }
+        update();
+    
+        let node_1 = node_id_hash(&dot_structures::Id::Plain(String::from("1")));
+        let node_6 = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
+        let node_12 = node_id_hash(&dot_structures::Id::Plain(String::from("12")));
+    
+        let mut workspace = Workspace::new();
+        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_12.clone(), node_6.clone());
+        assert!(res.is_ok());
+        
+        assert_eq!(res.unwrap(), node_1);
+    
+    
+        assert_eq!(workspace.entry_map.len(), 12);
+    
+        let node_2 = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let node_3 = node_id_hash(&dot_structures::Id::Plain(String::from("3")));
+        let node_4 = node_id_hash(&dot_structures::Id::Plain(String::from("4")));
+        let node_5 = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
+        let node_7 = node_id_hash(&dot_structures::Id::Plain(String::from("7")));
+        let node_8 = node_id_hash(&dot_structures::Id::Plain(String::from("8")));
+        let node_9 = node_id_hash(&dot_structures::Id::Plain(String::from("9")));
+        let node_10 = node_id_hash(&dot_structures::Id::Plain(String::from("10")));
+        let node_11 = node_id_hash(&dot_structures::Id::Plain(String::from("11")));
+    
+        assert!(workspace.entry_map.get(&node_1).is_some());
+        assert!(workspace.entry_map.get(&node_2).is_some());
+        assert!(workspace.entry_map.get(&node_3).is_some());
+        assert!(workspace.entry_map.get(&node_4).is_some());
+        assert!(workspace.entry_map.get(&node_5).is_some());
+        assert!(workspace.entry_map.get(&node_6).is_some());
+        assert!(workspace.entry_map.get(&node_7).is_some());
+        assert!(workspace.entry_map.get(&node_8).is_some());
+        assert!(workspace.entry_map.get(&node_9).is_some());
+        assert!(workspace.entry_map.get(&node_10).is_some());
+        assert!(workspace.entry_map.get(&node_11).is_some());
+        assert!(workspace.entry_map.get(&node_12).is_some());
+    }
+
+    #[test]
+    fn test_collect_until_common_ancestor_forward_to_merge_commit() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot("digraph {
+                0 [ label = \"0\" ]
+                1 [ label = \"1\" ]
+                2 [ label = \"2\" ]
+                3 [ label = \"3\" ]
+                4 [ label = \"4\" ]
+                5 [ label = \"5\" ]
+                6 [ label = \"6\" ]
+                7 [ label = \"7\" ]
+                8 [ label = \"8\" ]
+                9 [ label = \"9\" ]
+                10 [ label = \"10\" ]
+                11 [ label = \"11\" ]
+                12 [ label = \"12\" ]
+                13 [ label = \"12\" ]
+                
+                1 -> 0 [ label = \"()\" ]
+                2 -> 1 [ label = \"()\" ]
+                3 -> 2 [ label = \"()\" ]
+                4 -> 3 [ label = \"()\" ]
+                5 -> 4 [ label = \"()\" ]
+                6 -> 5 [ label = \"()\" ]
+
+                7 -> 1 [ label = \"()\" ]
+                8 -> 7 [ label = \"()\" ]
+                9 -> 8 [ label = \"()\" ]
+                10 -> 9 [ label = \"()\" ]
+                11 -> 10 [ label = \"()\" ]
+
+                12 -> 11 [ label = \"()\" ]
+                12 -> 6  [ label = \"()\" ]
+
+                13 -> 12 [ label = \"()\" ]
+                
+            }").unwrap();
+        }
+        update();
+    
+        let node_1 = node_id_hash(&dot_structures::Id::Plain(String::from("1")));
+        let node_6 = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
+        let node_12 = node_id_hash(&dot_structures::Id::Plain(String::from("12")));
+        let node_13 = node_id_hash(&dot_structures::Id::Plain(String::from("13")));
+    
+        let mut workspace = Workspace::new();
+        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_13.clone(), node_6.clone());
+        assert!(res.is_ok());
+        
+        assert_eq!(res.unwrap(), node_1);
+    
+    
+        assert_eq!(workspace.entry_map.len(), 13);
+    
+        let node_2 = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let node_3 = node_id_hash(&dot_structures::Id::Plain(String::from("3")));
+        let node_4 = node_id_hash(&dot_structures::Id::Plain(String::from("4")));
+        let node_5 = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
+        let node_7 = node_id_hash(&dot_structures::Id::Plain(String::from("7")));
+        let node_8 = node_id_hash(&dot_structures::Id::Plain(String::from("8")));
+        let node_9 = node_id_hash(&dot_structures::Id::Plain(String::from("9")));
+        let node_10 = node_id_hash(&dot_structures::Id::Plain(String::from("10")));
+        let node_11 = node_id_hash(&dot_structures::Id::Plain(String::from("11")));
+    
+        assert!(workspace.entry_map.get(&node_1).is_some());
+        assert!(workspace.entry_map.get(&node_2).is_some());
+        assert!(workspace.entry_map.get(&node_3).is_some());
+        assert!(workspace.entry_map.get(&node_4).is_some());
+        assert!(workspace.entry_map.get(&node_5).is_some());
+        assert!(workspace.entry_map.get(&node_6).is_some());
+        assert!(workspace.entry_map.get(&node_7).is_some());
+        assert!(workspace.entry_map.get(&node_8).is_some());
+        assert!(workspace.entry_map.get(&node_9).is_some());
+        assert!(workspace.entry_map.get(&node_10).is_some());
+        assert!(workspace.entry_map.get(&node_11).is_some());
+        assert!(workspace.entry_map.get(&node_12).is_some());
+        assert!(workspace.entry_map.get(&node_13).is_some());
+    }
+}
