@@ -1,7 +1,5 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference};
-use petgraph::graph::NodeIndex;
-
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
