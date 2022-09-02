@@ -49,7 +49,7 @@ pub struct Associations {
     pub node_targets: Vec<u8>,
 }
 
-fn node_id_hash(id: &dot_structures::Id) -> Hash {
+pub fn node_id_hash(id: &dot_structures::Id) -> Hash {
     let mut string = match id {
         dot_structures::Id::Html(s) => s,
         dot_structures::Id::Escaped(s) => s,
