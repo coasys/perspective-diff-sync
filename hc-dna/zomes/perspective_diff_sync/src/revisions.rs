@@ -2,7 +2,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{EntryTypes, HashReference, LinkTypes, LocalHashReference};
 
-use crate::errors::{SocialContextError, SocialContextResult};
+use crate::errors::SocialContextResult;
 use crate::utils::get_now;
 use crate::Hash;
 
@@ -49,52 +49,37 @@ pub fn latest_revision() -> SocialContextResult<Option<Hash>> {
 
 //Latest revision as seen from our local state
 pub fn current_revision() -> SocialContextResult<Option<Hash>> {
-    let mut end_index = 10;
-    let mut revisions = vec![];
-    loop {
-        let start_index = if end_index == 10 { 1 } else { end_index - 9 };
-        let filter = ChainQueryFilter::new().sequence_range(ChainQueryFilterRange::ActionSeqRange(
-            start_index,
-            end_index,
-        ));
-        let refs = query(filter)?;
-        end_index += 10;
+    let chain_head = agent_info()?.chain_head;
+    let mut record = get_details(chain_head.0, GetOptions::latest())?.unwrap();
+    let mut revision = None;
 
-        for entry in refs.clone() {
-            match entry.signed_action.hashed.content {
-                Action::Create(create_data) => match create_data.entry_type {
-                    EntryType::App(app_entry) => {
-                        if app_entry.visibility == EntryVisibility::Private {
-                            revisions.push(create_data.entry_hash);
+    while revision.is_none() {
+        match record {
+            Details::Record(record_details) => {
+                let entry = record_details.record.entry.to_app_option::<LocalHashReference>();
+                
+                match entry {
+                    Ok(deser_entry) => match deser_entry {
+                        Some(local_hash_reference) => revision = Some(local_hash_reference),
+                        None => {
+                            debug!("Not a LocalHashReference, moving on...")
                         }
+                    },
+                    Err(_err) => {
+                        debug!("Not a LocalHashReference, moving on...")
                     }
-                    _ => {}
-                },
-                _ => {}
-            }
-            //debug!("{:#?}", entry.signed_action.hashed.content);
-        }
-
-        if refs.len() != 10 {
-            break;
+                }
+                let prev_action = record_details.record.action().prev_action();
+                match prev_action {
+                    Some(prev_action) => {
+                        record = get_details(prev_action.to_owned(), GetOptions::latest())?.unwrap();
+                    },
+                    None => break
+                }
+            },
+            _ => unreachable!()
         }
     }
 
-    if revisions.len() > 0 {
-        debug!("Got some revisions");
-        Ok(Some(
-            get(revisions.pop().unwrap(), GetOptions::latest())?
-                .ok_or(SocialContextError::InternalError(
-                    "Could not find local revision reference entry",
-                ))?
-                .entry()
-                .to_app_option::<LocalHashReference>()?
-                .ok_or(SocialContextError::InternalError(
-                    "Expected element to contain app entry data",
-                ))?
-                .hash,
-        ))
-    } else {
-        Ok(None)
-    }
+    Ok(revision.map(|val| val.hash))
 }
