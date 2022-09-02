@@ -100,9 +100,8 @@ pub fn test_merge_fast_forward_none_source() {
 
 #[test]
 pub fn test_fork() {
-    use hdk::prelude::*;
     use dot_structures;
-    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, GraphInput, Associations, node_id_hash};
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash};
     use crate::workspace::Workspace;
 
     fn update() {
