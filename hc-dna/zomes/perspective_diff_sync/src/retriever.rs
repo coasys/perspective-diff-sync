@@ -49,6 +49,7 @@ pub struct Associations {
     pub node_targets: Vec<u8>,
 }
 
+#[allow(dead_code)]
 pub fn node_id_hash(id: &dot_structures::Id) -> Hash {
     let mut string = match id {
         dot_structures::Id::Html(s) => s,
@@ -66,12 +67,15 @@ pub fn node_id_hash(id: &dot_structures::Id) -> Hash {
     ActionHash::from_raw_36(string.into_bytes())
 }
 
+#[allow(dead_code)]
 fn unwrap_vertex(v: dot_structures::Vertex) -> Option<dot_structures::NodeId> {
     match v {
         dot_structures::Vertex::N(id) => Some(id),
         _ => None
     }
 }
+
+#[allow(dead_code)]
 fn unwrap_edge(edge: dot_structures::Edge) -> Option<(dot_structures::NodeId, dot_structures::NodeId)> {
     match edge.ty {
         dot_structures::EdgeTy::Pair(a, b) => {
@@ -87,7 +91,6 @@ fn unwrap_edge(edge: dot_structures::Edge) -> Option<(dot_structures::NodeId, do
     }
 }
 
-//TODO; we need a more intuitive way to input graphs rather than this GraphInput struct
 impl MockPerspectiveGraph {
     pub fn new(graph_input: GraphInput) -> MockPerspectiveGraph {
         let mut graph = MockPerspectiveGraph {
@@ -120,6 +123,7 @@ impl MockPerspectiveGraph {
         graph
     }
 
+    #[allow(dead_code)]
     pub fn from_dot(source: &str) -> SocialContextResult<MockPerspectiveGraph> {
         match graphviz_rust::parse(source).map_err(|_| SocialContextError::InternalError("Can't parse as DOT string"))? {
             dot_structures::Graph::Graph{..} => Err(SocialContextError::InternalError("Can't work with undirected DOT graphs")),
