@@ -590,7 +590,7 @@ mod tests {
                 11 [ label = \"11\" ]
                 12 [ label = \"12\" ]
                 13 [ label = \"12\" ]
-                
+
                 1 -> 0 [ label = \"()\" ]
                 2 -> 1 [ label = \"()\" ]
                 3 -> 2 [ label = \"()\" ]
@@ -651,4 +651,53 @@ mod tests {
         assert!(workspace.entry_map.get(&node_12).is_some());
         assert!(workspace.entry_map.get(&node_13).is_some());
     }
+
+    #[test]
+    fn test_collect_until_common_ancestor_multi_fork() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                0 [ label = "0" ]
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+
+                1 -> 0 [ label = "()" ]
+                2 -> 1 [ label = "()" ]
+
+                3 -> 0 [ label = "()" ]
+
+                4 -> 0 [ label = "()" ]
+                5 -> 4 [ label = "()" ]
+            }"#).unwrap();
+        }
+        update();
+    
+        let node_0 = node_id_hash(&dot_structures::Id::Plain(String::from("0")));
+        let node_1 = node_id_hash(&dot_structures::Id::Plain(String::from("1")));
+        let node_2 = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let node_3 = node_id_hash(&dot_structures::Id::Plain(String::from("3")));
+        let node_4 = node_id_hash(&dot_structures::Id::Plain(String::from("4")));
+        let node_5 = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
+        
+    
+        let mut workspace = Workspace::new();
+        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_3.clone(), node_2.clone());
+        assert!(res.is_ok());
+        
+        assert_eq!(res.unwrap(), node_0);
+    
+    
+        assert_eq!(workspace.entry_map.len(), 4);
+    
+        assert!(workspace.entry_map.get(&node_0).is_some());
+        assert!(workspace.entry_map.get(&node_1).is_some());
+        assert!(workspace.entry_map.get(&node_2).is_some());
+        assert!(workspace.entry_map.get(&node_3).is_some());
+        
+    }
 }
+
+
