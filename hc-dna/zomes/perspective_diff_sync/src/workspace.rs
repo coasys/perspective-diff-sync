@@ -293,6 +293,22 @@ impl Workspace {
             .clone()
             .into_iter()
             .collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
+
+        let mut dot = Vec::<String>::new();
+
+        dot.push("digraph {".to_string());
+        for entry in entry_vec.iter() {
+            dot.push(format!("{}", entry.0.clone()));
+            if let Some(parents) = &entry.1.parents {
+                for p in parents.iter() {
+                    dot.push(format!("{} -> {}", entry.0, p));
+                }
+            } 
+        }
+        dot.push("}".to_string());
+
+        debug!("{}", dot.join("\n"));
+
         self.sorted_diffs = Some(topo_sort_diff_references(&entry_vec)?);
         Ok(())
     }
