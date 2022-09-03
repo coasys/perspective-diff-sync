@@ -216,6 +216,11 @@ impl Workspace {
                                     };
                                     diffs.insert(NULL_NODE(), current_diff.clone());
                                 };
+                                let mut null_childs = vec![current_hash.clone()];
+                                if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                                    null_childs.push(other_last.clone());
+                                }
+                                back_links.insert(NULL_NODE(), null_childs);
                             };
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
