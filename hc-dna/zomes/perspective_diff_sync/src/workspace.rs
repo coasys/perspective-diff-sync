@@ -30,6 +30,7 @@ struct BfsSearch {
     pub reached_end: bool
 }
 
+#[allow(non_snake_case)]
 fn NULL_NODE() -> ActionHash { ActionHash::from_raw_36(vec![0xdb; 36]) }
 
 impl BfsSearch {
