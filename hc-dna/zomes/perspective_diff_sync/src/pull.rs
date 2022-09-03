@@ -77,7 +77,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         Err(error) => return Err(error),
         // 
         Ok(common_ancestor) => {
-            workspace.topo_sort_graph()?;
+            //workspace.topo_sort_graph()?;
             workspace.build_graph()?;
             debug!("completed current search population");
             workspace.print_graph_debug();
