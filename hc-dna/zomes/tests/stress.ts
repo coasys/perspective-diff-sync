@@ -90,7 +90,7 @@ export async function stressTest(t) {
             }
         }
         
-        await sleep(5000)
+        await sleep(1000)
         
 
         let alice_latest_revision = await call(aliceHapps, "latest_revision")
