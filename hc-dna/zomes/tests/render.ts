@@ -253,6 +253,9 @@ export async function renderMerges(t) {
     });
     await sleep(500)
 
+    console.log("bob pull");
+    await call(bobHapps, "pull")
+    
     console.log("bob render");
     let bob_render2 = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -278,4 +281,5 @@ export async function renderMerges(t) {
 
 test("render", async (t) => {
     await render(t)
+    await renderMerges(t)
 })
