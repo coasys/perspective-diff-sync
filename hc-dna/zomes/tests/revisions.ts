@@ -98,18 +98,7 @@ export async function testRevisionUpdates(t) {
     });
     console.warn("current_revision3", current_revision3);
     //@ts-ignore
-    t.isEqual(current_revision3.toString(), commit.toString());
-
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit2
-    });
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit2
-    });
+    t.isEqual(current_revision3.toString(), commit2.toString());
 
     let latest_revision3 = await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
