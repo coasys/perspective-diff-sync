@@ -58,4 +58,5 @@ export async function signals(t) {
 
 test("signals", async (t) => {
     await signals(t)
+    t.end()
 })

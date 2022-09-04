@@ -133,4 +133,5 @@ export async function stressTest(t) {
 
 test("stress", async (t) => {
     await stressTest(t);
+    t.end()
 })

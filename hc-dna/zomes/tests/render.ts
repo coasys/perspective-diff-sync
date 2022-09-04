@@ -282,4 +282,5 @@ export async function renderMerges(t) {
 test("render", async (t) => {
     await render(t)
     await renderMerges(t)
+    t.end()
 })

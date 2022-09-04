@@ -123,4 +123,5 @@ export async function testRevisionUpdates(t) {
 
 test("test revision updates", async (t) => {
     await testRevisionUpdates(t);
+    t.end()
 })

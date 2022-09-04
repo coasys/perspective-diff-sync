@@ -449,18 +449,15 @@ export async function complexMerge(t) {
 }
 
 
-test("unsynced fetch", async (t) => {
-    await unSyncFetch(t);
-})
-
-test("merge fetch", async (t) => {
-    await mergeFetch(t);
-})
-
-//test("merge fetch deep", async (t) => {
-//    await mergeFetchDeep(t);
-//})
-
-test("complex merge", async (t) => {
-    await complexMerge(t);
+test("pull", async (t) => {
+    t.plan(20)
+    try {
+        await unSyncFetch(t);
+        await mergeFetch(t);
+        await complexMerge(t);
+    } catch(e) {
+        //@ts-ignore
+        t.fail(e)
+        t.end()
+    }
 })
