@@ -85,6 +85,12 @@ impl Workspace {
 
         while !unprocessed_branches.is_empty() {
             let current_hash = unprocessed_branches[0].clone();
+
+            if self.entry_map.contains_key(&current_hash) {
+                debug!("collect_only_from_latest: CIRCLE DETECTED! Closing current branch...");
+                unprocessed_branches.pop_front();
+                continue;
+            }
             
             if let Some(snapshot) = Self::get_snapshot(current_hash.clone())? {
                 self.entry_map.insert(current_hash.clone(), PerspectiveDiffEntryReference {
