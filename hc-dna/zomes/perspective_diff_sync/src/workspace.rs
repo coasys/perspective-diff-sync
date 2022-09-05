@@ -13,7 +13,6 @@ use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::topo_sort::topo_sort_diff_references;
 use crate::retriever::PerspectiveDiffRetreiver;
-use crate::snapshots::*;
 
 pub struct Workspace {
     pub graph: DiGraph<Hash, ()>,

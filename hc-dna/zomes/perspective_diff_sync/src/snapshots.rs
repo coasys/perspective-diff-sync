@@ -164,7 +164,6 @@ pub fn generate_snapshot(
 ) -> SocialContextResult<Snapshot> {
     let mut search_position = latest;
     let mut seen: HashSet<Hash> = HashSet::new();
-    let diffs: Vec<Hash> = vec![];
     let mut unseen_parents = vec![];
 
     let mut chunked_diffs = ChunkedDiffs::new(1000);
