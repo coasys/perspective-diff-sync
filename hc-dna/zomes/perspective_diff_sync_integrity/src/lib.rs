@@ -31,15 +31,28 @@ pub struct PerspectiveDiff {
     pub removals: Vec<LinkExpression>,
 }
 
+impl PerspectiveDiff {
+    pub fn new() -> Self {
+        Self {
+            additions: Vec::new(),
+            removals: Vec::new(),
+        }
+    }
+    pub fn total_diff_number(&self) -> usize {
+        self.additions.len() + self.removals.len()
+    }
+}
+
 app_entry!(PerspectiveDiff);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct Snapshot {
-    pub diff: HoloHash<holo_hash::hash_type::Action>,
-    pub diff_graph: Vec<(
-        HoloHash<holo_hash::hash_type::Action>,
-        PerspectiveDiffEntryReference,
-    )>,
+    pub diff_chunks: Vec<HoloHash<holo_hash::hash_type::Action>>,
+    pub included_diffs: Vec<HoloHash<holo_hash::hash_type::Action>>,
+    //pub diff_graph: Vec<(
+    //    HoloHash<holo_hash::hash_type::Action>,
+    //    PerspectiveDiffEntryReference,
+    //)>,
 }
 
 app_entry!(Snapshot);

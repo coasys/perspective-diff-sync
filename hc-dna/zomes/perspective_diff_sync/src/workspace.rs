@@ -13,6 +13,7 @@ use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::topo_sort::topo_sort_diff_references;
 use crate::retriever::PerspectiveDiffRetreiver;
+use crate::snapshots::*;
 
 pub struct Workspace {
     pub graph: DiGraph<Hash, ()>,
@@ -93,10 +94,26 @@ impl Workspace {
             }
             
             if let Some(snapshot) = Self::get_snapshot(current_hash.clone())? {
+                let mut last_diff = None;
+                for i in 0..snapshot.diff_chunks.len() {
+                    let diff_chunk = &snapshot.diff_chunks[i];
+                    let key = if i == snapshot.diff_chunks.len()-1 {
+                        current_hash.clone()
+                    } else {
+                        diff_chunk.clone()
+                    };
+                    self.entry_map.insert(key.clone(), PerspectiveDiffEntryReference {
+                        diff: diff_chunk.clone(),
+                        parents: last_diff.clone(),
+                    });
+                    last_diff = Some(vec![diff_chunk.clone()]); 
+                }
+
                 self.entry_map.insert(current_hash.clone(), PerspectiveDiffEntryReference {
-                    diff: snapshot.diff,
-                    parents: None,
+                    diff: current_hash,
+                    parents: last_diff.clone(),
                 });
+                
                 // Snapshot terminates like an orphan.
                 // So we can close this branch and potentially continue
                 // with other unprocessed branches, if they exist.
