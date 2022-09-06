@@ -1,5 +1,5 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
+import { call, sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
 import test from "tape-promise/tape.js";
 
 //@ts-ignore
@@ -273,45 +273,21 @@ export async function complexMerge(t) {
     //Create new commit whilst bob is not connected
     let link_data = generate_link_expression("alice1");
     console.log("Alice posting link data", link_data);
-    let commit = await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [link_data], removals: []}
-    });
+    let commit = await call(aliceHapps, "commit", {additions: [link_data], removals: []});
     //@ts-ignore
     console.warn("\ncommit", commit.toString("base64"));
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit
-    });
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit
-    });
+    await call(aliceHapps, "update_latest_revision", commit);
+    await call(aliceHapps, "update_current_revision", commit);
     
     //1 -> bob_link (3)
     //Bob to commit his data, and update the latest revision, causing a fork
     let bob_link_data = generate_link_expression("bob1");
     console.log("Bob posting link data", bob_link_data);
-    let commit_bob = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [bob_link_data], removals: []}
-    });
+    let commit_bob = await call(bobHapps, "commit", {additions: [bob_link_data], removals: []});
     //@ts-ignore
     console.warn("\ncommit_bob", commit_bob.toString("base64"));
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit_bob
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit_bob
-    });
+    await call(bobHapps, "update_latest_revision", commit_bob);
+    await call(bobHapps, "update_current_revision", commit_bob);
     
     //Update bob to use latest revision as created by bob; bob and eric now in their own forked state
     //await ericHapps.cells[0].callZome({
@@ -319,33 +295,19 @@ export async function complexMerge(t) {
     //     fn_name: "update_latest_revision", 
     //     payload: commit_bob
     // });
-    await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit_bob
-    });
+    let eric_pull_1 = await call(ericHapps, "pull");
+    //@ts-ignore
+    t.isEqual(eric_pull_1.additions.length, 3) 
     
     //1 -> bob_link(3) -> eric_link(4)
     //Eric to commit his data, and update the latest revision, causing another fork on a fork
     let eric_link_data = generate_link_expression("eric1");
     console.log("eric posting link data, child of bob commit", eric_link_data);
-    let commit_eric = await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [eric_link_data], removals: []}
-    });
+    let commit_eric = await call(ericHapps, "commit", {additions: [eric_link_data], removals: []});
     //@ts-ignore
     console.warn("\ncommit_eric", commit_eric.toString("base64"));
-    await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit_eric
-    });
-    await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit_eric
-    });
+    await call(ericHapps, "update_latest_revision", commit_eric);
+    await call(ericHapps, "update_current_revision", commit_eric);
     
     // let eric_pull = await ericHapps.cells[0].callZome("perspective_diff_sync", "pull");
     // console.log("eric pull result", eric_pull);
@@ -355,23 +317,11 @@ export async function complexMerge(t) {
     //1 -> alice_link(2) 
     let bob_link_data2 = generate_link_expression("bob2");
     console.log("Bob posting link data, child of bob last commit", bob_link_data2);
-    let commit_bob2 = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [bob_link_data2], removals: []}
-    });
+    let commit_bob2 = await call(bobHapps, "commit", {additions: [bob_link_data2], removals: []});
     //@ts-ignore
     console.warn("\ncommit_bob2", commit_bob2.toString("base64"));
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit_bob2
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit_bob2
-    });
+    await call(bobHapps, "update_latest_revision", commit_bob2);
+    await call(bobHapps, "update_current_revision", commit_bob2);
     
     //Connect nodes togther
     await addAllAgentsToAllConductors([aliceConductor, bobConductor, ericConductor]);
@@ -384,46 +334,28 @@ export async function complexMerge(t) {
     //Eric to commit his data, and update the latest revision, causing another fork on a fork
     let eric_link_data2 = generate_link_expression("eric2");
     console.log("eric posting link data, will merge bob second and eric first entry", eric_link_data2);
-    let commit_eric2 = await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [eric_link_data2], removals: []}
-    });
+    let commit_eric2 = await call(ericHapps, "commit", {additions: [eric_link_data2], removals: []});
     //@ts-ignore
     console.warn("\ncommit_eric2", commit_eric2.toString("base64"));
-    await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit_eric2
-    });
-    await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit_eric2
-    });
+    await call(ericHapps, "update_latest_revision", commit_eric2);
+    await call(ericHapps, "update_current_revision", commit_eric2);
 
     await sleep(1000)
 
     //1 -> bob_link(3) -> eric_link(4) -> merge(6) -> eric_link(7)
     //                 -> bob_link(5) -> merge(6)
     //1 -> alice_link(2) 
-    let bob_pull = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
-    });
+    let bob_pull = await call(bobHapps, "pull");
     console.log("Bob pull result", bob_pull);
     //Should get two entries from Eric
     //@ts-ignore
-    t.isEqual(bob_pull.additions.length, 2);
+    t.isEqual(bob_pull.additions.length, 3);
     await sleep(500)
     
     //1 -> bob_link(3) -> eric_link(4) -> merge(6) -> eric_link(7) -> merge(8)
     //                 -> bob_link(5) -> merge(6)
     //1 -> alice_link(2)                                           -> merge(8)
-    let alice_merge = await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
-    });
+    let alice_merge = await call(aliceHapps, "pull");
     console.log("Alice merge result", alice_merge);
     //should get whole side of bob/eric graph
     //@ts-ignore
@@ -434,13 +366,10 @@ export async function complexMerge(t) {
     //                 -> bob_link(5) -> merge(6)
     //1 -> alice_link(2)                                           -> merge(8)
     //Should get one entry from alice
-    let eric_pull = await ericHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
-    });
-    console.log("Eric pull result", eric_pull);
+    let eric_pull_2 = await call(ericHapps, "pull");
+    console.log("Eric pull result", eric_pull_2);
     //@ts-ignore
-    t.isEqual(eric_pull.additions.length, 1);
+    t.isEqual(eric_pull_2.additions.length, 1);
 
     await aliceConductor.shutDown();
     await bobConductor.shutDown();
@@ -450,7 +379,7 @@ export async function complexMerge(t) {
 
 
 test("pull", async (t) => {
-    t.plan(20)
+    //t.plan(20)
     try {
         await unSyncFetch(t);
         await mergeFetch(t);
