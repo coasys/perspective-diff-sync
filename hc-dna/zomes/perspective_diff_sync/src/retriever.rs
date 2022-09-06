@@ -17,7 +17,7 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
     fn get(hash: Hash) -> SocialContextResult<PerspectiveDiffEntryReference> {
         get(hash, GetOptions::latest())?
             .ok_or(SocialContextError::InternalError(
-                "Could not find entry while populating search",
+                "HolochainRetreiver: Could not find entry while populating search",
             ))?
             .entry()
             .to_app_option::<PerspectiveDiffEntryReference>()?

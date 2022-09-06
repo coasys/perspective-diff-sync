@@ -17,7 +17,7 @@ pub fn get_entries_since_snapshot(
     loop {
         let diff = get(search_position.clone(), GetOptions::latest())?
             .ok_or(SocialContextError::InternalError(
-                "Could not find entry while populating search",
+                "get_entries_since_snapshot(): Could not find entry while populating search",
             ))?
             .entry()
             .to_app_option::<PerspectiveDiffEntryReference>()?
@@ -171,7 +171,7 @@ pub fn generate_snapshot(
     loop {
         let diff = get(search_position.clone(), GetOptions::latest())?
             .ok_or(SocialContextError::InternalError(
-                "Could not find entry while populating search",
+                "generate_snapshot(): Could not find entry while populating search",
             ))?
             .entry()
             .to_app_option::<PerspectiveDiffEntryReference>()?

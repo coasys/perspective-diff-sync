@@ -442,7 +442,7 @@ impl Workspace {
         if snapshot_links.len() > 0 {
             let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
-                    "Could not find entry while populating search",
+                    "Workspace::get_snapshot: Could not find entry while populating search",
                 ))?
                 .entry()
                 .to_app_option::<Snapshot>()?
