@@ -156,11 +156,11 @@ impl Workspace {
 
         let mut sorted: Vec<(Hash, PerspectiveDiffEntryReference)> = Vec::new();
         let mut next: VecDeque<Hash> = VecDeque::new();
-        let mut node_with_missing_parent = None;
+        let mut unexplored_side_branch = None;
 
         next.push_back(common_ancestor.clone());
 
-        while !next.is_empty() {
+        while !next.is_empty() || unexplored_side_branch.is_none() {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
             println!("current: {:?}", current);
             match self.back_links.get(&current) {
@@ -170,8 +170,9 @@ impl Workspace {
                         let diff = self.diffs.get(&child).expect("Should child must exist");
                         if diff.parents.is_some() {
                             for parent in diff.parents.as_ref().unwrap() {
-                                if self.diffs.get(&parent).is_none() {
-                                    node_with_missing_parent = Some(child);
+                                if parent != &current {
+                                    //This assumes we only have two parents at max
+                                    unexplored_side_branch = Some(parent)
                                 }
                             }
                         }
@@ -187,7 +188,7 @@ impl Workspace {
             };
         }
 
-        match node_with_missing_parent {
+        match unexplored_side_branch {
             Some(hash) => Ok(Some(hash.to_owned())),
             None => {
                 self.sorted_diffs = Some(sorted);
@@ -201,13 +202,15 @@ impl Workspace {
         self.common_ancestors.push(common_ancestor);
         
         let mut has_missing_parent = self.sort_graph()?;
+        println!("Got missing parent: {:#?}", has_missing_parent);
         
         while has_missing_parent.is_some() {
             let missing_parent = has_missing_parent.unwrap();
             let common_ancestor = self.collect_until_common_ancestor::<Retriever>(
                 missing_parent, 
                 self.common_ancestors.last().expect("There should have been a common ancestor above").to_owned()
-            )?;    
+            )?;
+            println!("Got common ancestor: {:?}", common_ancestor);
             self.common_ancestors.push(common_ancestor);
             has_missing_parent = self.sort_graph()?;
         }
@@ -215,6 +218,7 @@ impl Workspace {
         let diff = self.sorted_diffs.as_mut().unwrap();
         diff.get_mut(0).unwrap().1.parents = None;
         self.sorted_diffs = Some(diff.to_owned());
+        println!("Got sorted diffs: {:#?}", self.sorted_diffs);
 
         self.build_graph()?;
         self.print_graph_debug();
@@ -837,8 +841,9 @@ mod tests {
         println!("Got result: {:#?}", res);
         assert!(res.is_ok());
         
-        assert!(workspace.common_ancestors.len() == 1);
+        assert!(workspace.common_ancestors.len() == 2);
         assert_eq!(workspace.common_ancestors.first().unwrap(), &node_0);
+        assert_eq!(workspace.common_ancestors.last().unwrap(), &NULL_NODE());
         assert_eq!(workspace.entry_map.len(), 9);
     
         assert!(workspace.entry_map.get(&node_0).is_some());
