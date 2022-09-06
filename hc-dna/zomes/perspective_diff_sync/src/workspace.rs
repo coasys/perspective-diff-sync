@@ -927,6 +927,45 @@ mod tests {
         assert!(workspace.entry_map.get(&node_9).is_some());
         assert!(workspace.entry_map.get(&node_10).is_some());
     }
+
+    #[test]
+    fn test_collect_until_common_ancestor_ff_to_merge() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                0 [ label = "0" ]
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+
+                1 -> 0 
+                2 -> 0 
+                3 -> 1 
+                3 -> 2
+                
+            }"#).unwrap();
+        }
+        update();
+    
+        let node_0 = node_id_hash(&dot_structures::Id::Plain(String::from("0")));
+        let node_1 = node_id_hash(&dot_structures::Id::Plain(String::from("1")));
+        let node_2 = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let node_3 = node_id_hash(&dot_structures::Id::Plain(String::from("3")));
+
+        let mut workspace = Workspace::new();
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_1.clone(), node_3.clone());
+        println!("Got result: {:#?}", res);
+        assert!(res.is_ok());
+        
+        assert_eq!(workspace.common_ancestors.len(), 1);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_0);
+        assert_eq!(workspace.entry_map.len(), 4);
+    
+        assert!(workspace.entry_map.get(&node_0).is_some());
+        assert!(workspace.entry_map.get(&node_1).is_some());
+        assert!(workspace.entry_map.get(&node_2).is_some());
+        assert!(workspace.entry_map.get(&node_3).is_some());
+    }
 }
 
 
