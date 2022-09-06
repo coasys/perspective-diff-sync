@@ -52,19 +52,14 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     debug!("Got the seen diffs: {:#?}", seen_diffs);
     //Get all the diffs in the graph which we havent seen
     let unseen_diffs = if seen_diffs.len() > 0 {
-        let diffs = workspace.sorted_diffs.clone().expect("should be unseen diffs after build_diffs() call").into_iter().filter_map(|val| {
+        let diffs = workspace.sorted_diffs.clone().expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
             let node_index = workspace.get_node_index(&val.0).expect("Should find the node index for a given diff ref");
-            let mut seen = false;
             for seen_diff in &seen_diffs {
                 if seen_diff.contains(node_index) {
-                    seen = true;
-                    break;
+                    return false;
                 };
             };
-            match seen {
-                true => None,
-                false => Some(val)
-            }
+            true
         }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
         diffs
     } else {
