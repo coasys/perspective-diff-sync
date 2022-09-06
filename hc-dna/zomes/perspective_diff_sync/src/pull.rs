@@ -9,6 +9,26 @@ use crate::workspace::{Workspace, NULL_NODE};
 use crate::retriever::HolochainRetreiver;
 use crate::Hash;
 
+fn merge(latest: Hash, current: Hash) -> SocialContextResult<()> {
+    //Create the merge entry
+    let merge_entry = create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
+        additions: vec![],
+        removals: vec![]
+    }))?;
+    //Create the merge entry
+    let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(
+        PerspectiveDiffEntryReference {
+            parents: Some(vec![latest, current]),
+            diff: merge_entry.clone(),
+        },
+    ))?;
+    debug!("Commited merge entry: {:#?}", hash);
+    let now = get_now()?;
+    update_current_revision(hash.clone(), now)?;
+    update_latest_revision(hash, now)?;
+    Ok(())
+}
+
 pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let latest = latest_revision()?;
     let current = current_revision()?;
@@ -43,7 +63,18 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
     let current = current.expect("current missing handled above");
 
-    workspace.build_diffs::<HolochainRetreiver>(latest.clone(), current.clone())?;
+    match workspace.build_diffs::<HolochainRetreiver>(latest.clone(), current.clone()) {
+        Err(SocialContextError::NoCommonAncestorFound) => {
+            workspace.collect_only_from_latest::<HolochainRetreiver>(latest.clone())?;
+            let diff = workspace.squashed_diff()?;
+            merge(latest, current)?;
+            return Ok(diff)
+        },
+
+        _ => {
+            // continue with the rest below...
+        }
+    }
 
     //See what fast forward paths exist between latest and current
     let fast_foward_paths = workspace.get_paths(&latest, &current);
@@ -123,22 +154,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
                 .append(&mut diff_entry.removals.clone());
         }
 
-        //Create the merge entry
-        let merge_entry = create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
-            additions: vec![],
-            removals: vec![]
-        }))?;
-        //Create the merge entry
-        let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(
-            PerspectiveDiffEntryReference {
-                parents: Some(vec![latest, current]),
-                diff: merge_entry.clone(),
-            },
-        ))?;
-        debug!("Commited merge entry: {:#?}", hash);
-        let now = get_now()?;
-        update_current_revision(hash.clone(), now)?;
-        update_latest_revision(hash, now)?;
+        merge(latest, current)?;
 
         Ok(out)
     }

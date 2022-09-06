@@ -204,7 +204,7 @@ impl Workspace {
         let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
         self.common_ancestors.push(common_ancestor);
 
-        println!("Got diffs: {:?}", self.diffs);
+        println!("Got diffs: {:?}", self.diffs.iter().map(|x| x.0).collect::<Vec<_>>());
         println!("Got back_links: {:?}", self.back_links);
         
         self.sort_graph()?;
@@ -606,6 +606,7 @@ mod tests {
     use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash};
     use crate::workspace::Workspace;
     use super::NULL_NODE;
+    use crate::errors::SocialContextError;
 
     #[test]
     fn test_collect_until_common_ancestor_forked() {
@@ -1026,6 +1027,9 @@ mod tests {
         assert!(workspace.entry_map.get(&node_1).is_some());
         assert!(workspace.entry_map.get(&node_2).is_some());
         assert!(workspace.entry_map.get(&node_3).is_some());
+        assert!(workspace.entry_map.get(&node_4).is_some());
+        assert!(workspace.entry_map.get(&node_5).is_some());
+        assert!(workspace.entry_map.get(&node_6).is_some());
     }
 
     #[test]
@@ -1048,27 +1052,12 @@ mod tests {
         update();
     
         let node_1 = node_id_hash(&dot_structures::Id::Plain(String::from("1")));
-        let node_2 = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
-        let node_3 = node_id_hash(&dot_structures::Id::Plain(String::from("3")));
-        let node_4 = node_id_hash(&dot_structures::Id::Plain(String::from("4")));
-        let node_5 = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
         let node_6 = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
 
         let mut workspace = Workspace::new();
         let res = workspace.build_diffs::<MockPerspectiveGraph>(node_1.clone(), node_6.clone());
         println!("Got result: {:#?}", res);
-        assert!(res.is_ok());
-        
-        println!("common ancestors: {:?}", workspace.common_ancestors);
-        assert_eq!(workspace.common_ancestors.len(), 1);
-        assert_eq!(workspace.common_ancestors.last().unwrap(), &NULL_NODE());
-        assert_eq!(workspace.entry_map.len(), 6);
-    
-        assert!(workspace.entry_map.get(&node_1).is_some());
-        assert!(workspace.entry_map.get(&node_2).is_some());
-        assert!(workspace.entry_map.get(&node_3).is_some());
-        assert!(workspace.entry_map.get(&node_4).is_some());
-        assert!(workspace.entry_map.get(&node_5).is_some());
-        assert!(workspace.entry_map.get(&node_6).is_some());
+        assert!(res.is_err());
+        assert_eq!(format!("{:?}", res.err().unwrap()), format!("{:?}", SocialContextError::NoCommonAncestorFound));
     }
 }
