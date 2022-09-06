@@ -67,7 +67,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         diffs
     } else {
         workspace.sorted_diffs.expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
-            val.0 != NULL_NODE()
+            val.0 != NULL_NODE() && val.0 != current
         }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>()
     };
     debug!("Got the unseen diffs: {:#?}", unseen_diffs);
