@@ -23,7 +23,10 @@ export default async function create(context: LanguageContext): Promise<Language
 
   await linksAdapter.addActiveAgentLink(Holochain);
   setInterval(
-    async () => await linksAdapter.addActiveAgentLink.bind(Holochain),
+    async () => {
+      let addActiveAgent = linksAdapter.addActiveAgentLink.bind(Holochain)
+      await addActiveAgent();
+    },
     activeAgentDurationSecs * 1000
   );
 
