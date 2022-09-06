@@ -212,6 +212,10 @@ impl Workspace {
             has_missing_parent = self.sort_graph()?;
         }
 
+        let diff = self.sorted_diffs.as_mut().unwrap();
+        diff.get_mut(0).unwrap().1.parents = None;
+        self.sorted_diffs = Some(diff.to_owned());
+
         self.build_graph()?;
         self.print_graph_debug();
         Ok(())
@@ -222,9 +226,6 @@ impl Workspace {
     {
         println!("WORKSPACE collect_until_common_ancestor 1");
         let mut common_ancestor: Option<Hash> = None;
-
-        let mut diffs = BTreeMap::<Hash, PerspectiveDiffEntryReference>::new();
-        let mut back_links = BTreeMap::<Hash, Vec<Hash>>::new();
 
         let mut searches = btreemap! {
             SearchSide::Theirs => BfsSearch::new(theirs),
@@ -268,9 +269,9 @@ impl Workspace {
                         if !other.found_ancestors.borrow().contains(&current_hash) {
                             searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(current_hash.clone());
                         };
-                        if diffs.get(&current_hash).is_none() {
+                        if self.diffs.get(&current_hash).is_none() {
                             let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
-                            diffs.insert(current_hash.clone(), current_diff.clone());
+                            self.diffs.insert(current_hash.clone(), current_diff.clone());
                         };
                         // current hash is already in, so it must be our common ancestor!
                         common_ancestor = Some(current_hash);
@@ -282,7 +283,7 @@ impl Workspace {
                     let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
 
                     search.found_ancestors.get_mut().push(current_hash.clone());
-                    diffs.insert(current_hash.clone(), current_diff.clone());
+                    self.diffs.insert(current_hash.clone(), current_diff.clone());
                     
                     match &current_diff.parents {
                         None => {
@@ -302,18 +303,18 @@ impl Workspace {
                                 if !other.found_ancestors.borrow().contains(&NULL_NODE()) {
                                     searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(NULL_NODE());
                                 };
-                                if diffs.get(&NULL_NODE()).is_none() {
+                                if self.diffs.get(&NULL_NODE()).is_none() {
                                     let current_diff = PerspectiveDiffEntryReference {
                                         diff: NULL_NODE(),
                                         parents: None
                                     };
-                                    diffs.insert(NULL_NODE(), current_diff.clone());
+                                    self.diffs.insert(NULL_NODE(), current_diff.clone());
                                 };
                                 let mut null_childs = vec![current_hash.clone()];
                                 if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
                                     null_childs.push(other_last.clone());
                                 }
-                                back_links.insert(NULL_NODE(), null_childs);
+                                self.back_links.insert(NULL_NODE(), null_childs);
                             };
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
@@ -323,10 +324,10 @@ impl Workspace {
                             for parent_index in 0..parents.len() {
                                 println!("WORKSPACE collect_until_common_ancestor 2.5, more parents after filter");
                                 let parent = parents[parent_index].clone();
-                                if let Some(links) =  back_links.get_mut(&parent) {
+                                if let Some(links) =  self.back_links.get_mut(&parent) {
                                     links.push(current_hash.clone());
                                 } else {
-                                    back_links.insert(parent.clone(), vec![current_hash.clone()]);
+                                    self.back_links.insert(parent.clone(), vec![current_hash.clone()]);
                                 }
                                 // The first parent is taken as the successor for the current branch.
                                 // If there are multiple parents (i.e. merge commit), we create a new branch..
@@ -627,11 +628,12 @@ mod tests {
         let node_12 = node_id_hash(&dot_structures::Id::Plain(String::from("12")));
     
         let mut workspace = Workspace::new();
-        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_12.clone(), node_6.clone());
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_12.clone(), node_6.clone());
+        println!("Got result: {:#?}", res);
         assert!(res.is_ok());
         
-        assert_eq!(res.unwrap(), node_1);
-    
+        assert!(workspace.common_ancestors.len() == 1);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_1);
     
         assert_eq!(workspace.entry_map.len(), 12);
     
