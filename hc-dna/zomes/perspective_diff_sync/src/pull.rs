@@ -5,7 +5,7 @@ use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
 use crate::utils::get_now;
-use crate::workspace::Workspace;
+use crate::workspace::{Workspace, NULL_NODE};
 use crate::retriever::HolochainRetreiver;
 use crate::Hash;
 
@@ -53,6 +53,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     //Get all the diffs in the graph which we havent seen
     let unseen_diffs = if seen_diffs.len() > 0 {
         let diffs = workspace.sorted_diffs.clone().expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
+            if val.0 == NULL_NODE() {
+                return false;
+            };
             let node_index = workspace.get_node_index(&val.0).expect("Should find the node index for a given diff ref");
             for seen_diff in &seen_diffs {
                 if seen_diff.contains(node_index) {
@@ -63,7 +66,9 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
         diffs
     } else {
-        workspace.sorted_diffs.expect("should be unseen diffs after build_diffs() call")
+        workspace.sorted_diffs.expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
+            val.0 != NULL_NODE()
+        }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>()
     };
     debug!("Got the unseen diffs: {:#?}", unseen_diffs);
 
