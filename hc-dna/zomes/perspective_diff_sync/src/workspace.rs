@@ -535,9 +535,12 @@ impl Workspace {
             removals: vec![],
         };
         for (_key, value) in self.entry_map.iter() {
+            if value.diff == NULL_NODE() {
+                continue;
+            }
             let diff_entry = get(value.diff.clone(), GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
-                    "Could not find diff entry for given diff entry reference",
+                    "squashed_diff(): Could not find diff entry for given diff entry reference",
                 ))?
                 .entry()
                 .to_app_option::<PerspectiveDiff>()?
