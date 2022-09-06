@@ -221,9 +221,9 @@ impl Workspace {
             self.sort_graph()?;
         }
 
-        let diff = self.sorted_diffs.as_mut().unwrap();
-        diff.get_mut(0).unwrap().1.parents = None;
-        self.sorted_diffs = Some(diff.to_owned());
+        let sorted_diffs = self.sorted_diffs.as_mut().unwrap();
+        sorted_diffs.get_mut(0).unwrap().1.parents = None;
+        self.sorted_diffs = Some(topo_sort_diff_references(sorted_diffs)?);
         println!("Got sorted diffs: {:#?}", self.sorted_diffs);
 
         self.build_graph()?;
