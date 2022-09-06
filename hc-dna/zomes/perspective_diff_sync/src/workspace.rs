@@ -961,8 +961,10 @@ mod tests {
         println!("Got result: {:#?}", res);
         assert!(res.is_ok());
         
-        assert_eq!(workspace.common_ancestors.len(), 1);
-        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_0);
+        println!("common ancestors: {:?}", workspace.common_ancestors);
+        assert_eq!(workspace.common_ancestors.len(), 2);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_1);
+        assert_eq!(workspace.common_ancestors.last().unwrap(), &node_0);
         assert_eq!(workspace.entry_map.len(), 4);
     
         assert!(workspace.entry_map.get(&node_0).is_some());
