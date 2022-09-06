@@ -4,9 +4,10 @@ use crate::errors::{SocialContextError, SocialContextResult};
 use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
-use crate::utils::{dedup, get_now};
+use crate::utils::get_now;
 use crate::workspace::Workspace;
 use crate::retriever::HolochainRetreiver;
+use crate::Hash;
 
 pub fn pull() -> SocialContextResult<PerspectiveDiff> {
     let latest = latest_revision()?;
@@ -42,144 +43,103 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
 
     let current = current.expect("current missing handled above");
 
-    match workspace.collect_until_common_ancestor::<HolochainRetreiver>(latest.clone(), current.clone()) {
-        Err(SocialContextError::NoCommonAncestorFound) => {
-            // Just merge
-            let diff_entry = create_entry(
-                EntryTypes::PerspectiveDiff(
-                    PerspectiveDiff {
-                        additions: vec![],
-                        removals: vec![],
-                    }
-                )
-            )?;
-            debug!("Merging entries: {:?} and {:?}", latest, current);
-            //Create the merge entry
-            let hash = create_entry(
-                EntryTypes::PerspectiveDiffEntryReference(
-                    PerspectiveDiffEntryReference {
-                        parents: Some(vec![latest.clone(), current]),
-                        diff: diff_entry.clone(),
-                    },
-                )
-            )?;
-            debug!("Commited merge entry: {:#?}", hash);
-            let now = get_now()?;
-            update_current_revision(hash.clone(), now)?;
-            update_latest_revision(hash, now)?;
+    workspace.build_diffs::<HolochainRetreiver>(latest.clone(), current.clone())?;
 
-            // Return all of the foreign branch as changes
-            let mut ws2 = Workspace::new();
-            ws2.collect_only_from_latest::<HolochainRetreiver>(latest)?;
-            Ok(ws2.squashed_diff()?)
-        },
-        // pass through other errors
-        Err(error) => return Err(error),
-        // 
-        Ok(common_ancestor) => {
-            //workspace.topo_sort_graph()?;
-            workspace.build_graph()?;
-            debug!("completed current search population");
-            workspace.print_graph_debug();
-        
-            //Check if latest diff is a child of current diff
-            let ancestor_status = workspace.get_paths(&latest, &current);
-            debug!("Ancestor status: {:#?}", ancestor_status);
-        
-            if ancestor_status.len() > 0 {
-                //Latest diff contains in its chain our current diff, fast forward and get all changes between now and then
-                let fast_forward_squash = workspace.squashed_fast_forward_from(current)?;
-                println!("Setting current to: {:#?}", latest);
-                //Using now as the timestamp here may cause problems
-                update_current_revision(latest, get_now()?)?;
-                Ok(fast_forward_squash)
-            } else {
-                debug!("Fork detected, attempting merge...");
-                //Get the paths of latest so we can return to the user in pull
-                let latest_paths = workspace.get_paths(&latest, &common_ancestor);
-                //Get the common ancestor so we can remove it from the latest paths, since this is already seen by the user pulling
-                let common_ancestor = workspace.get_node_index(&common_ancestor).expect("to get index after build_graph()");
-        
-                //debug!("Paths of fork: {:#?}", fork_paths);
-                //debug!("Paths of latest: {:#?}", latest_paths);
-                //debug!("Common ancestor: {:#?}", common_ancestor);
-        
-                let mut latest_paths = latest_paths.into_iter().flatten().collect::<Vec<_>>();
-                latest_paths = dedup(&latest_paths);
-                latest_paths.retain(|val| val != common_ancestor);
-        
-                debug!(
-                   "Will merge entries: {:#?} and {:#?}.",
-                   latest, current
-                );
-                let merge_entry = create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
-                    additions: vec![],
-                    removals: vec![]
-                }))?;
-                //Create the merge entry
-                let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(
-                    PerspectiveDiffEntryReference {
-                        parents: Some(vec![latest, current]),
-                        diff: merge_entry.clone(),
-                    },
-                ))?;
-                debug!("Commited merge entry: {:#?}", hash);
-                let now = get_now()?;
-                update_current_revision(hash.clone(), now)?;
-                update_latest_revision(hash, now)?;
-        
-                //TODO; this should happen before the merge, so that if the fetching of some diffs fails we dont loose data
-                //Return the diffs unseen by the user
-                let mut unseen_diffs = PerspectiveDiff {
-                    additions: vec![],
-                    removals: vec![],
+    //See what fast forward paths exist between latest and current
+    let fast_foward_paths = workspace.get_paths(&latest, &current);
+    //Get all the diffs which exist between current and the last ancestor that we got
+    let seen_diffs = workspace.get_paths(&current, workspace.common_ancestors.last().to_owned().expect("Should be atleast 1 common ancestor"));
+    debug!("Got the seen diffs: {:#?}", seen_diffs);
+    //Get all the diffs in the graph which we havent seen
+    let unseen_diffs = if seen_diffs.len() > 0 {
+        let diffs = workspace.sorted_diffs.clone().expect("should be unseen diffs after build_diffs() call").into_iter().filter_map(|val| {
+            let node_index = workspace.get_node_index(&val.0).expect("Should find the node index for a given diff ref");
+            let mut seen = false;
+            for seen_diff in &seen_diffs {
+                if seen_diff.contains(node_index) {
+                    seen = true;
+                    break;
                 };
-        
-                for diff in latest_paths {
-                    let hash = workspace.index(diff);
-                    let current_diff = workspace.entry_map.get(&hash).expect("got hash through index above");
-                    
-                    if current_diff.parents.is_some() {
-                        //Filter out the merge entries to avoid duplicate results
-                        if current_diff.parents.as_ref().unwrap().len() == 1 {
-                            let diff_entry = get(current_diff.diff.clone(), GetOptions::latest())?
-                                .ok_or(SocialContextError::InternalError(
-                                    "Could not find diff entry for given diff entry reference",
-                                ))?
-                                .entry()
-                                .to_app_option::<PerspectiveDiff>()?
-                                .ok_or(SocialContextError::InternalError(
-                                    "Expected element to contain app entry data",
-                                ))?;
-                            unseen_diffs
-                                .additions
-                                .append(&mut diff_entry.additions.clone());
-                            unseen_diffs
-                                .removals
-                                .append(&mut diff_entry.removals.clone());
-                        }
-                    } else {
-                        let diff_entry = get(current_diff.diff.clone(), GetOptions::latest())?
-                            .ok_or(SocialContextError::InternalError(
-                                "Could not find diff entry for given diff entry reference",
-                            ))?
-                            .entry()
-                            .to_app_option::<PerspectiveDiff>()?
-                            .ok_or(SocialContextError::InternalError(
-                                "Expected element to contain app entry data",
-                            ))?;
-                        unseen_diffs
-                            .additions
-                            .append(&mut diff_entry.additions.clone());
-                        unseen_diffs
-                            .removals
-                            .append(&mut diff_entry.removals.clone());
-                    }
-                }
-                Ok(unseen_diffs)
+            };
+            match seen {
+                true => None,
+                false => Some(val)
             }
-        }
-    }
-    
+        }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
+        diffs
+    } else {
+        workspace.sorted_diffs.expect("should be unseen diffs after build_diffs() call")
+    };
+    debug!("Got the unseen diffs: {:#?}", unseen_diffs);
 
+    if fast_foward_paths.len() > 0 {
+        debug!("There are paths between current and latest, lets fast forward the changes we have missed!");
+        //Using now as the timestamp here may cause problems
+        update_current_revision(latest, get_now()?)?;
+        let mut out = PerspectiveDiff {
+            additions: vec![],
+            removals: vec![]
+        };
+        for diff in unseen_diffs {
+            let diff_entry = get(diff.1.diff.clone(), GetOptions::latest())?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find diff entry for given diff entry reference",
+                ))?
+                .entry()
+                .to_app_option::<PerspectiveDiff>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
+            out
+                .additions
+                .append(&mut diff_entry.additions.clone());
+            out
+                .removals
+                .append(&mut diff_entry.removals.clone());
+        }
+        Ok(out)
+    } else {
+        debug!("There are no paths between current and latest, we must merge current and latest");
+        //Get the entries we missed from unseen diff
+        let mut out = PerspectiveDiff {
+            additions: vec![],
+            removals: vec![]
+        };
+        for diff in unseen_diffs {
+            let diff_entry = get(diff.1.diff.clone(), GetOptions::latest())?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find diff entry for given diff entry reference",
+                ))?
+                .entry()
+                .to_app_option::<PerspectiveDiff>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
+            out
+                .additions
+                .append(&mut diff_entry.additions.clone());
+            out
+                .removals
+                .append(&mut diff_entry.removals.clone());
+        }
+
+        //Create the merge entry
+        let merge_entry = create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
+            additions: vec![],
+            removals: vec![]
+        }))?;
+        //Create the merge entry
+        let hash = create_entry(EntryTypes::PerspectiveDiffEntryReference(
+            PerspectiveDiffEntryReference {
+                parents: Some(vec![latest, current]),
+                diff: merge_entry.clone(),
+            },
+        ))?;
+        debug!("Commited merge entry: {:#?}", hash);
+        let now = get_now()?;
+        update_current_revision(hash.clone(), now)?;
+        update_latest_revision(hash, now)?;
+
+        Ok(out)
+    }
 }

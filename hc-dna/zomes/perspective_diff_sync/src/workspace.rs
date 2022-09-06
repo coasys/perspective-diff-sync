@@ -5,7 +5,7 @@ use petgraph::{
     graph::{DiGraph, Graph, NodeIndex, UnGraph},
 };
 use std::collections::{BTreeMap, VecDeque};
-use std::ops::Index;
+//use std::ops::Index;
 use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes};
 use std::cell::RefCell;
 
@@ -20,7 +20,9 @@ pub struct Workspace {
     pub node_index_map: BTreeMap<Hash, NodeIndex<u32>>,
     pub entry_map: BTreeMap<Hash, PerspectiveDiffEntryReference>,
     pub sorted_diffs: Option<Vec<(Hash, PerspectiveDiffEntryReference)>>,
-    pub common_ancestor: Option<Hash>,
+    pub common_ancestors: Vec<Hash>,
+    pub diffs: BTreeMap<Hash, PerspectiveDiffEntryReference>,
+    pub back_links: BTreeMap::<Hash, Vec<Hash>>
 }
 
 #[derive(Clone, Debug)]
@@ -65,7 +67,9 @@ impl Workspace {
             node_index_map: BTreeMap::new(),
             entry_map: BTreeMap::new(),
             sorted_diffs: None,
-            common_ancestor: None,
+            common_ancestors: vec![],
+            diffs: BTreeMap::new(),
+            back_links: BTreeMap::new()
         }
     }
 
@@ -144,6 +148,71 @@ impl Workspace {
 
         debug!("WORKSPACE collect_only_from_latest 2");
 
+        Ok(())
+    }
+
+    pub fn sort_graph(&mut self) -> SocialContextResult<Option<Hash>> {
+        let common_ancestor = self.common_ancestors.last().unwrap();
+
+        let mut sorted: Vec<(Hash, PerspectiveDiffEntryReference)> = Vec::new();
+        let mut next: VecDeque<Hash> = VecDeque::new();
+        let mut node_with_missing_parent = None;
+
+        next.push_back(common_ancestor.clone());
+
+        while !next.is_empty() {
+            let current = next.pop_front().expect("must be Ok since next !is_empty()");
+            println!("current: {:?}", current);
+            match self.back_links.get(&current) {
+                Some(children) => {
+                    println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
+                    for child in children.iter() {
+                        let diff = self.diffs.get(&child).expect("Should child must exist");
+                        if diff.parents.is_some() {
+                            for parent in diff.parents.as_ref().unwrap() {
+                                if self.diffs.get(&parent).is_none() {
+                                    node_with_missing_parent = Some(child);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    next.append(&mut children.iter().cloned().collect());
+                },
+                None => {}
+            };
+            let current_diff = self.diffs.get(&current).expect("diffs should be populated");
+            sorted.push((current.clone(), current_diff.clone()));
+            self.entry_map.insert(current, current_diff.clone());
+        }
+
+        match node_with_missing_parent {
+            Some(hash) => Ok(Some(hash.to_owned())),
+            None => {
+                self.sorted_diffs = Some(sorted);
+                Ok(None)
+            }
+        }
+    }
+
+    pub fn build_diffs<Retriever: PerspectiveDiffRetreiver>(&mut self, theirs: Hash, ours: Hash) -> SocialContextResult<()> {
+        let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
+        self.common_ancestors.push(common_ancestor);
+        
+        let mut has_missing_parent = self.sort_graph()?;
+        
+        while has_missing_parent.is_some() {
+            let missing_parent = has_missing_parent.unwrap();
+            let common_ancestor = self.collect_until_common_ancestor::<Retriever>(
+                missing_parent, 
+                self.common_ancestors.last().expect("There should have been a common ancestor above").to_owned()
+            )?;    
+            self.common_ancestors.push(common_ancestor);
+            has_missing_parent = self.sort_graph()?;
+        }
+
+        self.build_graph()?;
+        self.print_graph_debug();
         Ok(())
     }
 
@@ -285,41 +354,8 @@ impl Workspace {
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);
         };
-        
-        let common_ancestor = common_ancestor.unwrap();
 
-        let mut sorted: Vec<(Hash, PerspectiveDiffEntryReference)> = Vec::new();
-        let mut next: VecDeque<Hash> = VecDeque::new();
-
-        let mut diff = diffs.get_mut(&common_ancestor).expect("Should get the common ancestor");
-        diff.parents = None;
-
-        next.push_back(common_ancestor.clone());
-
-        println!("Theirs path len: {}", searches.get(&SearchSide::Theirs).unwrap().found_ancestors.borrow().len());
-        println!("Ours path len: {}", searches.get(&SearchSide::Ours).unwrap().found_ancestors.borrow().len());
-        while !next.is_empty() {
-            let current = next.pop_front().expect("must be Ok since next !is_empty()");
-            println!("current: {:?}", current);
-            match back_links.get(&current) {
-                Some(children) => {
-                    println!("--> has {} children", children.len());
-                    for child in children.iter() {
-                        let mut diff = diffs.get_mut(&child).expect("Should child must exist");
-                        diff.parents = Some(vec![current.clone()]);
-                    }
-                    next.append(&mut children.iter().cloned().collect());
-                },
-                None => {}
-            };
-            let current_diff = diffs.get(&current).expect("diffs should be populated");
-            sorted.push((current.clone(), current_diff.clone()));
-            self.entry_map.insert(current, current_diff.clone());
-        }
-
-        self.sorted_diffs = Some(sorted);
-
-        Ok(common_ancestor)
+        Ok(common_ancestor.unwrap())
     }
 
     pub fn topo_sort_graph(&mut self) -> SocialContextResult<()> {
@@ -434,9 +470,9 @@ impl Workspace {
         self.node_index_map.get(node)
     }
 
-    pub fn index(&self, index: NodeIndex) -> Hash {
-        self.graph.index(index).clone()
-    }
+    // pub fn index(&self, index: NodeIndex) -> Hash {
+    //     self.graph.index(index).clone()
+    // }
 
     pub fn get_paths(
         &self,
@@ -498,39 +534,39 @@ impl Workspace {
         Ok(out)
     }
 
-    pub fn squashed_fast_forward_from(&self, base: Hash) -> SocialContextResult<PerspectiveDiff> {
-        match &self.sorted_diffs {
-            None => Err(SocialContextError::InternalError("Need to sort first for this fast-forward optimzed squash")),
-            Some(sorted_diffs) => {
-                let mut base_found = false;
-                let mut out = PerspectiveDiff {
-                    additions: vec![],
-                    removals: vec![],
-                };
-                for i in 0..sorted_diffs.len() {
-                    let current = &sorted_diffs[i];
-                    if !base_found {
-                        if current.0 == base {
-                            base_found = true;
-                        }
-                    } else {
-                        let diff_entry = get(current.1.diff.clone(), GetOptions::latest())?
-                            .ok_or(SocialContextError::InternalError(
-                                "Could not find diff entry for given diff entry reference",
-                            ))?
-                            .entry()
-                            .to_app_option::<PerspectiveDiff>()?
-                            .ok_or(SocialContextError::InternalError(
-                                "Expected element to contain app entry data",
-                            ))?;
-                        out.additions.append(&mut diff_entry.additions.clone());
-                        out.removals.append(&mut diff_entry.removals.clone());
-                    }
-                }
-                Ok(out)
-            }
-        }
-    }
+    // pub fn squashed_fast_forward_from(&self, base: Hash) -> SocialContextResult<PerspectiveDiff> {
+    //     match &self.sorted_diffs {
+    //         None => Err(SocialContextError::InternalError("Need to sort first for this fast-forward optimzed squash")),
+    //         Some(sorted_diffs) => {
+    //             let mut base_found = false;
+    //             let mut out = PerspectiveDiff {
+    //                 additions: vec![],
+    //                 removals: vec![],
+    //             };
+    //             for i in 0..sorted_diffs.len() {
+    //                 let current = &sorted_diffs[i];
+    //                 if !base_found {
+    //                     if current.0 == base {
+    //                         base_found = true;
+    //                     }
+    //                 } else {
+    //                     let diff_entry = get(current.1.diff.clone(), GetOptions::latest())?
+    //                         .ok_or(SocialContextError::InternalError(
+    //                             "Could not find diff entry for given diff entry reference",
+    //                         ))?
+    //                         .entry()
+    //                         .to_app_option::<PerspectiveDiff>()?
+    //                         .ok_or(SocialContextError::InternalError(
+    //                             "Expected element to contain app entry data",
+    //                         ))?;
+    //                     out.additions.append(&mut diff_entry.additions.clone());
+    //                     out.removals.append(&mut diff_entry.removals.clone());
+    //                 }
+    //             }
+    //             Ok(out)
+    //         }
+    //     }
+    // }
 
     pub fn print_graph_debug(&self) {
         debug!(
