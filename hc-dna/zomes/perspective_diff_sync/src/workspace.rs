@@ -629,7 +629,6 @@ mod tests {
     
         let mut workspace = Workspace::new();
         let res = workspace.build_diffs::<MockPerspectiveGraph>(node_12.clone(), node_6.clone());
-        println!("Got result: {:#?}", res);
         assert!(res.is_ok());
         
         assert!(workspace.common_ancestors.len() == 1);
@@ -707,14 +706,13 @@ mod tests {
         let node_6 = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
         let node_12 = node_id_hash(&dot_structures::Id::Plain(String::from("12")));
         let node_13 = node_id_hash(&dot_structures::Id::Plain(String::from("13")));
-    
+
         let mut workspace = Workspace::new();
-        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_13.clone(), node_6.clone());
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_13.clone(), node_6.clone());
         assert!(res.is_ok());
         
-        assert_eq!(res.unwrap(), node_1);
-    
-    
+        assert!(workspace.common_ancestors.len() == 1);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_1);
         assert_eq!(workspace.entry_map.len(), 13);
     
         let node_2 = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
@@ -771,22 +769,19 @@ mod tests {
         let node_3 = node_id_hash(&dot_structures::Id::Plain(String::from("3")));
         //let node_4 = node_id_hash(&dot_structures::Id::Plain(String::from("4")));
         //let node_5 = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
-        
-    
+
         let mut workspace = Workspace::new();
-        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_3.clone(), node_2.clone());
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_3.clone(), node_2.clone());
         assert!(res.is_ok());
         
-        assert_eq!(res.unwrap(), node_0);
-    
-    
+        assert!(workspace.common_ancestors.len() == 1);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_0);
         assert_eq!(workspace.entry_map.len(), 4);
     
         assert!(workspace.entry_map.get(&node_0).is_some());
         assert!(workspace.entry_map.get(&node_1).is_some());
         assert!(workspace.entry_map.get(&node_2).is_some());
-        assert!(workspace.entry_map.get(&node_3).is_some());
-        
+        assert!(workspace.entry_map.get(&node_3).is_some()); 
     }
 
 
@@ -836,15 +831,14 @@ mod tests {
         let node_8 = node_id_hash(&dot_structures::Id::Plain(String::from("8")));
         let node_9 = node_id_hash(&dot_structures::Id::Plain(String::from("9")));
         let node_10 = node_id_hash(&dot_structures::Id::Plain(String::from("10")));
-        
-    
+
         let mut workspace = Workspace::new();
-        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_5.clone(), node_10.clone());
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_5.clone(), node_10.clone());
+        println!("Got result: {:#?}", res);
         assert!(res.is_ok());
         
-        assert_eq!(res.unwrap(), node_0);
-    
-    
+        assert!(workspace.common_ancestors.len() == 1);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &node_0);
         assert_eq!(workspace.entry_map.len(), 9);
     
         assert!(workspace.entry_map.get(&node_0).is_some());
@@ -856,9 +850,7 @@ mod tests {
         //assert!(workspace.entry_map.get(&node_7).is_some());
         assert!(workspace.entry_map.get(&node_8).is_some());
         assert!(workspace.entry_map.get(&node_9).is_some());
-        assert!(workspace.entry_map.get(&node_10).is_some());
-
-        
+        assert!(workspace.entry_map.get(&node_10).is_some()); 
     }
 
 
@@ -905,15 +897,14 @@ mod tests {
         let node_8 = node_id_hash(&dot_structures::Id::Plain(String::from("8")));
         let node_9 = node_id_hash(&dot_structures::Id::Plain(String::from("9")));
         let node_10 = node_id_hash(&dot_structures::Id::Plain(String::from("10")));
-        
-    
+
         let mut workspace = Workspace::new();
-        let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(node_5.clone(), node_10.clone());
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_5.clone(), node_10.clone());
+        println!("Got result: {:#?}", res);
         assert!(res.is_ok());
         
-        assert_eq!(res.unwrap(), NULL_NODE());
-    
-    
+        assert!(workspace.common_ancestors.len() == 1);
+        assert_eq!(workspace.common_ancestors.first().unwrap(), &NULL_NODE());
         assert_eq!(workspace.entry_map.len(), 12);
     
         assert!(workspace.entry_map.get(&NULL_NODE()).is_some());
