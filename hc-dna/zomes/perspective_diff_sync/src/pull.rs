@@ -78,7 +78,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         for diff in unseen_diffs {
             let diff_entry = get(diff.1.diff.clone(), GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
-                    "Could not find diff entry for given diff entry reference",
+                    "pull / fast forward / for dif in unseen_diffs / Could not retrieve diff entry from HC",
                 ))?
                 .entry()
                 .to_app_option::<PerspectiveDiff>()?
@@ -103,7 +103,7 @@ pub fn pull() -> SocialContextResult<PerspectiveDiff> {
         for diff in unseen_diffs {
             let diff_entry = get(diff.1.diff.clone(), GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
-                    "Could not find diff entry for given diff entry reference",
+                    "pull / merge / for dif in unseen_diffs / Could not retrieve diff entry from HC",
                 ))?
                 .entry()
                 .to_app_option::<PerspectiveDiff>()?
