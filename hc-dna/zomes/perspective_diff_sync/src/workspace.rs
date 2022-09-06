@@ -279,7 +279,7 @@ impl Workspace {
                         if !other.found_ancestors.borrow().contains(&current_hash) {
                             searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(current_hash.clone());
                         };
-                        if self.diffs.get(&current_hash).is_none() {
+                        if self.diffs.get(&current_hash).is_none() && current_hash != NULL_NODE() {
                             let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
                             self.diffs.insert(current_hash.clone(), current_diff.clone());
                         };
@@ -290,9 +290,14 @@ impl Workspace {
 
 
                     println!("WORKSPACE collect_until_common_ancestor 2.3");
-                    let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
-
                     search.found_ancestors.get_mut().push(current_hash.clone());
+
+                    if current_hash == NULL_NODE() {
+                        branches.remove(branch_index);
+                        break;
+                    }
+
+                    let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
                     self.diffs.insert(current_hash.clone(), current_diff.clone());
                     
                     match &current_diff.parents {
