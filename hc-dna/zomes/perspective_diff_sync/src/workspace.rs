@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, VecDeque};
 //use std::ops::Index;
 use perspective_diff_sync_integrity::{PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkTypes};
 use std::cell::RefCell;
-
+use itertools::Itertools;
 use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::topo_sort::topo_sort_diff_references;
@@ -195,13 +195,17 @@ impl Workspace {
             .cloned()
             .collect();
 
-        self.sorted_diffs = Some(sorted);
+        self.sorted_diffs = Some(sorted.into_iter().unique().collect());
+
         Ok(())
     }
 
     pub fn build_diffs<Retriever: PerspectiveDiffRetreiver>(&mut self, theirs: Hash, ours: Hash) -> SocialContextResult<()> {
         let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
         self.common_ancestors.push(common_ancestor);
+
+        println!("Got diffs: {:?}", self.diffs);
+        println!("Got back_links: {:?}", self.back_links);
         
         self.sort_graph()?;
         println!("Got unexplored side branches parent: {:#?}", self.unexplored_side_branches);
