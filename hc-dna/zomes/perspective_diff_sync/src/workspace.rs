@@ -172,7 +172,6 @@ impl Workspace {
                             for parent in diff.parents.as_ref().unwrap() {
                                 if self.diffs.get(&parent).is_none() {
                                     node_with_missing_parent = Some(child);
-                                    break;
                                 }
                             }
                         }
@@ -183,7 +182,9 @@ impl Workspace {
             };
             let current_diff = self.diffs.get(&current).expect("diffs should be populated");
             sorted.push((current.clone(), current_diff.clone()));
-            self.entry_map.insert(current, current_diff.clone());
+            if self.entry_map.get(&current).is_none() {
+                self.entry_map.insert(current, current_diff.clone());
+            };
         }
 
         match node_with_missing_parent {
