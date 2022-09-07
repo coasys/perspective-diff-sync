@@ -94,8 +94,8 @@ export async function stressTest(t) {
                 const endB = hrtime.bigint();
                 console.log(`Bob pull took ${divide(endB - startB,1000000)} ms`);
 
-                //await call(aliceHapps, "pull");
-                //await call(bobHapps, "pull");
+                await call(aliceHapps, "pull");
+                await call(bobHapps, "pull");
                 pullSuccessful = true
             } catch(e) {
                 console.error("Pulling failed with error:", e)
