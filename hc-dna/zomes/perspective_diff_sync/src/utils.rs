@@ -23,6 +23,7 @@ pub(crate) fn err(reason: &str) -> WasmError {
     wasm_error!(WasmErrorInner::Host(String::from(reason)))
 }
 
+#[allow(dead_code)]
 pub fn create_link_expression(source: &str, target: &str) -> LinkExpression {
     LinkExpression {
         author: String::from("Test author"),
