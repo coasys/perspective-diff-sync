@@ -7,6 +7,7 @@ use crate::Hash;
 use crate::errors::{SocialContextResult};
 use crate::retriever::{PerspectiveDiffRetreiver};
 
+#[derive(Clone)]
 pub struct ChunkedDiffs {
     max_changes_per_chunk: u16,
     pub chunks: Vec<PerspectiveDiff>
@@ -91,6 +92,7 @@ impl ChunkedDiffs {
 mod tests {
     use super::ChunkedDiffs;
     use crate::utils::create_link_expression;
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph};
 
     #[test]
     fn can_chunk() {
@@ -175,5 +177,31 @@ mod tests {
             assert_eq!(chunks.chunks[i].total_diff_number(), 500);
         }
         assert_eq!(chunks.chunks[12].total_diff_number(), 13);
+    }
+
+    #[test]
+    fn can_write_and_read_entries() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot("digraph{}").expect("can create mock graph from empty dot");
+        }
+        update();
+
+        let mut chunks = ChunkedDiffs::new(500);
+
+        let mut big_diff_add = Vec::new();
+        for i in 0..5000 {
+            big_diff_add.push(create_link_expression("a", &format!("{}", i)));
+        }
+        chunks.add_additions(big_diff_add);
+
+        assert_eq!(chunks.chunks.len(), 10);
+
+        let chunks_clone = chunks.clone();
+        let hashes = chunks.into_entries::<MockPerspectiveGraph>().expect("into_entries does not error");
+        let read_chunks = ChunkedDiffs::from_entries::<MockPerspectiveGraph>(hashes).expect("from_entries does not error");
+
+        assert_eq!(read_chunks.chunks.len(), 10);
+        assert_eq!(format!("{:?}", read_chunks.chunks), format!("{:?}", chunks_clone.chunks));
     }
 }
