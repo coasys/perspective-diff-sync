@@ -88,6 +88,9 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
             if val.0 == NULL_NODE() {
                 return false;
             };
+            if val.0 == current {
+                return false;
+            };
             let node_index = workspace.get_node_index(&val.0).expect("Should find the node index for a given diff ref");
             for seen_diff in &seen_diffs {
                 if seen_diff.contains(node_index) {
@@ -148,12 +151,13 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 #[cfg(test)]
 mod tests {
     use dot_structures;
+
     use super::pull;
     use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash, PerspectiveDiffRetreiver};
     use crate::utils::create_link_expression;
 
     #[test]
-    fn test_basic_pull() {
+    fn test_fast_forward_merge() {
         fn update() {
             let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
             *graph = MockPerspectiveGraph::from_dot(r#"digraph {
@@ -186,6 +190,153 @@ mod tests {
         let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
         let node_3 = &node_id_hash(&dot_structures::Id::Plain(String::from("3"))).to_string();
         let expected_additions = vec![create_link_expression(node_1, node_1), create_link_expression(node_3, node_3)];
+
+        assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+    }
+
+    #[test]
+    fn test_complex_merge() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+                6 [ label = "6" ]
+            
+                3 -> 2
+                4 -> 2
+                5 -> 3
+                5 -> 4
+                6 -> 5
+            }"#).unwrap();
+        }
+        update();
+
+        let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
+        let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
+        assert!(update_latest.is_ok());
+
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("1")));
+        let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
+        assert!(update_current.is_ok());
+
+        let pull_res = pull::<MockPerspectiveGraph>();
+        assert!(pull_res.is_ok());
+        let pull_res = pull_res.unwrap();
+        
+        let node_2 = &node_id_hash(&dot_structures::Id::Plain(String::from("2"))).to_string();
+        let node_3 = &node_id_hash(&dot_structures::Id::Plain(String::from("3"))).to_string();
+        let node_4 = &node_id_hash(&dot_structures::Id::Plain(String::from("4"))).to_string();
+        let node_5 = &node_id_hash(&dot_structures::Id::Plain(String::from("5"))).to_string();
+        let node_6 = &node_id_hash(&dot_structures::Id::Plain(String::from("6"))).to_string();
+        let expected_additions = vec![
+            create_link_expression(node_2, node_2), 
+            create_link_expression(node_3, node_3),  
+            create_link_expression(node_4, node_4),  
+            create_link_expression(node_5, node_5),  
+            create_link_expression(node_6, node_6)
+        ];
+
+        assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+
+        //Test that a merge actually happened and latest was updated
+        let new_latest = MockPerspectiveGraph::latest_revision();
+        assert!(new_latest.is_ok());
+        let new_latest = new_latest.unwrap();
+
+        assert!(new_latest.unwrap() != latest_node_hash);
+    }
+
+    #[test]
+    fn test_complex_fast_forward() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+                6 [ label = "6" ]
+            
+                3 -> 2
+                4 -> 2
+                5 -> 3
+                5 -> 4
+                6 -> 5
+            }"#).unwrap();
+        }
+        update();
+
+        let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
+        let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
+        assert!(update_latest.is_ok());
+
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("4")));
+        let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
+        assert!(update_current.is_ok());
+
+        let pull_res = pull::<MockPerspectiveGraph>();
+        assert!(pull_res.is_ok());
+        let pull_res = pull_res.unwrap();
+        
+        let node_3 = &node_id_hash(&dot_structures::Id::Plain(String::from("3"))).to_string();
+        let node_5 = &node_id_hash(&dot_structures::Id::Plain(String::from("5"))).to_string();
+        let node_6 = &node_id_hash(&dot_structures::Id::Plain(String::from("6"))).to_string();
+        let expected_additions = vec![ 
+            create_link_expression(node_3, node_3),  
+            create_link_expression(node_5, node_5),  
+            create_link_expression(node_6, node_6)
+        ];
+
+        assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+    }
+
+    #[test]
+    fn test_fast_forward_after_merge() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+                6 [ label = "6" ]
+                7 [ label = "7" ]
+            
+                3 -> 2
+                4 -> 2
+                5 -> 3
+                5 -> 4
+                6 -> 5
+                7 -> 1
+                7 -> 6
+            }"#).unwrap();
+        }
+        update();
+
+        let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("7")));
+        let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
+        assert!(update_latest.is_ok());
+
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
+        let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
+        assert!(update_current.is_ok());
+
+        let pull_res = pull::<MockPerspectiveGraph>();
+        assert!(pull_res.is_ok());
+        let pull_res = pull_res.unwrap();
+        
+        let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
+        let node_7 = &node_id_hash(&dot_structures::Id::Plain(String::from("7"))).to_string();
+        let expected_additions = vec![ 
+            create_link_expression(node_1, node_1),
+            create_link_expression(node_7, node_7)
+        ];
 
         assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
     }
