@@ -117,4 +117,28 @@ mod tests {
 
         assert_eq!(chunks.chunks.len(), 3);
     }
+
+    #[test]
+    fn can_aggregate() {
+        let mut chunks = ChunkedDiffs::new(5);
+
+        let _a1 = create_link_expression("a", "1");
+        let _a2 = create_link_expression("a", "2");
+        let _r1 = create_link_expression("r", "1");
+        let _r2 = create_link_expression("r", "2");
+        let _r3 = create_link_expression("r", "3");
+        let _r4 = create_link_expression("r", "4");
+
+
+        chunks.add_additions(vec![_a1.clone()]);
+        chunks.add_additions(vec![_a2.clone()]);
+        chunks.add_removals(vec![_r1.clone(),_r2.clone(),_r3.clone(),_r4.clone()]);
+
+        assert_eq!(chunks.chunks.len(), 2);
+
+        let diff = chunks.into_aggregated_diff();
+
+        assert_eq!(diff.additions, vec![_a1,_a2]);
+        assert_eq!(diff.removals, vec![_r1,_r2,_r3,_r4]);
+    }
 }
