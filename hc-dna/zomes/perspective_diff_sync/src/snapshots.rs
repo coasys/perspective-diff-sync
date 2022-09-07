@@ -85,7 +85,7 @@ pub fn generate_snapshot(
     let mut seen: HashSet<Hash> = HashSet::new();
     let mut unseen_parents = vec![];
 
-    let mut chunked_diffs = ChunkedDiffs::new(1000);
+    let mut chunked_diffs = ChunkedDiffs::new(500);
 
     loop {
         let diff = get(search_position.clone(), GetOptions::latest())?
