@@ -1,18 +1,19 @@
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference};
+use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff};
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use dot_structures;
 use graphviz_rust;
 use hdk::prelude::*;
 use sha2::{Sha256, Digest};
+use chrono::{DateTime, Utc};
 
 use crate::Hash;
+use crate::utils::create_link_expression;
 use crate::errors::{SocialContextResult, SocialContextError};
 use super::PerspectiveDiffRetreiver;
 
 #[derive(Debug)]
 pub struct MockPerspectiveGraph {
-    pub graph: Vec<PerspectiveDiffEntryReference>,
     pub graph_map: BTreeMap<Hash, SerializedBytes>,
 }
 
@@ -21,17 +22,8 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         where
             T: TryFrom<SerializedBytes, Error = SerializedBytesError>,
     {
-        match GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash) {
-            Some(sb) => Ok(T::try_from(sb.to_owned()).unwrap()),
-            None => {
-                match OBJECT_STORE.lock().expect("Could not get lock on OBJECT_STORE").get(&hash) {
-                    Some(sb) => Ok(T::try_from(sb.to_owned()).unwrap()),
-                    None => {
-                        Err(SocialContextError::InternalError("Did not find entry for hash in MockPerspectiveGraph.get()"))
-                    }
-                }
-            }
-        }
+        let value = &GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned();
+        Ok(T::try_from(value.to_owned())?)
     }
 
     fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
@@ -42,7 +34,7 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         WasmError: From<E>,
         WasmError: From<E2>
     {
-        let mut object_store = OBJECT_STORE.lock().expect("Could not get lock on OBJECT_STORE");
+        let mut object_store = GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on OBJECT_STORE");
 
         let entry: Entry = entry.try_into().expect("Could not get Entry");
         let sb = match entry {
@@ -57,7 +49,7 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         result.append(&mut vec![0xdb, 0xdb, 0xdb, 0xdb]);
 
         let hash = ActionHash::from_raw_36(result);
-        object_store.insert(hash.clone(), sb.0);
+        object_store.graph_map.insert(hash.clone(), sb.0);
         Ok(hash)
     }
 
@@ -71,15 +63,15 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         Ok(revision.clone())
     }
 
-    fn update_current_revision(rev: Hash) -> SocialContextResult<()> {
+    fn update_current_revision(hash: Hash, _timestamp: DateTime<Utc>) -> SocialContextResult<()> {
         let mut revision = CURRENT_REVISION.lock().expect("Could not get lock on CURRENT_REVISION");
-        *revision = Some(rev);
+        *revision = Some(hash);
         Ok(())
     }
 
-    fn update_latest_revision(rev: Hash) -> SocialContextResult<()> {
+    fn update_latest_revision(hash: Hash, _timestamp: DateTime<Utc>) -> SocialContextResult<()> {
         let mut revision = LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
-        *revision = Some(rev);
+        *revision = Some(hash);
         Ok(())
     }
 
@@ -140,7 +132,6 @@ fn unwrap_edge(edge: dot_structures::Edge) -> Option<(dot_structures::NodeId, do
 impl MockPerspectiveGraph {
     pub fn new(graph_input: GraphInput) -> MockPerspectiveGraph {
         let mut graph = MockPerspectiveGraph {
-            graph: vec![],
             graph_map: BTreeMap::new()
         };
 
@@ -162,7 +153,6 @@ impl MockPerspectiveGraph {
                 diff: mocked_hash.clone(),
                 parents: parents
             };
-            graph.graph.push(mocked_diff.clone());
             let sb = mocked_diff.try_into().expect("Could not create serialized bytes for mocked_diff");
             graph.graph_map.insert(mocked_hash, sb);
         }
@@ -176,7 +166,6 @@ impl MockPerspectiveGraph {
             dot_structures::Graph::Graph{..} => Err(SocialContextError::InternalError("Can't work with undirected DOT graphs")),
             dot_structures::Graph::DiGraph{stmts, ..} => {
                 let mut graph = MockPerspectiveGraph {
-                    graph: vec![],
                     graph_map: BTreeMap::new()
                 };
 
@@ -207,14 +196,32 @@ impl MockPerspectiveGraph {
                     }
                 };
 
-                for hash in hashes.iter() {
-                    let diff = PerspectiveDiffEntryReference {
-                        diff: hash.clone(),
-                        parents: parents.get(hash).as_ref().cloned().cloned(),
+                for ref_hash in hashes.iter() {
+                    //Create a mock diff
+                    let diff = PerspectiveDiff {
+                        additions: vec![create_link_expression(&ref_hash.to_string(), &ref_hash.to_string())],
+                        removals: vec![]
                     };
-                    graph.graph.push(diff.clone());
-                    let sb = diff.try_into().expect("Could not create serialized bytes for mocked_diff");
-                    graph.graph_map.insert(hash.clone(), sb);
+
+                    //Create a mock hash for the fake diff
+                    let ref_sb = SerializedBytes::try_from(diff.clone())?;
+                    let mut hasher = Sha256::new();
+                    hasher.update(ref_sb.bytes());
+                    let mut result = hasher.finalize().as_slice().to_owned();
+                    result.append(&mut vec![0xdb, 0xdb, 0xdb, 0xdb]);
+                    let diff_hash = ActionHash::from_raw_36(result);
+                    
+                    //Create the diff reference
+                    let diff_ref = PerspectiveDiffEntryReference {
+                        diff: diff_hash.clone(),
+                        parents: parents.get(ref_hash).as_ref().cloned().cloned(),
+                    };
+                    //Insert the diff reference into the map
+                    let diff_ref_sb = diff_ref.try_into().expect("Could not create serialized bytes for mocked_diff");
+                    graph.graph_map.insert(ref_hash.clone(), diff_ref_sb);
+                    
+                    //Insert the diff into the map
+                    graph.graph_map.insert(diff_hash, ref_sb);
                 }
 
                 Ok(graph)
@@ -228,7 +235,6 @@ lazy_static!{
         nodes: 1,
         associations: vec![]
     }));
-    pub static ref OBJECT_STORE: Mutex<BTreeMap<Hash, SerializedBytes>> = Mutex::new(BTreeMap::new());
     pub static ref CURRENT_REVISION: Mutex<Option<Hash>> = Mutex::new(None);
     pub static ref LATEST_REVISION: Mutex<Option<Hash>> = Mutex::new(None);
 }
@@ -260,8 +266,8 @@ fn can_create_graph() {
             }
         ]
     });
-    assert_eq!(test.graph.len(), 6);
-    println!("Got graph: {:#?}", test.graph);
+    assert_eq!(test.graph_map.keys().len(), 6);
+    println!("Got graph: {:#?}", test.graph_map);
 }
 
 #[test]
@@ -296,7 +302,8 @@ fn can_create_graph_from_dot() {
     }";
 
     let graph = MockPerspectiveGraph::from_dot(dot).expect("from_dot not to return error");
-    assert_eq!(graph.graph.len(), 13);
+    //26 since there is a diffref & diff for each node
+    assert_eq!(graph.graph_map.keys().len(), 26);
 
     let node_12 = node_id_hash(&dot_structures::Id::Plain(String::from("12")));
     let node_11 = node_id_hash(&dot_structures::Id::Plain(String::from("11")));
