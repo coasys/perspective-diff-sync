@@ -20,7 +20,7 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
     //    Ok(GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned())
     //}
 
-    fn get<T>(hash: Hash) -> SocialContextResult<T> 
+    fn get<T>(_hash: Hash) -> SocialContextResult<T> 
         where
         T: TryFrom<SerializedBytes, Error = SerializedBytesError>,
     {
@@ -29,7 +29,7 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
 
 
 
-    fn create_entry<I, E, E2>(entry: I) -> SocialContextResult<Hash>
+    fn create_entry<I, E, E2>(_entry: I) -> SocialContextResult<Hash>
         where
         ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,
         EntryVisibility: for<'a> From<&'a I>,
@@ -41,23 +41,23 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
     }
 
     fn current_revision() -> SocialContextResult<Option<Hash>> {
-        let revision = *CURRENT_REVISION.lock().expect("Could not get lock on CURRENT_REVISION");
-        Ok(revision)
+        let revision = CURRENT_REVISION.lock().expect("Could not get lock on CURRENT_REVISION");
+        Ok(revision.clone())
     }
 
     fn latest_revision() -> SocialContextResult<Option<Hash>> {
-        let revision = *LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
-        Ok(revision)
+        let revision = LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
+        Ok(revision.clone())
     }
 
     fn update_current_revision(rev: Hash) -> SocialContextResult<()> {
-        let revision = CURRENT_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
+        let mut revision = CURRENT_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
         *revision = Some(rev);
         Ok(())
     }
 
     fn update_latest_revision(rev: Hash) -> SocialContextResult<()> {
-        let revision = LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
+        let mut revision = LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
         *revision = Some(rev);
         Ok(())
     }
