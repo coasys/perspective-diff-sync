@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 use dot_structures;
 use graphviz_rust;
-use hdk::prelude::ActionHash;
+use hdk::prelude::*;
 use crate::Hash;
 use crate::errors::{SocialContextResult, SocialContextError};
 use super::PerspectiveDiffRetreiver;
@@ -15,9 +15,40 @@ pub struct MockPerspectiveGraph {
 }
 
 impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
-    fn get<T>(hash: Hash) -> SocialContextResult<T> {
+    fn get<T>(hash: Hash) -> SocialContextResult<T> 
+        where
+        T: TryFrom<SerializedBytes, Error = SerializedBytesError>,
+    {
         Ok(GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned())
     }
+
+    fn create_entry<I, E, E2>(entry: I) -> SocialContextResult<Hash>
+        where
+        ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,
+        EntryVisibility: for<'a> From<&'a I>,
+        Entry: TryFrom<I, Error = E>,
+        WasmError: From<E>,
+        WasmError: From<E2>
+    {
+        Err(SocialContextError::InternalError("Not implemented"))
+    }
+
+    fn current_revision() -> SocialContextResult<Option<Hash>> {
+        Err(SocialContextError::InternalError("Not implemented"))
+    }
+
+    fn latest_revision() -> SocialContextResult<Option<Hash>> {
+        Err(SocialContextError::InternalError("Not implemented"))
+    }
+
+    fn update_current_revision(rev: Hash) -> SocialContextResult<()> {
+        Err(SocialContextError::InternalError("Not implemented"))
+    }
+
+    fn update_latest_revision(rev: Hash) -> SocialContextResult<()> {
+        Err(SocialContextError::InternalError("Not implemented"))
+    }
+
 }
 
 pub struct GraphInput {
