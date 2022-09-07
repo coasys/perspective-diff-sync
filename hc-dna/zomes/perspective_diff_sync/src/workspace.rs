@@ -413,17 +413,19 @@ impl Workspace {
                 };
 
                 for diff in sorted_diffs {
-                    if diff.1.parents.is_some() {
-                        let mut parents = vec![];
-                        for parent in diff.1.parents.as_ref().unwrap() {
-                            let parent = self
-                                .get_node_index(&parent)
-                                .ok_or(SocialContextError::InternalError("Did not find parent"))?;
-                            parents.push(parent.clone());
+                    if diff.0 != NULL_NODE() {
+                        if diff.1.parents.is_some() {
+                            let mut parents = vec![];
+                            for parent in diff.1.parents.as_ref().unwrap() {
+                                let parent = self
+                                    .get_node_index(&parent)
+                                    .ok_or(SocialContextError::InternalError("Did not find parent"))?;
+                                parents.push(parent.clone());
+                            }
+                            self.add_node(Some(parents), diff.0.clone());
+                        } else {
+                            self.add_node(Some(vec![NodeIndex::from(0)]), diff.0.clone());
                         }
-                        self.add_node(Some(parents), diff.0.clone());
-                    } else {
-                        self.add_node(Some(vec![NodeIndex::from(0)]), diff.0.clone());
                     }
                 }
                 Ok(())
