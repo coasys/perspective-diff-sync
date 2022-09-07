@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use dot_structures;
 use graphviz_rust;
 use hdk::prelude::*;
+use sha2::{Sha256, Digest};
+
 use crate::Hash;
 use crate::errors::{SocialContextResult, SocialContextError};
 use super::PerspectiveDiffRetreiver;
@@ -11,25 +13,28 @@ use super::PerspectiveDiffRetreiver;
 #[derive(Debug)]
 pub struct MockPerspectiveGraph {
     pub graph: Vec<PerspectiveDiffEntryReference>,
-    pub graph_map: BTreeMap<Hash, PerspectiveDiffEntryReference>,
+    pub graph_map: BTreeMap<Hash, SerializedBytes>,
 }
 
-impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
-    //fn get(hash: Hash) -> SocialContextResult<PerspectiveDiffEntryReference> 
-    //{
-    //    Ok(GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned())
-    //}
-
-    fn get<T>(_hash: Hash) -> SocialContextResult<T> 
+impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
+    fn get<T>(hash: Hash) -> SocialContextResult<T> 
         where
-        T: TryFrom<SerializedBytes, Error = SerializedBytesError>,
+            T: TryFrom<SerializedBytes, Error = SerializedBytesError>,
     {
-        Err(SocialContextError::InternalError("Not implemented"))
+        match GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash) {
+            Some(sb) => Ok(T::try_from(sb.to_owned()).unwrap()),
+            None => {
+                match OBJECT_STORE.lock().expect("Could not get lock on OBJECT_STORE").get(&hash) {
+                    Some(sb) => Ok(T::try_from(sb.to_owned()).unwrap()),
+                    None => {
+                        Err(SocialContextError::InternalError("Did not find entry for hash in MockPerspectiveGraph.get()"))
+                    }
+                }
+            }
+        }
     }
 
-
-
-    fn create_entry<I, E, E2>(_entry: I) -> SocialContextResult<Hash>
+    fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
         where
         ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,
         EntryVisibility: for<'a> From<&'a I>,
@@ -37,7 +42,20 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
         WasmError: From<E>,
         WasmError: From<E2>
     {
-        Err(SocialContextError::InternalError("Not implemented"))
+        let mut object_store = OBJECT_STORE.lock().expect("Could not get lock on OBJECT_STORE");
+
+        let entry: Entry = entry.try_into().expect("Could not get Entry");
+        let sb = SerializedBytes::try_from(entry).expect("Could not get the sb");
+        let bytes = sb.bytes();
+
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        let mut result = hasher.finalize().as_slice().to_owned();
+        result.append(&mut vec![0xdb, 0xdb, 0xdb, 0xdb]);
+
+        let hash = ActionHash::from_raw_36(result);
+        object_store.insert(hash.clone(), sb);
+        Ok(hash)
     }
 
     fn current_revision() -> SocialContextResult<Option<Hash>> {
@@ -51,7 +69,7 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
     }
 
     fn update_current_revision(rev: Hash) -> SocialContextResult<()> {
-        let mut revision = CURRENT_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
+        let mut revision = CURRENT_REVISION.lock().expect("Could not get lock on CURRENT_REVISION");
         *revision = Some(rev);
         Ok(())
     }
@@ -142,7 +160,8 @@ impl MockPerspectiveGraph {
                 parents: parents
             };
             graph.graph.push(mocked_diff.clone());
-            graph.graph_map.insert(mocked_hash, mocked_diff);
+            let sb = mocked_diff.try_into().expect("Could not create serialized bytes for mocked_diff");
+            graph.graph_map.insert(mocked_hash, sb);
         }
 
         graph
@@ -191,7 +210,8 @@ impl MockPerspectiveGraph {
                         parents: parents.get(hash).as_ref().cloned().cloned(),
                     };
                     graph.graph.push(diff.clone());
-                    graph.graph_map.insert(hash.clone(), diff);
+                    let sb = diff.try_into().expect("Could not create serialized bytes for mocked_diff");
+                    graph.graph_map.insert(hash.clone(), sb);
                 }
 
                 Ok(graph)
@@ -205,6 +225,7 @@ lazy_static!{
         nodes: 1,
         associations: vec![]
     }));
+    pub static ref OBJECT_STORE: Mutex<BTreeMap<Hash, SerializedBytes>> = Mutex::new(BTreeMap::new());
     pub static ref CURRENT_REVISION: Mutex<Option<Hash>> = Mutex::new(None);
     pub static ref LATEST_REVISION: Mutex<Option<Hash>> = Mutex::new(None);
 }
@@ -279,6 +300,7 @@ fn can_create_graph_from_dot() {
     let node_10 = node_id_hash(&dot_structures::Id::Plain(String::from("10")));
 
     let diff_12 = graph.graph_map.get(&node_12).unwrap();
+    let diff_12 = PerspectiveDiffEntryReference::try_from(diff_12.to_owned()).unwrap();
     assert_eq!(diff_12.parents, Some(vec![node_11, node_10]));
 }
 
@@ -319,4 +341,53 @@ fn example_test() {
     let mut workspace = Workspace::new();
     let res = workspace.collect_until_common_ancestor::<MockPerspectiveGraph>(ActionHash::from_raw_36(vec![5; 36]), ActionHash::from_raw_36(vec![4; 36]));
     println!("Got result: {:#?}", res);
+}
+
+#[test]
+fn can_get_and_create_mocked_holochain_objects() {
+    fn update() {
+        let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+        let dot = "digraph {
+            0 [ label = \"0\" ]
+            1 [ label = \"1\" ]
+            2 [ label = \"2\" ]
+            3 [ label = \"3\" ]
+            4 [ label = \"4\" ]
+            5 [ label = \"5\" ]
+            6 [ label = \"6\" ]
+            7 [ label = \"7\" ]
+            8 [ label = \"8\" ]
+            9 [ label = \"9\" ]
+            10 [ label = \"10\" ]
+            11 [ label = \"11\" ]
+            12 [ label = \"12\" ]
+            1 -> 0 [ label = \"()\" ]
+            2 -> 1 [ label = \"()\" ]
+            3 -> 2 [ label = \"()\" ]
+            4 -> 3 [ label = \"()\" ]
+            5 -> 4 [ label = \"()\" ]
+            6 -> 5 [ label = \"()\" ]
+            7 -> 1 [ label = \"()\" ]
+            8 -> 7 [ label = \"()\" ]
+            9 -> 8 [ label = \"()\" ]
+            10 -> 9 [ label = \"()\" ]
+            11 -> 10 [ label = \"()\" ]
+            12 -> 11 [ label = \"()\" ]
+            12 -> 10 [ label = \"()\" ]
+        }";
+        *graph = MockPerspectiveGraph::from_dot(dot).expect("Could not create graph");
+    }
+    update();
+    let diff_ref = MockPerspectiveGraph::get::<PerspectiveDiffEntryReference>(node_id_hash(&dot_structures::Id::Plain(String::from("1"))));
+    assert!(diff_ref.is_ok());
+
+    use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference};
+    let commit = MockPerspectiveGraph::create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
+        additions: vec![],
+        removals: vec![]
+    }));
+    assert!(commit.is_ok());
+
+    let get_commit = MockPerspectiveGraph::get::<PerspectiveDiff>(commit.unwrap());
+    assert!(get_commit.is_ok());
 }
