@@ -35,31 +35,23 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
 
     fn current_revision() -> SocialContextResult<Option<Hash>> {
         let revision = *CURRENT_REVISION.lock().expect("Could not get lock on CURRENT_REVISION");
-        if revision == ActionHash::from_raw_36(vec![999; 36]) {
-            Ok(None)
-        } else {
-            Ok(Some(revision))
-        }
+        Ok(revision)
     }
 
     fn latest_revision() -> SocialContextResult<Option<Hash>> {
         let revision = *LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
-        if revision == ActionHash::from_raw_36(vec![999; 36]) {
-            Ok(None)
-        } else {
-            Ok(Some(revision))
-        }
+        Ok(revision)
     }
 
     fn update_current_revision(rev: Hash) -> SocialContextResult<()> {
         let revision = CURRENT_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
-        *revision = rev;
+        *revision = Some(rev);
         Ok(())
     }
 
     fn update_latest_revision(rev: Hash) -> SocialContextResult<()> {
         let revision = LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
-        *revision = rev;
+        *revision = Some(rev);
         Ok(())
     }
 
@@ -206,8 +198,8 @@ lazy_static!{
         nodes: 1,
         associations: vec![]
     }));
-    pub static ref CURRENT_REVISION: Mutex<Hash> = Mutex::new(ActionHash::from_raw_36(vec![999; 36]));
-    pub static ref LATEST_REVISION: Mutex<Hash> = Mutex::new(ActionHash::from_raw_36(vec![999; 36]));
+    pub static ref CURRENT_REVISION: Mutex<Option<Hash>> = Mutex::new(None);
+    pub static ref LATEST_REVISION: Mutex<Option<Hash>> = Mutex::new(None);
 }
 
 #[test]
