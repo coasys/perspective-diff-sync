@@ -11,24 +11,25 @@ use crate::revisions::{current_revision, latest_revision};
 use crate::snapshots::{generate_snapshot, get_entries_since_snapshot};
 use crate::utils::{dedup, get_now};
 use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
+use crate::retriever::PerspectiveDiffRetreiver;
 
 #[cfg(feature = "prod")]
 use crate::revisions::update_current_revision;
 #[cfg(feature = "prod")]
 use crate::revisions::update_latest_revision;
 
-pub fn commit(
+pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     diff: PerspectiveDiff,
 ) -> SocialContextResult<HoloHash<holo_hash::hash_type::Action>> {
-    let pre_current_revision = current_revision()?;
-    let pre_latest_revision = latest_revision()?;
+    let pre_current_revision = current_revision::<Retriever>()?;
+    let pre_latest_revision = latest_revision::<Retriever>()?;
     let mut entries_since_snapshot = 0;
 
     if pre_current_revision != pre_latest_revision {
-        let new_diffs = pull()?;
+        let new_diffs = pull::<Retriever>()?;
         emit_signal(new_diffs)?;
         if pre_latest_revision.is_some() {
-            entries_since_snapshot = get_entries_since_snapshot(latest_revision()?.ok_or(
+            entries_since_snapshot = get_entries_since_snapshot(latest_revision::<Retriever>()?.ok_or(
                 SocialContextError::InternalError("Expected to have latest revision"),
             )?)?;
         };
@@ -42,17 +43,17 @@ pub fn commit(
     //Add one since we are comitting an entry here
     entries_since_snapshot += 1;
 
-    let parent = current_revision()?;
+    let parent = current_revision::<Retriever>()?;
     debug!("Parent entry is: {:#?}", parent);
     debug!("CREATE_ENTRY PerspectiveDiff");
-    let diff_entry_create = create_entry(EntryTypes::PerspectiveDiff(diff.clone()))?;
+    let diff_entry_create = Retriever::create_entry(EntryTypes::PerspectiveDiff(diff.clone()))?;
     //debug!("Created diff entry: {:#?}", diff_entry_create);
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create.clone(),
         parents: parent.map(|val| vec![val]),
     };
     debug!("CREATE_ENTRY PerspectiveDiffEntryReference");
-    let diff_entry_reference = create_entry(EntryTypes::PerspectiveDiffEntryReference(
+    let diff_entry_reference = Retriever::create_entry(EntryTypes::PerspectiveDiffEntryReference(
         diff_entry_ref_entry.clone(),
     ))?;
     debug!("Created diff entry ref: {:#?}", diff_entry_reference);
@@ -64,7 +65,7 @@ pub fn commit(
         debug!("Creating snapshot");
 
         debug!("CREATE_ENTRY Snapshot");
-        create_entry(EntryTypes::Snapshot(snapshot.clone()))?;
+        Retriever::create_entry(EntryTypes::Snapshot(snapshot.clone()))?;
         create_link(
             hash_entry(diff_entry_ref_entry)?,
             hash_entry(snapshot)?,

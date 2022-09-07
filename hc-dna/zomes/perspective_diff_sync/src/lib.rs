@@ -51,7 +51,7 @@ fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
 
 #[hdk_extern]
 pub fn commit(diff: PerspectiveDiff) -> ExternResult<HoloHash<holo_hash::hash_type::Action>> {
-    commit::commit(diff).map_err(|error| utils::err(&format!("{}", error)))
+    commit::commit::<retriever::HolochainRetreiver>(diff).map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
@@ -61,31 +61,31 @@ pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
 
 #[hdk_extern]
 pub fn latest_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    revisions::latest_revision().map_err(|error| utils::err(&format!("{}", error)))
+    revisions::latest_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    revisions::current_revision().map_err(|error| utils::err(&format!("{}", error)))
+    revisions::current_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull()
+    pull::pull::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|res| res)
 }
 
 #[hdk_extern]
 pub fn render(_: ()) -> ExternResult<Perspective> {
-    render::render().map_err(|error| utils::err(&format!("{}", error)))
+    render::render::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
 pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_current_revision(_hash, utils::get_now().unwrap())
+        revisions::update_current_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
             .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
@@ -95,7 +95,7 @@ pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) ->
 pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_latest_revision(_hash, utils::get_now().unwrap())
+        revisions::update_latest_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
             .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
@@ -105,6 +105,5 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> 
 lazy_static! {
     pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
     pub static ref ENABLE_SIGNALS: bool = true;
-    //TODO: 1 is a test value; this should be updated to a higher value for production
     pub static ref SNAPSHOT_INTERVAL: usize = 100;
 }

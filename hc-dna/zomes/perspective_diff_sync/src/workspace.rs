@@ -84,7 +84,7 @@ impl Workspace {
     pub fn collect_only_from_latest<Retriever: PerspectiveDiffRetreiver>(&mut self, latest: Hash) 
         -> SocialContextResult<()> 
     {
-        debug!("WORKSPACE collect_only_from_latest 1");
+        println!("WORKSPACE collect_only_from_latest 1");
         // Initializing with only one branch starting from the given hash.
         let mut unprocessed_branches = VecDeque::new();
         unprocessed_branches.push_back(latest);
@@ -93,7 +93,7 @@ impl Workspace {
             let current_hash = unprocessed_branches[0].clone();
 
             if self.entry_map.contains_key(&current_hash) {
-                debug!("collect_only_from_latest: CIRCLE DETECTED! Closing current branch...");
+                println!("collect_only_from_latest: CIRCLE DETECTED! Closing current branch...");
                 unprocessed_branches.pop_front();
                 continue;
             }
@@ -148,7 +148,7 @@ impl Workspace {
             }
         }
 
-        debug!("WORKSPACE collect_only_from_latest 2");
+        println!("WORKSPACE collect_only_from_latest 2");
 
         Ok(())
     }
@@ -394,7 +394,7 @@ impl Workspace {
         }
         dot.push("}".to_string());
 
-        debug!("{}", dot.join("\n"));
+        println!("{}", dot.join("\n"));
 
         self.sorted_diffs = Some(topo_sort_diff_references(&entry_vec)?);
         Ok(())
@@ -529,7 +529,7 @@ impl Workspace {
         index
     }
 
-    pub fn squashed_diff(&self) -> SocialContextResult<PerspectiveDiff> {
+    pub fn squashed_diff<Retriever: PerspectiveDiffRetreiver>(&self) -> SocialContextResult<PerspectiveDiff> {
         let mut out = PerspectiveDiff {
             additions: vec![],
             removals: vec![],
@@ -538,15 +538,7 @@ impl Workspace {
             if value.diff == NULL_NODE() {
                 continue;
             }
-            let diff_entry = get(value.diff.clone(), GetOptions::latest())?
-                .ok_or(SocialContextError::InternalError(
-                    "squashed_diff(): Could not find diff entry for given diff entry reference",
-                ))?
-                .entry()
-                .to_app_option::<PerspectiveDiff>()?
-                .ok_or(SocialContextError::InternalError(
-                    "Expected element to contain app entry data",
-                ))?;
+            let diff_entry = Retriever::get::<PerspectiveDiff>(value.diff.clone())?;
             out.additions.append(&mut diff_entry.additions.clone());
             out.removals.append(&mut diff_entry.removals.clone());
         }
@@ -589,11 +581,11 @@ impl Workspace {
     // }
 
     pub fn print_graph_debug(&self) {
-        debug!(
+        println!(
             "Directed: {:?}\n",
             Dot::with_config(&self.graph, &[Config::NodeIndexLabel])
         );
-        debug!(
+        println!(
            "Undirected: {:?}\n",
            Dot::with_config(&self.undirected_graph, &[])
         );

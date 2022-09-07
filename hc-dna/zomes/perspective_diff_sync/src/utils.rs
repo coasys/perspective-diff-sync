@@ -6,11 +6,18 @@ use crate::errors::SocialContextResult;
 use perspective_diff_sync_integrity::{LinkExpression, Triple, ExpressionProof};
 
 pub fn get_now() -> SocialContextResult<DateTime<Utc>> {
-    let now = sys_time()?.as_seconds_and_nanos();
-    Ok(DateTime::<Utc>::from_utc(
-        NaiveDateTime::from_timestamp(now.0, now.1),
-        Utc,
-    ))
+    match sys_time() {
+        Ok(time) => {
+            let now = time.as_seconds_and_nanos();
+            Ok(DateTime::<Utc>::from_utc(
+                NaiveDateTime::from_timestamp(now.0, now.1),
+                Utc,
+            ))
+        },
+        Err(_err) => {
+            Ok(Utc::now())
+        }
+    }
 }
 
 pub fn dedup<T: Eq + Hash + Clone>(vs: &Vec<T>) -> Vec<T> {
@@ -32,7 +39,7 @@ pub fn create_link_expression(source: &str, target: &str) -> LinkExpression {
             predicate: None,
             target: Some(String::from(target))
         },
-        timestamp: Utc::now(),
+        timestamp: DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
         proof: ExpressionProof {
             signature: String::from("sig"),
             key: String::from("key"),

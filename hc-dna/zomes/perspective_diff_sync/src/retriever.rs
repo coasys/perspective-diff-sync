@@ -1,6 +1,7 @@
 use crate::Hash;
 use crate::errors::SocialContextResult;
 use hdk::prelude::*;
+use chrono::{DateTime, Utc};
 
 pub mod holochain;
 pub mod mock;
@@ -22,8 +23,8 @@ pub trait PerspectiveDiffRetreiver {
         WasmError: From<E2>;
     fn current_revision() -> SocialContextResult<Option<Hash>>;
     fn latest_revision() -> SocialContextResult<Option<Hash>>;
-    fn update_current_revision(rev: Hash) -> SocialContextResult<()>;
-    fn update_latest_revision(rev: Hash) -> SocialContextResult<()>;
+    fn update_current_revision(hash: Hash, timestamp: DateTime<Utc>) -> SocialContextResult<()>;
+    fn update_latest_revision(hash: Hash, timestamp: DateTime<Utc>) -> SocialContextResult<()>;
 }
 
 
