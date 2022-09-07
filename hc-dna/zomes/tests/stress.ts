@@ -2,6 +2,9 @@ import { AgentHapp, addAllAgentsToAllConductors, cleanAllConductors } from "@hol
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
 import test from "tape-promise/tape.js";
+import { hrtime } from 'node:process';
+//@ts-ignore
+import divide from 'divide-bigint'
 
 let createdLinks = new Map<string, Array<LinkExpression>>()
 
@@ -59,10 +62,13 @@ export async function stressTest(t) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
+        const start = hrtime.bigint();
         await Promise.all([
             createLinks(aliceHapps, "alice", 20),
             createLinks(bobHapps, "bob", 20)
         ])
+        const end = hrtime.bigint();
+        console.log(`Creating links took ${divide(end - start, 1000000)} ms`);
 
         console.log("-------------------------");
         console.log("Created 20 links each (Alice and Bob)");
@@ -78,11 +84,18 @@ export async function stressTest(t) {
         let pullSuccessful = false
         while(!pullSuccessful) {
             try {
+                const startA = hrtime.bigint();
                 await call(aliceHapps, "pull");
-                await call(bobHapps, "pull");
+                const endA = hrtime.bigint();
+                console.log(`Alice pull took ${divide(endA - startA, 1000000)} ms`);
 
-                await call(aliceHapps, "pull");
+                const startB = hrtime.bigint();
                 await call(bobHapps, "pull");
+                const endB = hrtime.bigint();
+                console.log(`Bob pull took ${divide(endB - startB,1000000)} ms`);
+
+                //await call(aliceHapps, "pull");
+                //await call(bobHapps, "pull");
                 pullSuccessful = true
             } catch(e) {
                 console.error("Pulling failed with error:", e)
@@ -112,7 +125,16 @@ export async function stressTest(t) {
     }
 
 
+    const startRenderA = hrtime.bigint();
     let alice_rendered = await call(aliceHapps, "render") as Perspective
+    const endRenderA = hrtime.bigint();
+    console.log(`Alice render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
+    
+
+    const startRenderB = hrtime.bigint();
+    await call(bobHapps, "pull");
+    const endRenderB = hrtime.bigint();
+    console.log(`Bob render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
     let bob_rendered = await call(bobHapps, "render") as Perspective
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)

@@ -610,6 +610,11 @@
   "resolved" "https://registry.npmjs.org/diff/-/diff-4.0.2.tgz"
   "version" "4.0.2"
 
+"divide-bigint@^1.0.4":
+  "integrity" "sha512-4BuHUgA1+iICOm6JZlourP3Zo/EQHh42/cSHP2hhoVGmgp6Pd1eJ8wt9c8v4gGfy8vBUFhQoO+BrZ90vuaugyg=="
+  "resolved" "https://registry.npmjs.org/divide-bigint/-/divide-bigint-1.0.4.tgz"
+  "version" "1.0.4"
+
 "doctrine@^3.0.0":
   "integrity" "sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w=="
   "resolved" "https://registry.npmjs.org/doctrine/-/doctrine-3.0.0.tgz"
