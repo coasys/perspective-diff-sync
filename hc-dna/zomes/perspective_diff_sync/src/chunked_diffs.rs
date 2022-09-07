@@ -20,31 +20,35 @@ impl ChunkedDiffs {
         }
     }
 
-    pub fn add_additions(&mut self, mut links: Vec<LinkExpression>) {
-        let len = self.chunks.len();
-        let current_chunk = self.chunks.get_mut(len-1).expect("must have at least one");
-
-        if current_chunk.total_diff_number() + links.len() > self.max_changes_per_chunk.into() {
-            self.chunks.push(PerspectiveDiff{
-                additions: links,
-                removals: Vec::new(),
-            })
-        } else {
-            current_chunk.additions.append(&mut links)
+    pub fn add_additions(&mut self, links: Vec<LinkExpression>) {
+        let mut reverse_links = links.into_iter().rev().collect::<Vec<_>>();
+        while reverse_links.len() > 0 {
+            let len = self.chunks.len();
+            let current_chunk = self.chunks.get_mut(len-1).expect("must have at least one");
+    
+            while current_chunk.total_diff_number() < self.max_changes_per_chunk.into() && reverse_links.len() > 0 {
+                current_chunk.additions.push(reverse_links.pop().unwrap());
+            }
+    
+            if reverse_links.len() > 0 {
+                self.chunks.push(PerspectiveDiff::new())
+            }
         }
     }
 
-    pub fn add_removals(&mut self, mut links: Vec<LinkExpression>) {
-        let len = self.chunks.len();
-        let current_chunk = self.chunks.get_mut(len-1).expect("must have at least one");
+    pub fn add_removals(&mut self, links: Vec<LinkExpression>) {
+        let mut reverse_links = links.into_iter().rev().collect::<Vec<_>>();
+        while reverse_links.len() > 0 {
+            let len = self.chunks.len();
+            let current_chunk = self.chunks.get_mut(len-1).expect("must have at least one");
 
-        if current_chunk.total_diff_number() + links.len() > self.max_changes_per_chunk.into() {
-            self.chunks.push(PerspectiveDiff{
-                additions: Vec::new(),
-                removals: links,
-            })
-        } else {
-            current_chunk.removals.append(&mut links)
+            while current_chunk.total_diff_number() < self.max_changes_per_chunk.into() && reverse_links.len() > 0 {
+                current_chunk.removals.push(reverse_links.pop().unwrap());
+            }
+    
+            if reverse_links.len() > 0 {
+                self.chunks.push(PerspectiveDiff::new())
+            }
         }
     }
 
@@ -142,5 +146,34 @@ mod tests {
 
         assert_eq!(diff.additions, vec![_a1,_a2]);
         assert_eq!(diff.removals, vec![_r1,_r2,_r3,_r4]);
+    }
+
+    #[test]
+    fn can_chunk_big_diffs() {
+        let mut chunks = ChunkedDiffs::new(500);
+
+        let mut big_diff_add = Vec::new();
+        for i in 0..5000 {
+            big_diff_add.push(create_link_expression("a", &format!("{}", i)));
+        }
+        chunks.add_additions(big_diff_add);
+
+        let mut big_diff_remove = Vec::new();
+        for i in 0..800 {
+            big_diff_remove.push(create_link_expression("a", &format!("{}", i)));
+        }
+        chunks.add_removals(big_diff_remove);
+
+        let mut big_diff_add = Vec::new();
+        for i in 0..213 {
+            big_diff_add.push(create_link_expression("a", &format!("{}", i)));
+        }
+        chunks.add_additions(big_diff_add);
+
+        assert_eq!(chunks.chunks.len(), 13);
+        for i in 0..12 {
+            assert_eq!(chunks.chunks[i].total_diff_number(), 500);
+        }
+        assert_eq!(chunks.chunks[12].total_diff_number(), 13);
     }
 }
