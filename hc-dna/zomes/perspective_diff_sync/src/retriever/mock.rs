@@ -45,7 +45,10 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         let mut object_store = OBJECT_STORE.lock().expect("Could not get lock on OBJECT_STORE");
 
         let entry: Entry = entry.try_into().expect("Could not get Entry");
-        let sb = SerializedBytes::try_from(entry).expect("Could not get the sb");
+        let sb = match entry {
+            Entry::App(bytes) => bytes,
+            _ => panic!("Should not get any entry except app")
+        };
         let bytes = sb.bytes();
 
         let mut hasher = Sha256::new();
@@ -54,7 +57,7 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         result.append(&mut vec![0xdb, 0xdb, 0xdb, 0xdb]);
 
         let hash = ActionHash::from_raw_36(result);
-        object_store.insert(hash.clone(), sb);
+        object_store.insert(hash.clone(), sb.0);
         Ok(hash)
     }
 
