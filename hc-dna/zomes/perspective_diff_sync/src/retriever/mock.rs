@@ -15,12 +15,19 @@ pub struct MockPerspectiveGraph {
 }
 
 impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
+    //fn get(hash: Hash) -> SocialContextResult<PerspectiveDiffEntryReference> 
+    //{
+    //    Ok(GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned())
+    //}
+
     fn get<T>(hash: Hash) -> SocialContextResult<T> 
         where
         T: TryFrom<SerializedBytes, Error = SerializedBytesError>,
     {
-        Ok(GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned())
+        Err(SocialContextError::InternalError("Not implemented"))
     }
+
+
 
     fn create_entry<I, E, E2>(entry: I) -> SocialContextResult<Hash>
         where
