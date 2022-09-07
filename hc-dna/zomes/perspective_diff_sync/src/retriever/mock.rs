@@ -3,6 +3,10 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 use dot_structures;
 use graphviz_rust;
+use hdk::prelude::ActionHash;
+use crate::Hash;
+use crate::errors::{SocialContextResult, SocialContextError};
+use super::PerspectiveDiffRetreiver;
 
 #[derive(Debug)]
 pub struct MockPerspectiveGraph {
@@ -11,7 +15,7 @@ pub struct MockPerspectiveGraph {
 }
 
 impl PerspectiveDiffRetreiver for MockPerspectiveGraph {
-    fn get(hash: Hash) -> SocialContextResult<PerspectiveDiffEntryReference> {
+    fn get<T>(hash: Hash) -> SocialContextResult<T> {
         Ok(GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned())
     }
 }

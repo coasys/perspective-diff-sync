@@ -1,12 +1,26 @@
 use crate::Hash;
 use crate::errors::{SocialContextResult, SocialContextError};
+use hdk::prelude::*;
 
-mod holochain;
-mod mock;
+pub mod holochain;
+pub mod mock;
+
+pub use holochain::HolochainRetreiver;
+pub use mock::*;
 
 pub trait PerspectiveDiffRetreiver {
-    fn get<T>(hash: Hash) -> SocialContextResult<T>;
-    fn create_entry<T>(entry: T) -> SocialContextResult<Hash>;
+    fn get<T>(hash: Hash) -> SocialContextResult<T> 
+        where
+        T: TryFrom<SerializedBytes, Error = SerializedBytesError>;
+
+    fn create_entry<I, E, E2>(entry: I) -> SocialContextResult<Hash>
+        where
+        ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,
+        EntryVisibility: for<'a> From<&'a I>,
+        Entry: TryFrom<I, Error = E>,
+        WasmError: From<E>,
+        WasmError: From<E2>
+    ;
     fn current_revision() -> SocialContextResult<Option<Hash>>;
     fn latest_revision() -> SocialContextResult<Option<Hash>>;
     fn update_current_revision(rev: Hash) -> SocialContextResult<()>;
