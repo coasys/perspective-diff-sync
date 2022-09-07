@@ -1,10 +1,12 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    EntryTypes, LinkExpression, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot,
+    LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot,
 };
 
 use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
+use crate::chunked_diffs::ChunkedDiffs;
+use crate::retriever::HolochainRetreiver;
 
 pub fn get_entries_since_snapshot(
     latest: HoloHash<holo_hash::hash_type::Action>,
@@ -76,89 +78,6 @@ pub fn get_entries_since_snapshot(
     Ok(depth)
 }
 
-pub struct ChunkedDiffs {
-    max_changes_per_chunk: u16,
-    chunks: Vec<PerspectiveDiff>
-}
-
-impl ChunkedDiffs {
-    pub fn new(max: u16) -> Self {
-        Self {
-            max_changes_per_chunk: max,
-            chunks: vec![PerspectiveDiff::new()],
-        }
-    }
-
-    pub fn add_additions(&mut self, mut links: Vec<LinkExpression>) {
-        let len = self.chunks.len();
-        let current_chunk = self.chunks.get_mut(len-1).expect("must have at least one");
-
-        if current_chunk.total_diff_number() + links.len() > self.max_changes_per_chunk.into() {
-            self.chunks.push(PerspectiveDiff{
-                additions: links,
-                removals: Vec::new(),
-            })
-        } else {
-            current_chunk.additions.append(&mut links)
-        }
-    }
-
-    pub fn add_removals(&mut self, mut links: Vec<LinkExpression>) {
-        let len = self.chunks.len();
-        let current_chunk = self.chunks.get_mut(len-1).expect("must have at least one");
-
-        if current_chunk.total_diff_number() + links.len() > self.max_changes_per_chunk.into() {
-            self.chunks.push(PerspectiveDiff{
-                additions: Vec::new(),
-                removals: links,
-            })
-        } else {
-            current_chunk.removals.append(&mut links)
-        }
-    }
-
-    pub fn into_entries(self) -> SocialContextResult<Vec<Hash>> {
-        self.chunks
-            .into_iter()
-            .map(|chunk_diff| {
-                create_entry(EntryTypes::PerspectiveDiff(chunk_diff))
-                    .map_err(|e| SocialContextError::Wasm(e)) 
-            })
-            .collect() 
-    }
-
-    pub fn from_entries(hashes: Vec<Hash>) -> SocialContextResult<Self> {
-        let mut diffs = Vec::new();
-        for hash in hashes.into_iter() {
-            diffs.push(get(hash, GetOptions::latest())?
-                .ok_or(SocialContextError::InternalError(
-                    "Could not find diff entry for given diff entry reference",
-                ))?
-                .entry()
-                .to_app_option::<PerspectiveDiff>()?
-                .ok_or(SocialContextError::InternalError(
-                    "Expected element to contain app entry data",
-                ))?
-            );
-        }
-
-        Ok(ChunkedDiffs {
-            max_changes_per_chunk: 1000,
-            chunks: diffs,
-        })
-    }
-
-    pub fn into_aggregated_diff(self) -> PerspectiveDiff {
-        self.chunks.into_iter().reduce(|accum, item| {
-            let mut temp = accum.clone();
-            temp.additions.append(&mut item.additions.clone());
-            temp.removals.append(&mut item.removals.clone());
-            temp
-        })
-        .unwrap_or(PerspectiveDiff::new())
-    }
-}
-
 pub fn generate_snapshot(
     latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<Snapshot> {
@@ -195,7 +114,7 @@ pub fn generate_snapshot(
                     "Expected element to contain app entry data",
                 ))?;
             
-            let diff = ChunkedDiffs::from_entries(snapshot.diff_chunks)?.into_aggregated_diff();
+            let diff = ChunkedDiffs::from_entries::<HolochainRetreiver>(snapshot.diff_chunks)?.into_aggregated_diff();
             chunked_diffs.add_additions(diff.additions.clone());
             chunked_diffs.add_removals(diff.removals.clone());
             for hash in snapshot.included_diffs.iter() {
@@ -261,7 +180,7 @@ pub fn generate_snapshot(
     }
 
     let snapshot = Snapshot {
-        diff_chunks: chunked_diffs.into_entries()?,
+        diff_chunks: chunked_diffs.into_entries::<HolochainRetreiver>()?,
         included_diffs: seen.into_iter().collect(),
     };
 

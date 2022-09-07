@@ -3,6 +3,7 @@ use hdk::prelude::*;
 use std::hash::Hash;
 
 use crate::errors::SocialContextResult;
+use perspective_diff_sync_integrity::{LinkExpression, Triple, ExpressionProof};
 
 pub fn get_now() -> SocialContextResult<DateTime<Utc>> {
     let now = sys_time()?.as_seconds_and_nanos();
@@ -20,4 +21,20 @@ pub fn dedup<T: Eq + Hash + Clone>(vs: &Vec<T>) -> Vec<T> {
 
 pub(crate) fn err(reason: &str) -> WasmError {
     wasm_error!(WasmErrorInner::Host(String::from(reason)))
+}
+
+pub fn create_link_expression(source: &str, target: &str) -> LinkExpression {
+    LinkExpression {
+        author: String::from("Test author"),
+        data: Triple {
+            source: Some(String::from(source)),
+            predicate: None,
+            target: Some(String::from(target))
+        },
+        timestamp: Utc::now(),
+        proof: ExpressionProof {
+            signature: String::from("sig"),
+            key: String::from("key"),
+        },
+    }
 }

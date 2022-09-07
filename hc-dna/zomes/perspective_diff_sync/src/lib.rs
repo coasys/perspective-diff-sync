@@ -6,6 +6,7 @@ use hdk::prelude::*;
 use lazy_static::lazy_static;
 use perspective_diff_sync_integrity::{Perspective, PerspectiveDiff};
 
+mod chunked_diffs;
 mod commit;
 mod errors;
 mod inputs;
