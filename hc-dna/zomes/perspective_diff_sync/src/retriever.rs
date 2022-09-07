@@ -13,7 +13,7 @@ pub trait PerspectiveDiffRetreiver {
         where
         T: TryFrom<SerializedBytes, Error = SerializedBytesError>;
 
-    fn create_entry<I, E, E2>(entry: I) -> SocialContextResult<Hash>
+    fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
         where
         ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,
         EntryVisibility: for<'a> From<&'a I>,
