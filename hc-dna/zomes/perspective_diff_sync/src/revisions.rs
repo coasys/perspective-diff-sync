@@ -11,6 +11,7 @@ pub fn update_latest_revision(
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
     let hash_ref = HashReference { hash, timestamp };
+    debug!("CREATE_ENTRY update_latest_revision HashReference");
     create_entry(EntryTypes::HashReference(hash_ref.clone()))?;
     hc_time_index::index_entry(
         String::from("current_rev"),
@@ -27,6 +28,7 @@ pub fn update_current_revision(
     timestamp: DateTime<Utc>,
 ) -> SocialContextResult<()> {
     let hash_ref = LocalHashReference { hash, timestamp };
+    debug!("CREATE_ENTRY update_current_revision LocalHashReference");
     create_entry(EntryTypes::LocalHashReference(hash_ref.clone()))?;
     Ok(())
 }

@@ -1,4 +1,4 @@
-//use hdk::prelude::*;
+use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
     EntryTypes, LinkExpression, PerspectiveDiff,
 };
@@ -49,9 +49,11 @@ impl ChunkedDiffs {
     }
 
     pub fn into_entries<Retreiver: PerspectiveDiffRetreiver>(self) -> SocialContextResult<Vec<Hash>> {
+        debug!("ChunkedDiffs.into_entries()");
         self.chunks
             .into_iter()
             .map(|chunk_diff| {
+                debug!("ChunkedDiffs writing chunk of size: {}", chunk_diff.total_diff_number());
                 Retreiver::create_entry(EntryTypes::PerspectiveDiff(chunk_diff))
             })
             .collect() 

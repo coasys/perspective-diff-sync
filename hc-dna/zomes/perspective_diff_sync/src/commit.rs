@@ -44,12 +44,14 @@ pub fn commit(
 
     let parent = current_revision()?;
     debug!("Parent entry is: {:#?}", parent);
+    debug!("CREATE_ENTRY PerspectiveDiff");
     let diff_entry_create = create_entry(EntryTypes::PerspectiveDiff(diff.clone()))?;
     //debug!("Created diff entry: {:#?}", diff_entry_create);
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create.clone(),
         parents: parent.map(|val| vec![val]),
     };
+    debug!("CREATE_ENTRY PerspectiveDiffEntryReference");
     let diff_entry_reference = create_entry(EntryTypes::PerspectiveDiffEntryReference(
         diff_entry_ref_entry.clone(),
     ))?;
@@ -61,6 +63,7 @@ pub fn commit(
         let snapshot = generate_snapshot(diff_entry_reference.clone())?;
         debug!("Creating snapshot");
 
+        debug!("CREATE_ENTRY Snapshot");
         create_entry(EntryTypes::Snapshot(snapshot.clone()))?;
         create_link(
             hash_entry(diff_entry_ref_entry)?,
@@ -141,6 +144,7 @@ pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
                 agent: agent_info()?.agent_initial_pubkey,
                 timestamp: now,
             };
+            debug!("CREATE_ENTRY AgentReference");
             create_entry(&EntryTypes::AgentReference(new_agent_ref.clone()))?;
             hc_time_index::index_entry(
                 String::from("active_agent"),
@@ -157,6 +161,7 @@ pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
                 agent: agent_info()?.agent_initial_pubkey,
                 timestamp: now,
             };
+            debug!("CREATE_ENTRY AgentReference");
             create_entry(&EntryTypes::AgentReference(agent_ref.clone()))?;
             hc_time_index::index_entry(
                 String::from("active_agent"),
