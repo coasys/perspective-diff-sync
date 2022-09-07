@@ -79,8 +79,8 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     {
         debug!("UPDATING REVISIONS");
         let now = get_now()?;
-        update_latest_revision(diff_entry_reference.clone(), now.clone())?;
-        update_current_revision(diff_entry_reference.clone(), now)?;
+        update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
+        update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
     }
 
     if *ENABLE_SIGNALS {
