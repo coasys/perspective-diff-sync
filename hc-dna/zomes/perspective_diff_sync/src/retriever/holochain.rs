@@ -29,9 +29,10 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
         ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,
         EntryVisibility: for<'a> From<&'a I>,
         Entry: TryFrom<I, Error = E>,
-        WasmError: From<E>
+        WasmError: From<E>,
+        WasmError: From<E2>
     {
-        create_entry(entry).map_err(|e| SocialContextError::Wasm(e)) 
+        create_entry::<I,E,E2>(entry).map_err(|e| SocialContextError::Wasm(e)) 
     }
 
     fn current_revision() -> SocialContextResult<Option<Hash>> {

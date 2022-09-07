@@ -1,5 +1,5 @@
 use crate::Hash;
-use crate::errors::{SocialContextResult, SocialContextError};
+use crate::errors::SocialContextResult;
 use hdk::prelude::*;
 
 pub mod holochain;
@@ -19,8 +19,7 @@ pub trait PerspectiveDiffRetreiver {
         EntryVisibility: for<'a> From<&'a I>,
         Entry: TryFrom<I, Error = E>,
         WasmError: From<E>,
-        WasmError: From<E2>
-    ;
+        WasmError: From<E2>;
     fn current_revision() -> SocialContextResult<Option<Hash>>;
     fn latest_revision() -> SocialContextResult<Option<Hash>>;
     fn update_current_revision(rev: Hash) -> SocialContextResult<()>;
