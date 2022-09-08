@@ -114,6 +114,13 @@ pub struct LocalHashReference {
 app_entry!(LocalHashReference);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct LocalTimestampReference {
+    pub timestamp: DateTime<Utc>,
+}
+
+app_entry!(LocalTimestampReference);
+
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct AgentReference {
     pub agent: AgentPubKey,
     pub timestamp: DateTime<Utc>,
@@ -136,6 +143,8 @@ pub enum EntryTypes {
     LocalHashReference(LocalHashReference),
     #[entry_def(visibility = "public")]
     AgentReference(AgentReference),
+    #[entry_def(visibility = "private")]
+    LocalTimestampReference(LocalTimestampReference)
 }
 
 #[hdk_link_types]
