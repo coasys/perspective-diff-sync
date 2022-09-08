@@ -8,7 +8,7 @@ use perspective_diff_sync_integrity::{
 //use crate::errors::SocialContextError;
 use crate::errors::SocialContextResult;
 //use crate::pull::pull;
-use crate::revisions::{current_revision, latest_revision, update_current_revision, update_latest_revision};
+use crate::revisions::{current_revision, update_current_revision, update_latest_revision};
 use crate::snapshots::generate_snapshot;
 use crate::utils::{dedup, get_now};
 use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
@@ -22,12 +22,6 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     let after = get_now()?.time();
     debug!("Took {} to get current revision", (after - now).num_milliseconds());
 
-    let pre_latest_revision = latest_revision::<Retriever>()?;
-    let after_latest = get_now()?.time();
-    debug!("Took {} to get latest revision", (after_latest - after).num_milliseconds());
-    
-    let mut entries_since_snapshot = 0;
-
     //if pre_current_revision != pre_latest_revision {
     //    let new_diffs = pull::<Retriever>()?;
     //    emit_signal(new_diffs)?;
@@ -37,16 +31,17 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     //        )?)?;
     //    };
     //} else {
-        if pre_current_revision.is_some() {
-            let current = Retriever::get::<PerspectiveDiffEntryReference>(pre_current_revision.clone().unwrap().hash)?;
-            entries_since_snapshot = current.diffs_since_snapshot;
-        };
-    //}
+
+    let mut entries_since_snapshot = 0;
+    if pre_current_revision.is_some() {
+        let current = Retriever::get::<PerspectiveDiffEntryReference>(pre_current_revision.clone().unwrap().hash)?;
+        entries_since_snapshot = current.diffs_since_snapshot;
+    };
     debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
     //Add one since we are comitting an entry here
     entries_since_snapshot += 1;
 
-    let create_snapshot_here = if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
+    let create_snapshot_here = if entries_since_snapshot >= *SNAPSHOT_INTERVAL {
         entries_since_snapshot = 0;
         true
     } else {
