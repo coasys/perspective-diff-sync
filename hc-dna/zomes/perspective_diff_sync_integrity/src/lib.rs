@@ -4,20 +4,20 @@ use hdi::prelude::*;
 
 pub mod impls;
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ExpressionProof {
     pub signature: String,
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Triple {
     pub source: Option<String>,
     pub target: Option<String>,
     pub predicate: Option<String>,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct LinkExpression {
     pub author: String,
     pub data: Triple,

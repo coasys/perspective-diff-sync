@@ -85,7 +85,8 @@ pub fn generate_snapshot(
     let mut seen: HashSet<Hash> = HashSet::new();
     let mut unseen_parents = vec![];
 
-    let mut chunked_diffs = ChunkedDiffs::new(500);
+    let mut all_additions = BTreeSet::new();
+    let mut all_removals = BTreeSet::new();
 
     loop {
         let diff = get(search_position.clone(), GetOptions::latest())?
@@ -115,8 +116,12 @@ pub fn generate_snapshot(
                 ))?;
             
             let diff = ChunkedDiffs::from_entries::<HolochainRetreiver>(snapshot.diff_chunks)?.into_aggregated_diff();
-            chunked_diffs.add_additions(diff.additions.clone());
-            chunked_diffs.add_removals(diff.removals.clone());
+            for addition in diff.additions.iter() {
+                all_additions.insert(addition.clone());
+            }
+            for removal in diff.removals.iter() {
+                all_removals.insert(removal.clone());
+            }
             for hash in snapshot.included_diffs.iter() {
                 seen.insert(hash.clone());
             }
@@ -142,8 +147,12 @@ pub fn generate_snapshot(
                         "Expected element to contain app entry data",
                     ))?;
 
-                chunked_diffs.add_additions(diff_entry.additions.clone());
-                chunked_diffs.add_removals(diff_entry.removals.clone());
+                for addition in diff_entry.additions.iter() {
+                    all_additions.insert(addition.clone());
+                }
+                for removal in diff_entry.removals.iter() {
+                    all_removals.insert(removal.clone());
+                }
             };
             if diff.parents.is_none() {
                 //No parents, we have reached the end of the chain
@@ -178,6 +187,12 @@ pub fn generate_snapshot(
             }
         }
     }
+
+
+    let mut chunked_diffs = ChunkedDiffs::new(500);
+
+    chunked_diffs.add_additions(all_additions.into_iter().collect());
+    chunked_diffs.add_removals(all_removals.into_iter().collect());
 
     let snapshot = Snapshot {
         diff_chunks: chunked_diffs.into_entries::<HolochainRetreiver>()?,
