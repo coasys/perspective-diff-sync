@@ -3,7 +3,7 @@ use perspective_diff_sync_integrity::{
     EntryTypes, LinkExpression, PerspectiveDiff,
 };
 
-use crate::Hash;
+use crate::{Hash, CHUNK_SIZE};
 use crate::errors::{SocialContextResult};
 use crate::retriever::{PerspectiveDiffRetreiver};
 
@@ -71,7 +71,7 @@ impl ChunkedDiffs {
         }
 
         Ok(ChunkedDiffs {
-            max_changes_per_chunk: 1000,
+            max_changes_per_chunk: *CHUNK_SIZE,
             chunks: diffs,
         })
     }

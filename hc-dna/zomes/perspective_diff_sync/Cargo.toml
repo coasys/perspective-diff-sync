@@ -26,5 +26,4 @@ hdk = "0.0.143"
 holo_hash = "0.0.31"
 
 [features]
-prod = []
 test = []
