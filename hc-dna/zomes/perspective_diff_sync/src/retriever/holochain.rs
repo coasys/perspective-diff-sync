@@ -7,7 +7,6 @@ use crate::Hash;
 use crate::errors::{SocialContextResult, SocialContextError};
 use super::PerspectiveDiffRetreiver;
 
-
 pub struct HolochainRetreiver;
 
 impl PerspectiveDiffRetreiver for HolochainRetreiver {
@@ -37,46 +36,70 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
         create_entry::<I,E,E2>(entry).map_err(|e| SocialContextError::Wasm(e)) 
     }
 
-    fn current_revision() -> SocialContextResult<Option<Hash>> {
-        let revision = get_latest_local_entry::<LocalHashReference>()?;
-        Ok(revision.map(|val| val.hash))
+    fn current_revision() -> SocialContextResult<Option<LocalHashReference>> {
+        get_latest_local_entry::<LocalHashReference>()
     }
 
-    fn latest_revision() -> SocialContextResult<Option<Hash>> {
+    fn latest_revision() -> SocialContextResult<Option<HashReference>> {
         //Get the last latest revision to help reduce index search space
+        //Note that if we know the creation time of this DNA, in the case where the user never got a latest revision before, we can use
+        //the creation time of the DNA as the default None case below
+        let mut since_epoch = false;
         let last_latest = match get_latest_local_entry::<LocalTimestampReference>()? {
-            Some(last_seen_latest) => last_seen_latest.timestamp,
-            None => DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc)
+            Some(last_seen_latest) => last_seen_latest.timestamp_reference,
+            None => {
+                since_epoch = true;
+                DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc)
+            }
         };
+
+        debug!("Got last latest: {:?}", last_latest);
 
         //Get the latest hash reference
         let mut latest =
-        hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
-            String::from("current_rev"),
-            get_now()?,
-            last_latest,
-            None,
-            hc_time_index::SearchStrategy::Dfs,
-            Some(1),
-            LinkTypes::Index,
-            LinkTypes::TimePath
-        )?;
+            hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
+                String::from("current_rev"),
+                get_now()?,
+                last_latest,
+                None,
+                hc_time_index::SearchStrategy::Dfs,
+                Some(1),
+                LinkTypes::Index,
+                LinkTypes::TimePath
+            )?;
         let latest = latest.pop();
 
         if latest.is_some() {
-            //Check if latest == last latest we saw, if not then save this latest for future reference
+            debug!("Found a new latest revision in the DHT: {:?}", latest);
+            //Check if latest != last latest we saw, if not then save this latest for future reference
             if latest.clone().unwrap().timestamp != last_latest {
                 //Save this latest entry so we can use it in future queries 
                 let timestamp_ref = LocalTimestampReference {
-                    timestamp: latest.clone().unwrap().timestamp
+                    timestamp_reference: latest.clone().unwrap().timestamp
                 };
-                create_entry(EntryTypes::LocalTimestampReference(timestamp_ref))?;
+                create_entry(EntryTypes::LocalTimestampReference(timestamp_ref.clone()))?;
+                debug!("Updating the latest to: {} in latest_revision()", timestamp_ref.timestamp_reference);
             };
-            Ok(latest.map(|val| val.hash))
+            Ok(latest)
         } else {
-            debug!("Didnt find any DHT revision since the last time we received one... Just using our current revision...");
-            //There was no latest found in the time bounds above, so we should return the last latest we received, which should be current
-            HolochainRetreiver::current_revision()
+            //TODO; should we instead here just be able to return the current_revision?
+            if since_epoch {
+                Ok(None)
+            } else {
+                //Get the latest hash reference
+                let mut latest =
+                    hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
+                        String::from("current_rev"),
+                        get_now()?,
+                        DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
+                        None,
+                        hc_time_index::SearchStrategy::Dfs,
+                        Some(1),
+                        LinkTypes::Index,
+                        LinkTypes::TimePath
+                    )?;
+                Ok(latest.pop())
+            }
         }
     }
 
@@ -97,11 +120,13 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
             LinkTypes::TimePath,
         )?;
 
-        //Create local timestamp reference for the future
-        let timestamp_ref = LocalTimestampReference {
-            timestamp
-        };
-        create_entry(EntryTypes::LocalTimestampReference(timestamp_ref))?;
+        debug!("Updated latest revision to: {:?}", timestamp);
+
+        // //Create local timestamp reference for the future
+        // let timestamp_ref = LocalTimestampReference {
+        //     timestamp_reference: timestamp
+        // };
+        // create_entry(EntryTypes::LocalTimestampReference(timestamp_ref))?;
 
         Ok(())
     }
