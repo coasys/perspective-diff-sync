@@ -1,4 +1,4 @@
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff};
+use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff, LocalHashReference, HashReference};
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use dot_structures;
@@ -53,14 +53,24 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         Ok(hash)
     }
 
-    fn current_revision() -> SocialContextResult<Option<Hash>> {
+    fn current_revision() -> SocialContextResult<Option<LocalHashReference>> {
         let revision = CURRENT_REVISION.lock().expect("Could not get lock on CURRENT_REVISION");
-        Ok(revision.clone())
+        Ok(revision.clone().map(|val| {
+            LocalHashReference {
+                hash: val,
+                timestamp: Utc::now()
+            }
+        }))
     }
 
-    fn latest_revision() -> SocialContextResult<Option<Hash>> {
+    fn latest_revision() -> SocialContextResult<Option<HashReference>> {
         let revision = LATEST_REVISION.lock().expect("Could not get lock on LATEST_REVISION");
-        Ok(revision.clone())
+        Ok(revision.clone().map(|val| {
+            HashReference {
+                hash: val,
+                timestamp: Utc::now()
+            }
+        }))
     }
 
     fn update_current_revision(hash: Hash, _timestamp: DateTime<Utc>) -> SocialContextResult<()> {

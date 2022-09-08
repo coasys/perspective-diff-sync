@@ -8,22 +8,24 @@ use perspective_diff_sync_integrity::{
 //use crate::errors::SocialContextError;
 use crate::errors::SocialContextResult;
 //use crate::pull::pull;
-use crate::revisions::{current_revision, latest_revision};
+use crate::revisions::{current_revision, latest_revision, update_current_revision, update_latest_revision};
 use crate::snapshots::generate_snapshot;
 use crate::utils::{dedup, get_now};
 use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 use crate::retriever::PerspectiveDiffRetreiver;
 
-#[cfg(feature = "prod")]
-use crate::revisions::update_current_revision;
-#[cfg(feature = "prod")]
-use crate::revisions::update_latest_revision;
-
 pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     diff: PerspectiveDiff,
 ) -> SocialContextResult<HoloHash<holo_hash::hash_type::Action>> {
+    let now = get_now()?.time();
     let pre_current_revision = current_revision::<Retriever>()?;
+    let after = get_now()?.time();
+    debug!("Took {} to get current revision", (after - now).num_milliseconds());
+
     let pre_latest_revision = latest_revision::<Retriever>()?;
+    let after_latest = get_now()?.time();
+    debug!("Took {} to get latest revision", (after_latest - after).num_milliseconds());
+    
     let mut entries_since_snapshot = 0;
 
     //if pre_current_revision != pre_latest_revision {
@@ -36,7 +38,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     //    };
     //} else {
         if pre_current_revision.is_some() {
-            let current = Retriever::get::<PerspectiveDiffEntryReference>(pre_current_revision.clone().unwrap())?;
+            let current = Retriever::get::<PerspectiveDiffEntryReference>(pre_current_revision.clone().unwrap().hash)?;
             entries_since_snapshot = current.diffs_since_snapshot;
         };
     //}
@@ -58,7 +60,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     //debug!("Created diff entry: {:#?}", diff_entry_create);
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create.clone(),
-        parents: parent.map(|val| vec![val]),
+        parents: parent.map(|val| vec![val.hash]),
         diffs_since_snapshot: entries_since_snapshot,
     };
     debug!("CREATE_ENTRY PerspectiveDiffEntryReference");
@@ -70,7 +72,10 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     if create_snapshot_here {
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
         //create new snapshot linked from above diff_entry_reference
+        let now = get_now()?.time();
         let snapshot = generate_snapshot(diff_entry_reference.clone())?;
+        let after = get_now()?.time();
+        debug!("Took {} to generate the snapshot", (after - now).num_milliseconds());
         debug!("Creating snapshot");
 
         debug!("CREATE_ENTRY Snapshot");
@@ -83,14 +88,9 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         )?;
     };
 
-    //This allows us to turn of revision updates when testing so we can artifically test pulling with varying agent states
-    #[cfg(feature = "prod")]
-    {
-        debug!("UPDATING REVISIONS");
-        let now = get_now()?;
-        update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
-        update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
-    }
+    let now = get_now()?;
+    update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
+    update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
 
     if *ENABLE_SIGNALS {
         let now = sys_time()?.as_seconds_and_nanos();

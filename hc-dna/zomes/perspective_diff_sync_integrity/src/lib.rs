@@ -115,7 +115,7 @@ app_entry!(LocalHashReference);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct LocalTimestampReference {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp_reference: DateTime<Utc>,
 }
 
 app_entry!(LocalTimestampReference);

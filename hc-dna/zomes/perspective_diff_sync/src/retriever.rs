@@ -8,6 +8,7 @@ pub mod mock;
 
 pub use holochain::HolochainRetreiver;
 pub use mock::*;
+use perspective_diff_sync_integrity::{LocalHashReference, HashReference};
 
 pub trait PerspectiveDiffRetreiver {
     fn get<T>(hash: Hash) -> SocialContextResult<T> 
@@ -21,8 +22,8 @@ pub trait PerspectiveDiffRetreiver {
         Entry: TryFrom<I, Error = E>,
         WasmError: From<E>,
         WasmError: From<E2>;
-    fn current_revision() -> SocialContextResult<Option<Hash>>;
-    fn latest_revision() -> SocialContextResult<Option<Hash>>;
+    fn current_revision() -> SocialContextResult<Option<LocalHashReference>>;
+    fn latest_revision() -> SocialContextResult<Option<HashReference>>;
     fn update_current_revision(hash: Hash, timestamp: DateTime<Utc>) -> SocialContextResult<()>;
     fn update_latest_revision(hash: Hash, timestamp: DateTime<Utc>) -> SocialContextResult<()>;
 }

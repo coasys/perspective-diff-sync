@@ -61,12 +61,12 @@ pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
 
 #[hdk_extern]
 pub fn latest_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    revisions::latest_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
+    revisions::latest_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    revisions::current_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
+    revisions::current_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]

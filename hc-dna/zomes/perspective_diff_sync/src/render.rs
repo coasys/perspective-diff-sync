@@ -14,7 +14,7 @@ pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Pers
     debug!("render() current: {:?}", current);
 
     let mut workspace = Workspace::new();
-    workspace.collect_only_from_latest::<Retriever>(current)?;
+    workspace.collect_only_from_latest::<Retriever>(current.hash)?;
     workspace.topo_sort_graph()?;
     let sorted_diffs = &workspace.sorted_diffs.expect("must have sorted diffs after calling topo_sort_graph()");
 

@@ -1,5 +1,6 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference};
+
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
@@ -34,13 +35,15 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(latest: Hash, current: Hash) -> So
 
 pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<PerspectiveDiff> {
     let latest = latest_revision::<Retriever>()?;
+    let latest_hash = latest.clone().map(|val| val.hash);
     let current = current_revision::<Retriever>()?;
+    let current_hash = current.clone().map(|val| val.hash);
     println!(
         "Pull made with latest: {:#?} and current: {:#?}",
         latest, current
     );
 
-    if latest == current {
+    if latest_hash == current_hash {
         return Ok(PerspectiveDiff {
             removals: vec![],
             additions: vec![],
@@ -58,20 +61,20 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     let mut workspace = Workspace::new();
 
     if current.is_none() {
-        workspace.collect_only_from_latest::<Retriever>(latest.clone())?;
+        workspace.collect_only_from_latest::<Retriever>(latest.hash.clone())?;
         let diff = workspace.squashed_diff::<Retriever>()?;
-        update_current_revision::<Retriever>(latest, get_now()?)?;
+        update_current_revision::<Retriever>(latest.hash, latest.timestamp)?;
         return Ok(diff);
     }
 
     let current = current.expect("current missing handled above");
 
-    match workspace.build_diffs::<Retriever>(latest.clone(), current.clone()) {
+    match workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone()) {
         Err(SocialContextError::NoCommonAncestorFound) => {
             println!("Did not find a common ancestor, workspace looks like: {:#?}", workspace.entry_map);
-            workspace.collect_only_from_latest::<Retriever>(latest.clone())?;
+            workspace.collect_only_from_latest::<Retriever>(latest.hash.clone())?;
             let diff = workspace.squashed_diff::<Retriever>()?;
-            merge::<Retriever>(latest, current)?;
+            merge::<Retriever>(latest.hash, current.hash)?;
             return Ok(diff)
         },
 
@@ -81,9 +84,9 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     }
 
     //See what fast forward paths exist between latest and current
-    let fast_foward_paths = workspace.get_paths(&latest, &current);
+    let fast_foward_paths = workspace.get_paths(&latest.hash, &current.hash);
     //Get all the diffs which exist between current and the last ancestor that we got
-    let seen_diffs = workspace.get_paths(&current, workspace.common_ancestors.last().to_owned().expect("Should be atleast 1 common ancestor"));
+    let seen_diffs = workspace.get_paths(&current.hash, workspace.common_ancestors.last().to_owned().expect("Should be atleast 1 common ancestor"));
     println!("Got the seen diffs: {:#?}", seen_diffs);
     //Get all the diffs in the graph which we havent seen
     let unseen_diffs = if seen_diffs.len() > 0 {
@@ -91,7 +94,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
             if val.0 == NULL_NODE() {
                 return false;
             };
-            if val.0 == current {
+            if val.0 == current.hash {
                 return false;
             };
             let node_index = workspace.get_node_index(&val.0).expect("Should find the node index for a given diff ref");
@@ -105,15 +108,13 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
         diffs
     } else {
         workspace.sorted_diffs.expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
-            val.0 != NULL_NODE() && val.0 != current
+            val.0 != NULL_NODE() && val.0 != current.hash
         }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>()
     };
     println!("Got the unseen diffs: {:#?}", unseen_diffs);
 
     if fast_foward_paths.len() > 0 {
         println!("There are paths between current and latest, lets fast forward the changes we have missed!");
-        //Using now as the timestamp here may cause problems
-        update_current_revision::<Retriever>(latest, get_now()?)?;
         let mut out = PerspectiveDiff {
             additions: vec![],
             removals: vec![]
@@ -127,6 +128,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
                 .removals
                 .append(&mut diff_entry.removals.clone());
         }
+        update_current_revision::<Retriever>(latest.hash, latest.timestamp)?;
         Ok(out)
     } else {
         println!("There are no paths between current and latest, we must merge current and latest");
@@ -145,7 +147,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
                 .append(&mut diff_entry.removals.clone());
         }
 
-        merge::<Retriever>(latest, current)?;
+        merge::<Retriever>(latest.hash, current.hash)?;
 
         Ok(out)
     }
@@ -250,7 +252,7 @@ mod tests {
         assert!(new_latest.is_ok());
         let new_latest = new_latest.unwrap();
 
-        assert!(new_latest.unwrap() != latest_node_hash);
+        assert!(new_latest.unwrap().hash != latest_node_hash);
     }
 
     #[test]
