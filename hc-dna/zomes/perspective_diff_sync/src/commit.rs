@@ -9,7 +9,7 @@ use perspective_diff_sync_integrity::{
 use crate::errors::SocialContextResult;
 //use crate::pull::pull;
 use crate::revisions::{current_revision, latest_revision};
-use crate::snapshots::{generate_snapshot, get_entries_since_snapshot};
+use crate::snapshots::generate_snapshot;
 use crate::utils::{dedup, get_now};
 use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 use crate::retriever::PerspectiveDiffRetreiver;
@@ -36,13 +36,20 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     //    };
     //} else {
         if pre_current_revision.is_some() {
-            entries_since_snapshot =
-                get_entries_since_snapshot(pre_current_revision.clone().unwrap())?;
+            let current = Retriever::get::<PerspectiveDiffEntryReference>(pre_current_revision.clone().unwrap())?;
+            entries_since_snapshot = current.diffs_since_snapshot;
         };
     //}
     debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
     //Add one since we are comitting an entry here
     entries_since_snapshot += 1;
+
+    let create_snapshot_here = if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
+        entries_since_snapshot = 0;
+        true
+    } else {
+        false
+    };
 
     let parent = current_revision::<Retriever>()?;
     debug!("Parent entry is: {:#?}", parent);
@@ -52,6 +59,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     let diff_entry_ref_entry = PerspectiveDiffEntryReference {
         diff: diff_entry_create.clone(),
         parents: parent.map(|val| vec![val]),
+        diffs_since_snapshot: entries_since_snapshot,
     };
     debug!("CREATE_ENTRY PerspectiveDiffEntryReference");
     let diff_entry_reference = Retriever::create_entry(EntryTypes::PerspectiveDiffEntryReference(
@@ -59,7 +67,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     ))?;
     debug!("Created diff entry ref: {:#?}", diff_entry_reference);
 
-    if pre_latest_revision.is_some() && entries_since_snapshot >= *SNAPSHOT_INTERVAL {
+    if create_snapshot_here {
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
         //create new snapshot linked from above diff_entry_reference
         let snapshot = generate_snapshot(diff_entry_reference.clone())?;

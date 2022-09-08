@@ -98,25 +98,10 @@ mod tests {
         let h3 = HoloHash::<holo_hash::hash_type::Action>::from_raw_36(vec![3; 36]);
         let h4 = HoloHash::<holo_hash::hash_type::Action>::from_raw_36(vec![4; 36]);
 
-        let r1 = PerspectiveDiffEntryReference {
-            diff: h1.clone(),
-            parents: Some(vec![h2.clone(), h3.clone()])
-        };
-
-        let r2 = PerspectiveDiffEntryReference {
-            diff: h2.clone(),
-            parents: Some(vec![h4.clone()])
-        };
-
-        let r3 = PerspectiveDiffEntryReference {
-            diff: h3.clone(),
-            parents: Some(vec![h4.clone()])
-        };
-
-        let r4 = PerspectiveDiffEntryReference {
-            diff: h4.clone(),
-            parents: None
-        };
+        let r1 = PerspectiveDiffEntryReference::new(h1.clone(), Some(vec![h2.clone(), h3.clone()]));
+        let r2 = PerspectiveDiffEntryReference::new(h2.clone(), Some(vec![h4.clone()]));
+        let r3 = PerspectiveDiffEntryReference::new(h3.clone(), Some(vec![h4.clone()]));
+        let r4 = PerspectiveDiffEntryReference::new(h4.clone(), None);
 
         let e1 = (h1,r1);
         let e2 = (h2,r2);

@@ -149,10 +149,7 @@ impl MockPerspectiveGraph {
             } else {
                 None
             };
-            let mocked_diff = PerspectiveDiffEntryReference {
-                diff: mocked_hash.clone(),
-                parents: parents
-            };
+            let mocked_diff = PerspectiveDiffEntryReference::new(mocked_hash.clone(), parents);
             let sb = mocked_diff.try_into().expect("Could not create serialized bytes for mocked_diff");
             graph.graph_map.insert(mocked_hash, sb);
         }
@@ -212,10 +209,7 @@ impl MockPerspectiveGraph {
                     let diff_hash = ActionHash::from_raw_36(result);
                     
                     //Create the diff reference
-                    let diff_ref = PerspectiveDiffEntryReference {
-                        diff: diff_hash.clone(),
-                        parents: parents.get(ref_hash).as_ref().cloned().cloned(),
-                    };
+                    let diff_ref = PerspectiveDiffEntryReference::new(diff_hash.clone(), parents.get(ref_hash).as_ref().cloned().cloned());
                     //Insert the diff reference into the map
                     let diff_ref_sb = diff_ref.try_into().expect("Could not create serialized bytes for mocked_diff");
                     graph.graph_map.insert(ref_hash.clone(), diff_ref_sb);

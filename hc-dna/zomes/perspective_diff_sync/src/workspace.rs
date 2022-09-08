@@ -107,17 +107,11 @@ impl Workspace {
                     } else {
                         diff_chunk.clone()
                     };
-                    self.entry_map.insert(key.clone(), PerspectiveDiffEntryReference {
-                        diff: diff_chunk.clone(),
-                        parents: last_diff.clone(),
-                    });
+                    self.entry_map.insert(key.clone(), PerspectiveDiffEntryReference::new(diff_chunk.clone(), last_diff.clone()));
                     last_diff = Some(vec![diff_chunk.clone()]); 
                 }
 
-                self.entry_map.insert(current_hash.clone(), PerspectiveDiffEntryReference {
-                    diff: current_hash,
-                    parents: last_diff.clone(),
-                });
+                self.entry_map.insert(current_hash.clone(), PerspectiveDiffEntryReference::new(current_hash, last_diff.clone()));
                 
                 // Snapshot terminates like an orphan.
                 // So we can close this branch and potentially continue
@@ -319,10 +313,7 @@ impl Workspace {
                                     searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(NULL_NODE());
                                 };
                                 if self.diffs.get(&NULL_NODE()).is_none() {
-                                    let current_diff = PerspectiveDiffEntryReference {
-                                        diff: NULL_NODE(),
-                                        parents: None
-                                    };
+                                    let current_diff = PerspectiveDiffEntryReference::new(NULL_NODE(), None);
                                     self.diffs.insert(NULL_NODE(), current_diff.clone());
                                 };
                                 let mut null_childs = vec![current_hash.clone()];

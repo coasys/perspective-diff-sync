@@ -61,6 +61,20 @@ app_entry!(Snapshot);
 pub struct PerspectiveDiffEntryReference {
     pub diff: HoloHash<holo_hash::hash_type::Action>,
     pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
+    pub diffs_since_snapshot: usize,
+}
+
+impl PerspectiveDiffEntryReference {
+    pub fn new(
+        diff: HoloHash<holo_hash::hash_type::Action>, 
+        parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
+    ) -> Self {
+        Self {
+            diff: diff,
+            parents: parents,
+            diffs_since_snapshot: 0,
+        }
+    }
 }
 
 impl PartialOrd for PerspectiveDiffEntryReference {

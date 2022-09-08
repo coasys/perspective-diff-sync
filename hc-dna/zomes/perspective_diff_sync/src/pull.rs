@@ -10,6 +10,8 @@ use crate::retriever::{PerspectiveDiffRetreiver};
 use crate::Hash;
 
 fn merge<Retriever: PerspectiveDiffRetreiver>(latest: Hash, current: Hash) -> SocialContextResult<()> {
+    let latest_diff = Retriever::get::<PerspectiveDiffEntryReference>(latest.clone())?;
+    let current_diff = Retriever::get::<PerspectiveDiffEntryReference>(current.clone())?;
     //Create the merge entry
     let merge_entry = Retriever::create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
         additions: vec![],
@@ -20,6 +22,7 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(latest: Hash, current: Hash) -> So
         PerspectiveDiffEntryReference {
             parents: Some(vec![latest, current]),
             diff: merge_entry.clone(),
+            diffs_since_snapshot: latest_diff.diffs_since_snapshot + current_diff.diffs_since_snapshot + 1,
         },
     ))?;
     debug!("Commited merge entry: {:#?}", hash);
