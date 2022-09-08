@@ -11,7 +11,7 @@ let createdLinks = new Map<string, Array<LinkExpression>>()
 async function createLinks(happ: AgentHapp, agentName: string, count: number) {
     if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
     for(let i=0; i < count; i++) {
-        let { data } = await create_link_expression(happ.cells[0], agentName, true, true);
+        let { data } = await create_link_expression(happ.cells[0], agentName);
         createdLinks.get(agentName)!.push(data)
     }
 }
@@ -58,7 +58,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 3; i++) {
+    for(let i=0; i < 10; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");

@@ -18,19 +18,6 @@ export async function unSyncFetch(t) {
     });
     console.warn("\ncommit", commit);
     
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit
-    });
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit
-    });
-
-    await sleep(500)
-    
     let pull_alice = await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
         fn_name: "pull"
@@ -59,13 +46,13 @@ export async function mergeFetchDeep(t) {
     let bobConductor = installs[1].conductor;
     
     //Create new commit whilst bob is not connected
-    let create = await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    let create2 = await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    let create3 = await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    let create = await create_link_expression(aliceHapps.cells[0], "alice");
+    let create2 = await create_link_expression(aliceHapps.cells[0], "alice");
+    let create3 = await create_link_expression(aliceHapps.cells[0], "alice");
+    await create_link_expression(aliceHapps.cells[0], "alice");
+    await create_link_expression(aliceHapps.cells[0], "alice");
+    await create_link_expression(aliceHapps.cells[0], "alice");
+    await create_link_expression(aliceHapps.cells[0], "alice");
     
     //Pull from bob and make sure he does not have the latest state
     let pull_bob = await bobHapps.cells[0].callZome({
@@ -76,13 +63,13 @@ export async function mergeFetchDeep(t) {
     t.isEqual(pull_bob.additions.length, 0);
     
     //Bob to commit his data, and update the latest revision, causing a fork
-    let bob_create = await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    let bob_create2 = await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    let bob_create3 = await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    let bob_create4 = await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    let bob_create = await create_link_expression(bobHapps.cells[0], "bob");
+    let bob_create2 = await create_link_expression(bobHapps.cells[0], "bob");
+    let bob_create3 = await create_link_expression(bobHapps.cells[0], "bob");
+    let bob_create4 = await create_link_expression(bobHapps.cells[0], "bob");
+    await create_link_expression(bobHapps.cells[0], "bob");
+    await create_link_expression(bobHapps.cells[0], "bob");
+    await create_link_expression(bobHapps.cells[0], "bob");
 
     let pull_bob2 = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -127,18 +114,18 @@ export async function mergeFetchDeep(t) {
     await aliceConductor.shutDown();
 
     //Have bob write three links
-    await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    await create_link_expression(bobHapps.cells[0], "bob", true, true);
-    await create_link_expression(bobHapps.cells[0], "bob", true, true);
+    await create_link_expression(bobHapps.cells[0], "bob");
+    await create_link_expression(bobHapps.cells[0], "bob");
+    await create_link_expression(bobHapps.cells[0], "bob");
 
     //shutdown bobs conductor
     await bobConductor.shutDown();
 
     //Have alice write three links
     await aliceConductor.startUp();
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
-    await create_link_expression(aliceHapps.cells[0], "alice", true, true);
+    await create_link_expression(aliceHapps.cells[0], "alice");
+    await create_link_expression(aliceHapps.cells[0], "alice");
+    await create_link_expression(aliceHapps.cells[0], "alice");
 
     //start bobs conductor and pull to see if merge happens correctly
     await bobConductor.startUp();
@@ -177,17 +164,7 @@ export async function mergeFetch(t) {
     });
     //@ts-ignore
     console.warn("\ncommit", commit.toString("base64"));
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit
-    });
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit
-    });
-    
+
     //Pull from bob and make sure he does not have the latest state
     let pull_bob = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -206,17 +183,7 @@ export async function mergeFetch(t) {
     });
     //@ts-ignore
     console.warn("\ncommit_bob", commit_bob.toString("base64"));
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision", 
-        payload: commit_bob
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit_bob
-    });
-    
+
     let pull_bob2 = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
         fn_name: "pull"
