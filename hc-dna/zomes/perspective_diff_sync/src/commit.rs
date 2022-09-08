@@ -5,8 +5,9 @@ use perspective_diff_sync_integrity::{
     AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
 };
 
-use crate::errors::{SocialContextError, SocialContextResult};
-use crate::pull::pull;
+//use crate::errors::SocialContextError;
+use crate::errors::SocialContextResult;
+//use crate::pull::pull;
 use crate::revisions::{current_revision, latest_revision};
 use crate::snapshots::{generate_snapshot, get_entries_since_snapshot};
 use crate::utils::{dedup, get_now};
@@ -25,20 +26,20 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     let pre_latest_revision = latest_revision::<Retriever>()?;
     let mut entries_since_snapshot = 0;
 
-    if pre_current_revision != pre_latest_revision {
-        let new_diffs = pull::<Retriever>()?;
-        emit_signal(new_diffs)?;
-        if pre_latest_revision.is_some() {
-            entries_since_snapshot = get_entries_since_snapshot(latest_revision::<Retriever>()?.ok_or(
-                SocialContextError::InternalError("Expected to have latest revision"),
-            )?)?;
-        };
-    } else {
-        if pre_latest_revision.is_some() {
+    //if pre_current_revision != pre_latest_revision {
+    //    let new_diffs = pull::<Retriever>()?;
+    //    emit_signal(new_diffs)?;
+    //    if pre_latest_revision.is_some() {
+    //        entries_since_snapshot = get_entries_since_snapshot(latest_revision::<Retriever>()?.ok_or(
+    //            SocialContextError::InternalError("Expected to have latest revision"),
+    //        )?)?;
+    //    };
+    //} else {
+        if pre_current_revision.is_some() {
             entries_since_snapshot =
-                get_entries_since_snapshot(pre_latest_revision.clone().unwrap())?;
+                get_entries_since_snapshot(pre_current_revision.clone().unwrap())?;
         };
-    }
+    //}
     debug!("Entries since snapshot: {:#?}", entries_since_snapshot);
     //Add one since we are comitting an entry here
     entries_since_snapshot += 1;
