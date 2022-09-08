@@ -8,10 +8,18 @@ use crate::errors::{SocialContextError, SocialContextResult};
 use crate::chunked_diffs::ChunkedDiffs;
 use crate::retriever::HolochainRetreiver;
 
+struct SearchPosition {
+    hash: Hash,
+    is_unseen: bool
+}
+
 pub fn generate_snapshot(
     latest: HoloHash<holo_hash::hash_type::Action>,
 ) -> SocialContextResult<Snapshot> {
-    let mut search_position = latest;
+    let mut search_position = SearchPosition {
+        hash: latest.clone(),
+        is_unseen: false
+    };
     let mut seen: HashSet<Hash> = HashSet::new();
     let mut unseen_parents = vec![];
 
@@ -19,7 +27,7 @@ pub fn generate_snapshot(
     let mut all_removals = BTreeSet::new();
 
     loop {
-        let diff = get(search_position.clone(), GetOptions::latest())?
+        let diff = get(search_position.hash.clone(), GetOptions::latest())?
             .ok_or(SocialContextError::InternalError(
                 "generate_snapshot(): Could not find entry while populating search",
             ))?
@@ -28,12 +36,15 @@ pub fn generate_snapshot(
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))?;
-        let mut snapshot_links = get_links(
-            hash_entry(&diff)?,
-            LinkTypes::Snapshot,
-            Some(LinkTag::new("snapshot")),
-        )?;
-        if snapshot_links.len() > 0 {
+        if diff.diffs_since_snapshot == 0 && search_position.hash != latest {
+            let mut snapshot_links = get_links(
+                hash_entry(&diff)?,
+                LinkTypes::Snapshot,
+                Some(LinkTag::new("snapshot")),
+            )?;
+            if snapshot_links.len() == 0 {
+                return Err(SocialContextError::InternalError("Expected to find a snapshot where diff has diffs_since_snapshot"));
+            };
             //get snapshot and add elements to out
             let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
                 .ok_or(SocialContextError::InternalError(
@@ -65,8 +76,8 @@ pub fn generate_snapshot(
             }
         } else {
             //Check if entry is already in graph
-            if !seen.contains(&search_position) {
-                seen.insert(search_position.clone());
+            if !seen.contains(&search_position.hash) {
+                seen.insert(search_position.hash.clone());
                 let diff_entry = get(diff.diff.clone(), GetOptions::latest())?
                     .ok_or(SocialContextError::InternalError(
                         "Could not find diff entry for given diff entry reference",
@@ -83,10 +94,46 @@ pub fn generate_snapshot(
                 for removal in diff_entry.removals.iter() {
                     all_removals.insert(removal.clone());
                 }
-            };
-            if diff.parents.is_none() {
-                //No parents, we have reached the end of the chain
-                //Now move onto traversing unseen parents, or break if we dont have any other paths to search
+
+                if diff.parents.is_none() {
+                    //No parents, we have reached the end of the chain
+                    //Now move onto traversing unseen parents, or break if we dont have any other paths to search
+                    if unseen_parents.len() == 0 {
+                        debug!("No more unseen items within parent block");
+                        break;
+                    } else {
+                        debug!("Moving onto unseen fork items within parent block");
+                        search_position = unseen_parents.remove(0);
+                    }
+                } else {
+                    //Do the fork traversals
+                    let mut parents = diff.parents.unwrap();
+                    //Check if all parents have already been seen, if so then break or move onto next unseen parents
+                    //TODO; we should use a seen set here versus array iter
+                    if parents.iter().all(|val| { seen.contains(val)}) {
+                        if unseen_parents.len() == 0 {
+                            debug!("Parents of item seen and unseen 0");
+                            break;
+                        } else {
+                            debug!("last moving onto unseen");
+                            search_position = unseen_parents.remove(0);
+                        }
+                    } else {
+                        search_position = SearchPosition {
+                            hash: parents.remove(0),
+                            is_unseen: false
+                        };
+                        debug!("Appending parents to look up: {:?}", parents);
+                        unseen_parents.append(
+                            &mut parents.into_iter().map(|val| SearchPosition {
+                                hash: val,
+                                is_unseen: true
+                            }).collect()
+                        );
+                    };
+                }
+            } else if search_position.is_unseen {
+                //The parent for this branch is already seen so likely already explored and we are part of the main branch
                 if unseen_parents.len() == 0 {
                     debug!("No more unseen items within parent block");
                     break;
@@ -95,26 +142,44 @@ pub fn generate_snapshot(
                     search_position = unseen_parents.remove(0);
                 }
             } else {
-                //Do the fork traversals
-                let mut parents = diff.parents.unwrap();
-                //Check if all parents have already been seen, if so then break or move onto next unseen parents
-                //TODO; we should use a seen set here versus array iter
-                if parents.iter().all(|val| { seen.contains(val)}) {
+                if diff.parents.is_none() {
+                    //No parents, we have reached the end of the chain
+                    //Now move onto traversing unseen parents, or break if we dont have any other paths to search
                     if unseen_parents.len() == 0 {
-                        debug!("Parents of item seen and unseen 0");
+                        debug!("No more unseen items within parent block");
                         break;
                     } else {
-                        debug!("last moving onto unseen");
+                        debug!("Moving onto unseen fork items within parent block");
                         search_position = unseen_parents.remove(0);
                     }
                 } else {
-                    search_position = parents.remove(0);
-                    debug!("Appending parents to look up: {:?}", parents);
-                    unseen_parents.append(
-                        &mut parents
-                    );
-                };
-            }
+                    //Do the fork traversals
+                    let mut parents = diff.parents.unwrap();
+                    //Check if all parents have already been seen, if so then break or move onto next unseen parents
+                    //TODO; we should use a seen set here versus array iter
+                    if parents.iter().all(|val| { seen.contains(val)}) {
+                        if unseen_parents.len() == 0 {
+                            debug!("Parents of item seen and unseen 0");
+                            break;
+                        } else {
+                            debug!("last moving onto unseen");
+                            search_position = unseen_parents.remove(0);
+                        }
+                    } else {
+                        search_position = SearchPosition {
+                            hash: parents.remove(0),
+                            is_unseen: false
+                        };
+                        debug!("Appending parents to look up: {:?}", parents);
+                        unseen_parents.append(
+                            &mut parents.into_iter().map(|val| SearchPosition {
+                                hash: val,
+                                is_unseen: true
+                            }).collect()
+                        );
+                    };
+                }
+            };
         }
     }
 
