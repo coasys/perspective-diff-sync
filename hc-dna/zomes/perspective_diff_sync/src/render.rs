@@ -6,21 +6,22 @@ use crate::revisions::current_revision;
 use crate::Perspective;
 use crate::workspace::Workspace;
 use crate::retriever::PerspectiveDiffRetreiver;
+use crate::utils::get_now;
 
 pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspective> {
+    debug!("===PerspectiveDiffSunc.render(): Function start");
+    let fn_start = get_now()?.time();
+
     let current = current_revision::<Retriever>()?
         .ok_or(SocialContextError::InternalError("Can't render when we have no current revision"))?;
     
-    debug!("render() current: {:?}", current);
+    debug!("===PerspectiveDiffSunc.render(): current: {:?}", current);
 
     let mut workspace = Workspace::new();
     workspace.collect_only_from_latest::<Retriever>(current.hash)?;
-    workspace.topo_sort_graph()?;
-    let sorted_diffs = &workspace.sorted_diffs.expect("must have sorted diffs after calling topo_sort_graph()");
 
     let mut perspective = Perspective { links: vec![] };
-    for diff_node in sorted_diffs {
-        debug!("render() adding diff_node: {:?}", diff_node);
+    for diff_node in workspace.entry_map {
         let diff_entry = Retriever::get::<PerspectiveDiff>(diff_node.1.diff.clone())?;
 
         for addition in diff_entry.additions {
@@ -31,5 +32,7 @@ pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Pers
         }
     }
     
+    let fn_end = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.render() - Profiling: Took: {} to complete render() function", (fn_end - fn_start).num_milliseconds()); 
     Ok(perspective)
 }

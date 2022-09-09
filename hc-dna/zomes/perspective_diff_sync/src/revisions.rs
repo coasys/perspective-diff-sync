@@ -11,11 +11,11 @@ pub fn update_latest_revision<Retriever: PerspectiveDiffRetreiver>(
     hash: Hash,
     timestamp: DateTime<Utc>
 ) -> SocialContextResult<()> {
-    debug!("CREATE_ENTRY update_latest_revision HashReference");
+    debug!("===PerspectiveDiffSunc.update_latest_revision(): Function start");
     let now = get_now()?.time();
     let res = Retriever::update_latest_revision(hash, timestamp);
     let after = get_now()?.time();
-    debug!("Took: {} to update latest revision", (after - now).num_milliseconds());
+    debug!("===PerspectiveDiffSunc.update_latest_revision() - Profiling: Took: {} to update latest_revision", (after - now).num_milliseconds());
     res
 }
 
@@ -23,20 +23,30 @@ pub fn update_current_revision<Retriever: PerspectiveDiffRetreiver>(
     hash: Hash,
     timestamp: DateTime<Utc>
 ) -> SocialContextResult<()> {
-    debug!("CREATE_ENTRY update_current_revision LocalHashReference");
+    debug!("===PerspectiveDiffSunc.update_current_revision(): Function start");
     let now = get_now()?.time();
     let res = Retriever::update_current_revision(hash, timestamp);
     let after = get_now()?.time();
-    debug!("Took: {} to update current revision", (after - now).num_milliseconds());
+    debug!("===PerspectiveDiffSunc.update_current_revision() - Profiling: Took: {} to update current_revision", (after - now).num_milliseconds());
     res
 }
 
 //Latest revision as seen from the DHT
 pub fn latest_revision<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Option<HashReference>> {
-    Retriever::latest_revision()
+    debug!("===PerspectiveDiffSunc.latest_revision(): Function start");
+    let now = get_now()?.time();
+    let rev = Retriever::latest_revision()?;
+    let after = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.latest_revision() - Profiling: Took: {} to get the latest_revision", (after - now).num_milliseconds());
+    Ok(rev)
 }
 
 //Latest revision as seen from our local state
 pub fn current_revision<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Option<LocalHashReference>> {
-    Retriever::current_revision()
+    debug!("===PerspectiveDiffSunc.current_revision(): Function start");
+    let now = get_now()?.time();
+    let rev = Retriever::current_revision()?;
+    let after = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.current_revision() - Profiling: Took: {} to get the current_revision", (after - now).num_milliseconds());
+    Ok(rev)
 }
