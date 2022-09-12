@@ -1,17 +1,28 @@
+#[macro_use]
+extern crate lazy_static;
+
 use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 use lazy_static::lazy_static;
-use perspective_diff_sync_integrity::{PerspectiveDiff, Perspective};
+use perspective_diff_sync_integrity::{Perspective, PerspectiveDiff};
 
+mod chunked_diffs;
 mod commit;
 mod errors;
 mod inputs;
 mod pull;
 mod render;
 mod revisions;
-mod search;
 mod snapshots;
+mod topo_sort;
 mod utils;
+mod workspace;
+mod retriever;
+mod tests;
+
+#[macro_use] extern crate maplit;
+
+pub type Hash = HoloHash<holo_hash::hash_type::Action>;
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
@@ -32,13 +43,14 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 
 #[hdk_extern]
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone()).map_err(|error| utils::err(&format!("{}", error)))?;
+    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone())
+        .map_err(|error| utils::err(&format!("{}", error)))?;
     Ok(emit_signal(&sig)?)
 }
 
 #[hdk_extern]
 pub fn commit(diff: PerspectiveDiff) -> ExternResult<HoloHash<holo_hash::hash_type::Action>> {
-    commit::commit(diff).map_err(|error| utils::err(&format!("{}", error)))
+    commit::commit::<retriever::HolochainRetreiver>(diff).map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
@@ -48,31 +60,31 @@ pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
 
 #[hdk_extern]
 pub fn latest_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    revisions::latest_revision().map_err(|error| utils::err(&format!("{}", error)))
+    revisions::latest_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    revisions::current_revision().map_err(|error| utils::err(&format!("{}", error)))
+    revisions::current_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull()
+    pull::pull::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|res| res)
 }
 
 #[hdk_extern]
 pub fn render(_: ()) -> ExternResult<Perspective> {
-    render::render().map_err(|error| utils::err(&format!("{}", error)))
+    render::render::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
 pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_current_revision(_hash, utils::get_now().unwrap())
+        revisions::update_current_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
             .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
@@ -82,7 +94,7 @@ pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) ->
 pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_latest_revision(_hash, utils::get_now().unwrap())
+        revisions::update_latest_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
             .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
@@ -92,6 +104,6 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> 
 lazy_static! {
     pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
     pub static ref ENABLE_SIGNALS: bool = true;
-    //TODO: 1 is a test value; this should be updated to a higher value for production
-    pub static ref SNAPSHOT_INTERVAL: usize = 2;
+    pub static ref SNAPSHOT_INTERVAL: usize = 100;
+    pub static ref CHUNK_SIZE: u16 = 10000;
 }

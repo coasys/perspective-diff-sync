@@ -24,6 +24,8 @@ pub enum SocialContextError {
     // RequestError(&'static str),
     #[error(transparent)]
     IndexError(#[from] IndexError),
+    #[error("No common ancestor found")]
+    NoCommonAncestorFound,
 }
 
 pub type SocialContextResult<T> = Result<T, SocialContextError>;

@@ -1,23 +1,23 @@
-use hdi::prelude::*;
 use chrono::{DateTime, Utc};
+use core::cmp::Ordering;
+use hdi::prelude::*;
 
 pub mod impls;
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ExpressionProof {
     pub signature: String,
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Triple {
     pub source: Option<String>,
     pub target: Option<String>,
     pub predicate: Option<String>,
 }
 
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct LinkExpression {
     pub author: String,
     pub data: Triple,
@@ -31,15 +31,28 @@ pub struct PerspectiveDiff {
     pub removals: Vec<LinkExpression>,
 }
 
+impl PerspectiveDiff {
+    pub fn new() -> Self {
+        Self {
+            additions: Vec::new(),
+            removals: Vec::new(),
+        }
+    }
+    pub fn total_diff_number(&self) -> usize {
+        self.additions.len() + self.removals.len()
+    }
+}
+
 app_entry!(PerspectiveDiff);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct Snapshot {
-    pub diff: HoloHash<holo_hash::hash_type::Action>,
-    pub diff_graph: Vec<(
-        HoloHash<holo_hash::hash_type::Action>,
-        PerspectiveDiffEntryReference,
-    )>,
+    pub diff_chunks: Vec<HoloHash<holo_hash::hash_type::Action>>,
+    pub included_diffs: Vec<HoloHash<holo_hash::hash_type::Action>>,
+    //pub diff_graph: Vec<(
+    //    HoloHash<holo_hash::hash_type::Action>,
+    //    PerspectiveDiffEntryReference,
+    //)>,
 }
 
 app_entry!(Snapshot);
@@ -48,6 +61,32 @@ app_entry!(Snapshot);
 pub struct PerspectiveDiffEntryReference {
     pub diff: HoloHash<holo_hash::hash_type::Action>,
     pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
+    pub diffs_since_snapshot: usize,
+}
+
+impl PerspectiveDiffEntryReference {
+    pub fn new(
+        diff: HoloHash<holo_hash::hash_type::Action>, 
+        parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
+    ) -> Self {
+        Self {
+            diff: diff,
+            parents: parents,
+            diffs_since_snapshot: 0,
+        }
+    }
+}
+
+impl PartialOrd for PerspectiveDiffEntryReference {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.diff.partial_cmp(&other.diff)
+    }
+}
+
+impl Ord for PerspectiveDiffEntryReference {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.diff.cmp(&other.diff)
+    }
 }
 
 app_entry!(PerspectiveDiffEntryReference);
@@ -74,6 +113,12 @@ pub struct LocalHashReference {
 
 app_entry!(LocalHashReference);
 
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct LocalTimestampReference {
+    pub timestamp_reference: DateTime<Utc>,
+}
+
+app_entry!(LocalTimestampReference);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct AgentReference {
@@ -98,6 +143,8 @@ pub enum EntryTypes {
     LocalHashReference(LocalHashReference),
     #[entry_def(visibility = "public")]
     AgentReference(AgentReference),
+    #[entry_def(visibility = "private")]
+    LocalTimestampReference(LocalTimestampReference)
 }
 
 #[hdk_link_types]
@@ -106,5 +153,5 @@ pub enum LinkTypes {
     ActiveAgent,
     HashRef,
     TimePath,
-    Index
+    Index,
 }

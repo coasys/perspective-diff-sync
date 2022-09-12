@@ -1,59 +1,52 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
-use hdk::prelude::*;
-use perspective_diff_sync_integrity::{EntryTypes, HashReference, LocalHashReference, LinkTypes};
+use hdk::prelude::debug;
+use chrono::{DateTime, Utc};
+use perspective_diff_sync_integrity::{HashReference, LocalHashReference};
 
+use crate::errors::SocialContextResult;
+use crate::retriever::PerspectiveDiffRetreiver;
+use crate::Hash;
 use crate::utils::get_now;
-use crate::{
-    errors::{SocialContextError, SocialContextResult}
-};
 
-pub fn update_latest_revision(
-    hash: HoloHash<holo_hash::hash_type::Action>,
-    timestamp: DateTime<Utc>,
+pub fn update_latest_revision<Retriever: PerspectiveDiffRetreiver>(
+    hash: Hash,
+    timestamp: DateTime<Utc>
 ) -> SocialContextResult<()> {
-    let hash_ref = HashReference { hash, timestamp };
-    create_entry(EntryTypes::HashReference(hash_ref.clone()))?;
-    hc_time_index::index_entry(String::from("current_rev"), hash_ref, LinkTag::new(""), LinkTypes::Index, LinkTypes::TimePath)?;
-    Ok(())
+    debug!("===PerspectiveDiffSunc.update_latest_revision(): Function start");
+    let now = get_now()?.time();
+    let res = Retriever::update_latest_revision(hash, timestamp);
+    let after = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.update_latest_revision() - Profiling: Took: {} to update latest_revision", (after - now).num_milliseconds());
+    res
 }
 
-pub fn update_current_revision(
-    hash: HoloHash<holo_hash::hash_type::Action>,
-    timestamp: DateTime<Utc>,
+pub fn update_current_revision<Retriever: PerspectiveDiffRetreiver>(
+    hash: Hash,
+    timestamp: DateTime<Utc>
 ) -> SocialContextResult<()> {
-    let hash_ref = LocalHashReference { hash, timestamp };
-    create_entry(EntryTypes::LocalHashReference(hash_ref.clone()))?;
-    Ok(())
+    debug!("===PerspectiveDiffSunc.update_current_revision(): Function start");
+    let now = get_now()?.time();
+    let res = Retriever::update_current_revision(hash, timestamp);
+    let after = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.update_current_revision() - Profiling: Took: {} to update current_revision", (after - now).num_milliseconds());
+    res
 }
 
 //Latest revision as seen from the DHT
-pub fn latest_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    let mut latest = hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
-        String::from("current_rev"),
-        get_now()?,
-        DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
-        None,
-        hc_time_index::SearchStrategy::Dfs,
-        Some(1),
-        LinkTypes::Index, 
-        LinkTypes::TimePath
-    )?;
-    Ok(latest.pop().map(|val| val.hash))
+pub fn latest_revision<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Option<HashReference>> {
+    debug!("===PerspectiveDiffSunc.latest_revision(): Function start");
+    let now = get_now()?.time();
+    let rev = Retriever::latest_revision()?;
+    let after = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.latest_revision() - Profiling: Took: {} to get the latest_revision", (after - now).num_milliseconds());
+    Ok(rev)
 }
 
 //Latest revision as seen from our local state
-pub fn current_revision() -> SocialContextResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
-    let app_entry = AppEntryType::new(4.into(), 0.into(), EntryVisibility::Private);
-    let filter = ChainQueryFilter::new().entry_type(EntryType::App(app_entry)).include_entries(true);
-    let mut refs = query(filter)?
-        .into_iter()
-        .map(|val| {
-            val.entry().to_app_option::<LocalHashReference>()?.ok_or(
-                SocialContextError::InternalError("Expected element to contain app entry data"),
-            )
-        })
-        .collect::<SocialContextResult<Vec<LocalHashReference>>>()?;
-    refs.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
-
-    Ok(refs.pop().map(|val| val.hash))
+pub fn current_revision<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Option<LocalHashReference>> {
+    debug!("===PerspectiveDiffSunc.current_revision(): Function start");
+    let now = get_now()?.time();
+    let rev = Retriever::current_revision()?;
+    let after = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.current_revision() - Profiling: Took: {} to get the current_revision", (after - now).num_milliseconds());
+    Ok(rev)
 }

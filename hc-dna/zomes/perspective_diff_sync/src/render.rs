@@ -1,28 +1,38 @@
-use std::collections::HashSet;
+use hdk::prelude::*;
+use perspective_diff_sync_integrity::PerspectiveDiff;
 
-use crate::errors::SocialContextResult;
-use crate::revisions::latest_revision;
-use crate::snapshots::get_latest_snapshot;
+use crate::errors::{SocialContextError, SocialContextResult};
+use crate::revisions::current_revision;
 use crate::Perspective;
+use crate::workspace::Workspace;
+use crate::retriever::PerspectiveDiffRetreiver;
+use crate::utils::get_now;
 
-pub fn render() -> SocialContextResult<Perspective> {
-    let latest = latest_revision()?;
-    if latest.is_some() {
-        let mut perspective = Perspective { links: vec![] };
-        let mut link_set = HashSet::new();
-        let snapshot = get_latest_snapshot(latest.unwrap())?;
-        for link in snapshot.additions {
-            link_set.insert(link);
+pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspective> {
+    debug!("===PerspectiveDiffSunc.render(): Function start");
+    let fn_start = get_now()?.time();
+
+    let current = current_revision::<Retriever>()?
+        .ok_or(SocialContextError::InternalError("Can't render when we have no current revision"))?;
+    
+    debug!("===PerspectiveDiffSunc.render(): current: {:?}", current);
+
+    let mut workspace = Workspace::new();
+    workspace.collect_only_from_latest::<Retriever>(current.hash)?;
+
+    let mut perspective = Perspective { links: vec![] };
+    for diff_node in workspace.entry_map {
+        let diff_entry = Retriever::get::<PerspectiveDiff>(diff_node.1.diff.clone())?;
+
+        for addition in diff_entry.additions {
+            perspective.links.push(addition);
         }
-        for link in snapshot.removals {
-            link_set.remove(&link);
+        for removal in diff_entry.removals {
+            perspective.links.retain(|l| l != &removal);
         }
-        for link in link_set.into_iter() {
-            perspective.links.push(link);
-        }
-        //TODO: update current revision?
-        Ok(perspective)
-    } else {
-        Ok(Perspective { links: vec![] })
     }
+    
+    let fn_end = get_now()?.time();
+    debug!("===PerspectiveDiffSunc.render() - Profiling: Took: {} to complete render() function", (fn_end - fn_start).num_milliseconds()); 
+    Ok(perspective)
 }

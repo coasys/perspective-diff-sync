@@ -1,6 +1,7 @@
 import { Scenario } from "@holochain/tryorama";
 import { sleep, generate_link_expression } from "./utils";
 import { dnas } from "./common";
+import test from "tape-promise/tape.js";
 
 //@ts-ignore
 export async function signals(t) {
@@ -54,3 +55,8 @@ export async function signals(t) {
 
     await scenario.cleanUp();
 }
+
+test("signals", async (t) => {
+    await signals(t)
+    t.end()
+})

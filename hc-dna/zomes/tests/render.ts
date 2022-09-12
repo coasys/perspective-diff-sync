@@ -1,5 +1,6 @@
 import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { sleep, generate_link_expression, createConductors} from "./utils";
+import { call, sleep, generate_link_expression, createConductors} from "./utils";
+import test from "tape-promise/tape.js";
 
 //NOTE; these tests are dependant on the SNAPSHOT_INTERVAL in lib.rs being set to 2
 //@ts-ignore
@@ -11,104 +12,90 @@ export async function render(t) {
     let conductor2 = installs[1].conductor;
     await addAllAgentsToAllConductors([conductor1, conductor2]);
     
-    let commit = await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [generate_link_expression("alice1")], removals: []}
+    console.log("RENDER 1")
+    let commit = await call(aliceHapps, "commit", {
+        additions: [generate_link_expression("alice1")], 
+        removals: []
     });
     console.warn("\ncommit", commit);
     
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision",
-        payload: commit
-    });
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit
-    });
+    await call(aliceHapps, "update_latest_revision", commit);
+    await call(aliceHapps, "update_current_revision", commit);
 
-    let commit2 = await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [generate_link_expression("alice2")], removals: []}
+    let commit2 = await call(aliceHapps, "commit", {
+        additions: [generate_link_expression("alice2")], 
+        removals: []
     });
     console.warn("\ncommit", commit2);
     
-    await aliceHapps.cells[0].callZome({
+    console.log("RENDER 2")
+
+    await call(aliceHapps, "update_latest_revision", commit2);
+    await call(aliceHapps, "update_current_revision", commit2);
+
+    let alice_rendered = await call(aliceHapps, "render");
+    //@ts-ignore
+    t.equal(alice_rendered.links.length, 2)
+
+    await sleep(5000);
+    
+    console.log("RENDER 3")
+
+    let bob_latest_revision = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision",
-        payload: commit2
-    });
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit2
+        fn_name: "latest_revision"
     });
 
-    await sleep(1000);
+    //@ts-ignore
+    t.isEqual(bob_latest_revision.toString(), commit2.toString())
+
+    // Bob hasn't pulled yet, so render on Bob should fail
+    let firstRenderFailed = false
+    try {
+        let bob_render = await call(bobHapps, "render");
+    } catch(e) {
+        firstRenderFailed = true
+    }
+
+    t.assert(firstRenderFailed)
+
+    await call(bobHapps, "pull")
+    await call(bobHapps, "pull")
+
+    console.log("Bob has pulled")
+
+    let bob_render = await call(bobHapps, "render");
+
     
-    let bob_render = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "render"
-    });
+    console.log("RENDER 4")
     console.warn("bob rendered with", bob_render);
     //@ts-ignore
     t.deepEqual(bob_render.links.length, 2);
 
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision",
-        payload: commit2
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit2
-    });
+    await call(bobHapps, "update_latest_revision", commit2);
+    await call(bobHapps, "update_current_revision", commit2);
 
-    let commit4 = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [generate_link_expression("bob3")], removals: []}
+    let commit4 = await call(bobHapps, "commit", {
+        additions: [generate_link_expression("bob3")], 
+        removals: []
     });
     console.warn("\ncommit", commit4);
     
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision",
-        payload: commit4
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit4
-    });
+    await call(bobHapps, "update_latest_revision", commit4);
+    await call(bobHapps, "update_current_revision", commit4);
 
 
-    let commit5 = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [generate_link_expression("bob4")], removals: []}
+    let commit5 = await call(bobHapps, "commit", {
+        additions: [generate_link_expression("bob4")], 
+        removals: []
     });
     console.warn("\ncommit", commit5);
     
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_latest_revision",
-        payload: commit5
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "update_current_revision", 
-        payload: commit5
-    });
+    await call(bobHapps, "update_latest_revision", commit5);
+    await call(bobHapps, "update_current_revision", commit5);
 
-    let alice_render = await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "render"
-    });
+    await call(aliceHapps, "pull"); 
+    let alice_render = await call(aliceHapps, "render");
     console.warn("Alice rendered with", alice_render);
     //@ts-ignore
     t.deepEqual(alice_render.links.length, 4);
@@ -266,6 +253,9 @@ export async function renderMerges(t) {
     });
     await sleep(500)
 
+    console.log("bob pull");
+    await call(bobHapps, "pull")
+    
     console.log("bob render");
     let bob_render2 = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -288,3 +278,9 @@ export async function renderMerges(t) {
     await conductor2.shutDown();
     await cleanAllConductors();
 }
+
+test("render", async (t) => {
+    await render(t)
+    await renderMerges(t)
+    t.end()
+})
