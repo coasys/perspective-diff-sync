@@ -12,7 +12,7 @@ name = "perspective_diff_sync"
 derive_more = "0"
 serde = "1"
 lazy_static = "*"
-chrono = { version = "=0.4.19", features=["serde"] }
+chrono = { version = "0.4.22", default-features = false, features = ["clock", "std", "oldtime", "serde"] }
 hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index" }
 thiserror = "1.0.20"
 petgraph = "0.6.2"
@@ -22,7 +22,7 @@ dot-structures = "0.1.0"
 itertools = "0.10.3"
 perspective_diff_sync_integrity = { path = "../perspective_diff_sync_integrity" }
 sha2 = "0.10.5"
-hdk = "0.0.143"
+hdk = "0.0.151"
 holo_hash = "0.0.31"
 
 [features]
