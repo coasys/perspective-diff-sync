@@ -66,13 +66,7 @@ export class LinkAdapter implements LinkSyncAdapter {
 
   async addActiveAgentLink(hcDna: HolochainLanguageDelegate): Promise<any> {
     if (hcDna == undefined) {
-      //@ts-ignore
-      return await this.call(
-        DNA_NICK,
-        ZOME_NAME,
-        "add_active_agent_link",
-        null
-      );
+      console.warn("===Perspective-diff-sync: Error tried to add an active agent link but received no hcDna to add the link onto");
     } else {
       return await hcDna.call(
         DNA_NICK,

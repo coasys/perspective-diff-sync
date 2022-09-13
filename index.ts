@@ -24,8 +24,8 @@ export default async function create(context: LanguageContext): Promise<Language
   await linksAdapter.addActiveAgentLink(Holochain);
   setInterval(
     async () => {
-      let addActiveAgent = linksAdapter.addActiveAgentLink.bind(Holochain)
-      await addActiveAgent();
+      console.log("===Perspective-diff-sync: attempting to add a new active agent link");
+      await linksAdapter.addActiveAgentLink(Holochain)
     },
     activeAgentDurationSecs * 1000
   );
