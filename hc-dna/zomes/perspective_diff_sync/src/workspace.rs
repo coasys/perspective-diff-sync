@@ -104,6 +104,7 @@ impl Workspace {
             let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
             
             if current_diff.diffs_since_snapshot == 0 {
+                debug!("===Workspace.collect_only_from_latest(): Found a perspective diff reference containing a snapshot!");
                 let snapshot = Self::get_snapshot(current_diff.clone())?;
 
                 if snapshot.is_none() {
@@ -173,10 +174,10 @@ impl Workspace {
 
         while !next.is_empty() {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
-            println!("current: {:?}", current);
+            debug!("current: {:?}", current);
             match self.back_links.get(&current) {
                 Some(children) => {
-                    println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
+                    debug!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
                     for child in children.iter() {
                         let diff = self.diffs.get(&child).expect("Should child must exist");
                         if diff.parents.is_some() {
@@ -1105,5 +1106,64 @@ mod tests {
         println!("Got result: {:#?}", res);
         assert!(res.is_err());
         assert_eq!(format!("{:?}", res.err().unwrap()), format!("{:?}", SocialContextError::NoCommonAncestorFound));
+    }
+
+    #[test]
+    fn real_world_graph() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                0 [ label = "0" ]
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+                6 [ label = "6" ]
+                7 [ label = "7" ]
+                8 [ label = "8" ]
+                9 [ label = "9" ]
+                10 [ label = "10" ]
+                11 [ label = "11" ]
+                12 [ label = "12" ]
+                13 [ label = "13" ]
+                14 [ label = "14" ]
+                15 [ label = "15" ]
+                16 [ label = "16" ]
+                1 -> 0 [ label = "()" ]
+                2 -> 1 [ label = "()" ]
+                3 -> 2 [ label = "()" ]
+                4 -> 3 [ label = "()" ]
+                5 -> 4 [ label = "()" ]
+                6 -> 5 [ label = "()" ]
+                7 -> 6 [ label = "()" ]
+                8 -> 7 [ label = "()" ]
+                9 -> 8 [ label = "()" ]
+                10 -> 9 [ label = "()" ]
+                11 -> 1 [ label = "()" ]
+                12 -> 2 [ label = "()" ]
+                12 -> 11 [ label = "()" ]
+                13 -> 3 [ label = "()" ]
+                13 -> 12 [ label = "()" ]
+                14 -> 6 [ label = "()" ]
+                14 -> 13 [ label = "()" ]
+                15 -> 7 [ label = "()" ]
+                15 -> 14 [ label = "()" ]
+                16 -> 8 [ label = "()" ]
+                16 -> 15 [ label = "()" ]
+            }"#).unwrap();
+        }
+        update();
+    
+        let node_10 = node_id_hash(&dot_structures::Id::Plain(String::from("10")));
+        let node_16 = node_id_hash(&dot_structures::Id::Plain(String::from("16")));
+        let node_8 = node_id_hash(&dot_structures::Id::Plain(String::from("8")));
+
+        let mut workspace = Workspace::new();
+        let res = workspace.build_diffs::<MockPerspectiveGraph>(node_16.clone(), node_10.clone());
+        assert!(res.is_ok());
+        //assert_eq!(workspace.common_ancestors.len(), 1);
+        assert_eq!(workspace.common_ancestors.last().unwrap(), &node_8);
+        println!("Got result: {:#?}", res);
     }
 }

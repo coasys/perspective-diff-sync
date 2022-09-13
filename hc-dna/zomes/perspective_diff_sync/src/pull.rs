@@ -48,7 +48,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     let latest_hash = latest.clone().map(|val| val.hash);
     let current = current_revision::<Retriever>()?;
     let current_hash = current.clone().map(|val| val.hash);
-    println!(
+    debug!(
         "===PerspectiveDiffSync.pull(): Pull made with latest: {:#?} and current: {:#?}",
         latest, current
     );
@@ -81,7 +81,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 
     match workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone()) {
         Err(SocialContextError::NoCommonAncestorFound) => {
-            println!("===PerspectiveDiffSync.pull(): Did not find a common ancestor, workspace looks like: {:#?}", workspace.entry_map);
+            debug!("===PerspectiveDiffSync.pull(): Did not find a common ancestor, workspace looks like: {:#?}", workspace.entry_map);
             workspace.collect_only_from_latest::<Retriever>(latest.hash.clone())?;
             let diff = workspace.squashed_diff::<Retriever>()?;
             merge::<Retriever>(latest.hash, current.hash)?;
@@ -122,7 +122,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     };
 
     if fast_foward_paths.len() > 0 {
-        println!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
+        debug!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
         let mut out = PerspectiveDiff {
             additions: vec![],
             removals: vec![]
@@ -141,7 +141,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
         debug!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
         Ok(out)
     } else {
-        println!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
+        debug!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
         //Get the entries we missed from unseen diff
         let mut out = PerspectiveDiff {
             additions: vec![],
