@@ -174,10 +174,10 @@ impl Workspace {
 
         while !next.is_empty() {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
-            debug!("current: {:?}", current);
+            println!("current: {:?}", current);
             match self.back_links.get(&current) {
                 Some(children) => {
-                    debug!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
+                    println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
                     println!("Children are: {:#?}", children);
                     for child in children.iter() {
                         let diff = self.diffs.get(&child).expect("Should child must exist");
@@ -236,7 +236,7 @@ impl Workspace {
             )?;
             self.common_ancestors.push(common_ancestor.clone());
             self.sort_graph()?;
-            // debug!("===PerspectiveDiffSunc.build_diffs(): Got common ancestor: {:?} and unexplored: {:?}", common_ancestor, self.unexplored_side_branches);
+            println!("===PerspectiveDiffSunc.build_diffs(): Got common ancestor: {:?} and unexplored: {:?}", common_ancestor, self.unexplored_side_branches);
         }
 
         let sorted_diffs = self.sorted_diffs.as_mut().unwrap();

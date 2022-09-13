@@ -356,4 +356,50 @@ mod tests {
 
         assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
     }
+
+    #[test]
+    fn test_three_null_parents() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+
+                4 -> 2
+                4 -> 3
+                5 -> 4
+                5 -> 1
+            }"#).unwrap();
+        }
+        update();
+
+        let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
+        let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
+        assert!(update_latest.is_ok());
+
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
+        assert!(update_current.is_ok());
+
+        let pull_res = pull::<MockPerspectiveGraph>();
+        assert!(pull_res.is_ok());
+        println!("{:#?}", pull_res);
+        let pull_res = pull_res.unwrap();
+        
+        let node_5 = &node_id_hash(&dot_structures::Id::Plain(String::from("5"))).to_string();
+        let node_4 = &node_id_hash(&dot_structures::Id::Plain(String::from("4"))).to_string();
+        let node_3 = &node_id_hash(&dot_structures::Id::Plain(String::from("3"))).to_string();
+        let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
+        let expected_additions = vec![ 
+            create_link_expression(node_5, node_5),
+            create_link_expression(node_4, node_4),
+            create_link_expression(node_3, node_3),
+            create_link_expression(node_1, node_1),
+        ];
+
+        assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+    }
 }
