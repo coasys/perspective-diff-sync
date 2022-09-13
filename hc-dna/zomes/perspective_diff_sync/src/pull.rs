@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference};
 
-use crate::errors::{SocialContextError, SocialContextResult};
+use crate::errors::SocialContextResult;
 use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
@@ -79,19 +79,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 
     let current = current.expect("current missing handled above");
 
-    match workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone()) {
-        Err(SocialContextError::NoCommonAncestorFound) => {
-            println!("===PerspectiveDiffSync.pull(): Did not find a common ancestor, workspace looks like: {:#?}", workspace.entry_map);
-            workspace.collect_only_from_latest::<Retriever>(latest.hash.clone())?;
-            let diff = workspace.squashed_diff::<Retriever>()?;
-            merge::<Retriever>(latest.hash, current.hash)?;
-            return Ok(diff)
-        },
-
-        _ => {
-            // continue with the rest below...
-        }
-    }
+    workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone())?;
 
     //See what fast forward paths exist between latest and current
     let fast_foward_paths = workspace.get_paths(&latest.hash, &current.hash)?;
@@ -122,7 +110,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     };
 
     if fast_foward_paths.len() > 0 {
-        debug!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
+        println!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
         let mut out = PerspectiveDiff {
             additions: vec![],
             removals: vec![]
@@ -138,10 +126,10 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
         }
         update_current_revision::<Retriever>(latest.hash, latest.timestamp)?;
         let fn_end = get_now()?.time();
-        debug!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
+        println!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
         Ok(out)
     } else {
-        debug!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
+        println!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
         //Get the entries we missed from unseen diff
         let mut out = PerspectiveDiff {
             additions: vec![],
@@ -159,7 +147,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 
         merge::<Retriever>(latest.hash, current.hash)?;
         let fn_end = get_now()?.time();
-        debug!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
+        println!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
         Ok(out)
     }
 }
@@ -395,6 +383,10 @@ mod tests {
         let pull_res = pull::<MockPerspectiveGraph>();
         assert!(pull_res.is_ok());
         assert!(pull_res.unwrap().additions.iter().all(|item| expected_additions.contains(item)));
+
+        //ensure that merge was created and thus latest revision updated
+        let latest = MockPerspectiveGraph::latest_revision();
+        assert!(latest.unwrap().unwrap().hash != latest_node_hash);
     }
 
     #[test]
@@ -443,6 +435,10 @@ mod tests {
         let pull_res = pull::<MockPerspectiveGraph>();
         assert!(pull_res.is_ok());
         assert!(pull_res.unwrap().additions.iter().all(|item| expected_additions.contains(item)));
+
+        //ensure that merge was created and thus latest revision updated
+        let latest = MockPerspectiveGraph::latest_revision();
+        assert!(latest.unwrap().unwrap().hash != latest_node_hash);
     }
 
     #[test]
@@ -489,5 +485,60 @@ mod tests {
         ];
 
         assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+
+        //ensure that no merge was created
+        let latest = MockPerspectiveGraph::latest_revision();
+        assert!(latest.unwrap().unwrap().hash == latest_node_hash);
+    }
+
+
+    #[test]
+    fn test_four_null_parents() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+
+                4 -> 2
+                4 -> 3
+                5 -> 4
+                5 -> 1
+            }"#).unwrap();
+        }
+        update();
+
+        let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
+        let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
+        assert!(update_latest.is_ok());
+
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
+        assert!(update_current.is_ok());
+
+        let pull_res = pull::<MockPerspectiveGraph>();
+        assert!(pull_res.is_ok());
+        println!("{:#?}", pull_res);
+        let pull_res = pull_res.unwrap();
+        
+        let node_5 = &node_id_hash(&dot_structures::Id::Plain(String::from("5"))).to_string();
+        let node_4 = &node_id_hash(&dot_structures::Id::Plain(String::from("4"))).to_string();
+        let node_3 = &node_id_hash(&dot_structures::Id::Plain(String::from("3"))).to_string();
+        let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
+        let expected_additions = vec![ 
+            create_link_expression(node_5, node_5),
+            create_link_expression(node_4, node_4),
+            create_link_expression(node_3, node_3),
+            create_link_expression(node_1, node_1),
+        ];
+
+        assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+
+        //ensure that no merge was created
+        let latest = MockPerspectiveGraph::latest_revision();
+        assert!(latest.unwrap().unwrap().hash == latest_node_hash);
     }
 }

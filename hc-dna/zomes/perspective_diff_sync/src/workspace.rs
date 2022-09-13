@@ -161,7 +161,7 @@ impl Workspace {
     }
 
     pub fn sort_graph(&mut self) -> SocialContextResult<()> {
-        debug!("===Workspace.sort_graph(): Function start");
+        println!("===Workspace.sort_graph(): Function start");
         let fn_start = get_now()?.time();
 
         let common_ancestor = self.common_ancestors.last().unwrap();
@@ -210,13 +210,13 @@ impl Workspace {
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
 
         let fn_end = get_now()?.time();
-        debug!("===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function", (fn_end - fn_start).num_milliseconds()); 
+        println!("===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function", (fn_end - fn_start).num_milliseconds()); 
 
         Ok(())
     }
 
     pub fn build_diffs<Retriever: PerspectiveDiffRetreiver>(&mut self, theirs: Hash, ours: Hash) -> SocialContextResult<()> {
-        debug!("===Workspace.build_diffs(): Function start");
+        println!("===Workspace.build_diffs(): Function start");
         let fn_start = get_now()?.time();
 
         let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
@@ -242,13 +242,13 @@ impl Workspace {
         let sorted_diffs = self.sorted_diffs.as_mut().unwrap();
         sorted_diffs.get_mut(0).unwrap().1.parents = None;
         self.sorted_diffs = Some(topo_sort_diff_references(sorted_diffs)?);
-        // debug!("===PerspectiveDiffSunc.build_diffs(): Got sorted diffs: {:#?}", self.sorted_diffs);
+        // println!("===PerspectiveDiffSunc.build_diffs(): Got sorted diffs: {:#?}", self.sorted_diffs);
 
         self.build_graph()?;
         self.print_graph_debug();
         
         let fn_end = get_now()?.time();
-        debug!("===Workspace.build_diffs() - Profiling: Took: {} to complete build_diffs() function", (fn_end - fn_start).num_milliseconds()); 
+        println!("===Workspace.build_diffs() - Profiling: Took: {} to complete build_diffs() function", (fn_end - fn_start).num_milliseconds()); 
 
         Ok(())
     }
@@ -267,20 +267,20 @@ impl Workspace {
         };
 
         while common_ancestor.is_none() && (!searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow().is_empty() | !searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow().is_empty()) {
-            //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow());
-            //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
+            // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow());
+            // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-                // println!("Checking side: {:#?}", side);
+                println!("Checking side: {:#?}", side);
                 let search_clone = searches.clone();
                 let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
                 let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
                 let branches = search.bfs_branches.get_mut();
 
                 for branch_index in 0..branches.len() {
-                    //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
+                    println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
-                   // println!("Checking current hash: {:#?}", current_hash);
+                    println!("Checking current hash: {:#?}", current_hash);
 
                     let already_visited = search.found_ancestors.borrow().contains(&current_hash);
                     let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
@@ -318,6 +318,44 @@ impl Workspace {
 
                     if current_hash == NULL_NODE() {
                         branches.remove(branch_index);
+                        search.reached_end = true;
+                        if common_ancestor.is_none() && other.reached_end == true {
+                            common_ancestor = Some(NULL_NODE());
+                            //Add the diff to both searches if it is not there 
+                            if !search.found_ancestors.borrow().contains(&NULL_NODE()) {
+                                search.found_ancestors.get_mut().push(NULL_NODE());
+                            };
+                            if !other.found_ancestors.borrow().contains(&NULL_NODE()) {
+                                searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(NULL_NODE());
+                            };
+                            if self.diffs.get(&NULL_NODE()).is_none() {
+                                let current_diff = PerspectiveDiffEntryReference::new(NULL_NODE(), None);
+                                self.diffs.insert(NULL_NODE(), current_diff.clone());
+                            };
+
+                            let mut set = if let Some(nodes_back_links) = self.back_links.get(&NULL_NODE()) {
+                                let mut nodes_back_links = nodes_back_links.clone();
+                                if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                                    if other_last != &NULL_NODE () {
+                                        nodes_back_links.insert(other_last.clone());
+                                    }
+                                }
+                                nodes_back_links.clone()
+                            } else {
+                                let mut set = BTreeSet::new();
+                                if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                                    if other_last != &NULL_NODE () {
+                                        set.insert(other_last.clone());
+                                    }
+                                }
+                                set
+                            };
+                            if current_hash != NULL_NODE() {
+                                set.insert(current_hash);
+                            };
+                            self.back_links.insert(NULL_NODE(), set);
+                        };
+
                         break;
                     }
 
@@ -329,12 +367,11 @@ impl Workspace {
                             // We arrived at a leaf/orphan (no parents).
                             // So we can close this branch and potentially continue
                             // with other unprocessed branches, if they exist.
-                            //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
+                            println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
                             branches.remove(branch_index);
                             search.reached_end = true;
                             if common_ancestor.is_none() && other.reached_end == true {
                                 common_ancestor = Some(NULL_NODE());
-
                                 //Add the diff to both searches if it is not there 
                                 if !search.found_ancestors.borrow().contains(&NULL_NODE()) {
                                     search.found_ancestors.get_mut().push(NULL_NODE());
@@ -346,11 +383,27 @@ impl Workspace {
                                     let current_diff = PerspectiveDiffEntryReference::new(NULL_NODE(), None);
                                     self.diffs.insert(NULL_NODE(), current_diff.clone());
                                 };
-                                let mut set = BTreeSet::new();
-                                set.insert(current_hash.clone());
-                                if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
-                                    set.insert(other_last.clone());
-                                }
+
+                                let mut set = if let Some(nodes_back_links) = self.back_links.get(&NULL_NODE()) {
+                                    let mut nodes_back_links = nodes_back_links.clone();
+                                    if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                                        if other_last != &NULL_NODE () {
+                                            nodes_back_links.insert(other_last.clone());
+                                        }
+                                    }
+                                    nodes_back_links.clone()
+                                } else {
+                                    let mut set = BTreeSet::new();
+                                    if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                                        if other_last != &NULL_NODE () {
+                                            set.insert(other_last.clone());
+                                        }
+                                    }
+                                    set
+                                };
+                                if current_hash != NULL_NODE() {
+                                    set.insert(current_hash);
+                                };
                                 self.back_links.insert(NULL_NODE(), set);
                             };
                             // We have to break out of loop to avoid having branch_index run out of bounds
@@ -1109,8 +1162,9 @@ mod tests {
         let mut workspace = Workspace::new();
         let res = workspace.build_diffs::<MockPerspectiveGraph>(node_1.clone(), node_6.clone());
         println!("Got result: {:#?}", res);
-        assert!(res.is_err());
-        assert_eq!(format!("{:?}", res.err().unwrap()), format!("{:?}", SocialContextError::NoCommonAncestorFound));
+        assert!(res.is_ok());
+        assert_eq!(workspace.common_ancestors.len(), 2);
+        assert_eq!(workspace.common_ancestors.last().unwrap(), &NULL_NODE());
     }
 
     #[test]
