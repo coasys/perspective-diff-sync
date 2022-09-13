@@ -161,7 +161,7 @@ impl Workspace {
     }
 
     pub fn sort_graph(&mut self) -> SocialContextResult<()> {
-        println!("===Workspace.sort_graph(): Function start");
+        debug!("===Workspace.sort_graph(): Function start");
         let fn_start = get_now()?.time();
 
         let common_ancestor = self.common_ancestors.last().unwrap();
@@ -210,13 +210,13 @@ impl Workspace {
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
 
         let fn_end = get_now()?.time();
-        println!("===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function", (fn_end - fn_start).num_milliseconds()); 
+        debug!("===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function", (fn_end - fn_start).num_milliseconds()); 
 
         Ok(())
     }
 
     pub fn build_diffs<Retriever: PerspectiveDiffRetreiver>(&mut self, theirs: Hash, ours: Hash) -> SocialContextResult<()> {
-        println!("===Workspace.build_diffs(): Function start");
+        debug!("===Workspace.build_diffs(): Function start");
         let fn_start = get_now()?.time();
 
         let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
@@ -229,6 +229,7 @@ impl Workspace {
         println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches);
         
         while self.unexplored_side_branches.len() > 0 {
+            debug!("===Workspace.build_diffs(): making an explored side branch iteration");
             let unexplored_side_branch = self.unexplored_side_branches.pop().unwrap();
             let common_ancestor = self.collect_until_common_ancestor::<Retriever>(
                 unexplored_side_branch,
@@ -236,7 +237,7 @@ impl Workspace {
             )?;
             self.common_ancestors.push(common_ancestor.clone());
             self.sort_graph()?;
-            println!("===PerspectiveDiffSunc.build_diffs(): Got common ancestor: {:?} and unexplored: {:?}", common_ancestor, self.unexplored_side_branches);
+            debug!("===PerspectiveDiffSunc.build_diffs(): Got common ancestor: {:?}", common_ancestor);
         }
 
         let sorted_diffs = self.sorted_diffs.as_mut().unwrap();
@@ -248,7 +249,7 @@ impl Workspace {
         self.print_graph_debug();
         
         let fn_end = get_now()?.time();
-        println!("===Workspace.build_diffs() - Profiling: Took: {} to complete build_diffs() function", (fn_end - fn_start).num_milliseconds()); 
+        debug!("===Workspace.build_diffs() - Profiling: Took: {} to complete build_diffs() function", (fn_end - fn_start).num_milliseconds()); 
 
         Ok(())
     }
@@ -271,22 +272,22 @@ impl Workspace {
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-                println!("Checking side: {:#?}", side);
+                // println!("Checking side: {:#?}", side);
                 let search_clone = searches.clone();
                 let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
                 let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
                 let branches = search.bfs_branches.get_mut();
 
                 for branch_index in 0..branches.len() {
-                    println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
+                    // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
-                    println!("Checking current hash: {:#?}", current_hash);
+                    // println!("Checking current hash: {:#?}", current_hash);
 
                     let already_visited = search.found_ancestors.borrow().contains(&current_hash);
                     let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
 
                     if already_visited {
-                        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
+                        // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
                         // We've seen this diff on this side, so we are at the end of a branch.
                         // Just ignore this hash and close the branch.
                         branches.remove(branch_index);
@@ -694,11 +695,11 @@ impl Workspace {
     // }
 
     pub fn print_graph_debug(&self) {
-        println!(
+        debug!(
             "Directed: {:?}\n",
             Dot::with_config(&self.graph, &[Config::NodeIndexLabel])
         );
-        println!(
+        debug!(
            "Undirected: {:?}\n",
            Dot::with_config(&self.undirected_graph, &[])
         );

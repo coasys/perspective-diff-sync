@@ -110,7 +110,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     };
 
     if fast_foward_paths.len() > 0 {
-        println!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
+        debug!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
         let mut out = PerspectiveDiff {
             additions: vec![],
             removals: vec![]
@@ -126,10 +126,10 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
         }
         update_current_revision::<Retriever>(latest.hash, latest.timestamp)?;
         let fn_end = get_now()?.time();
-        println!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
+        debug!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
         Ok(out)
     } else {
-        println!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
+        debug!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
         //Get the entries we missed from unseen diff
         let mut out = PerspectiveDiff {
             additions: vec![],
@@ -147,7 +147,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 
         merge::<Retriever>(latest.hash, current.hash)?;
         let fn_end = get_now()?.time();
-        println!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
+        debug!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
         Ok(out)
     }
 }
@@ -502,6 +502,7 @@ mod tests {
                 3 [ label = "3" ]
                 4 [ label = "4" ]
                 5 [ label = "5" ]
+                6 [ label = "6" ]
 
                 4 -> 2
                 4 -> 3
@@ -515,7 +516,7 @@ mod tests {
         let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
         assert!(update_latest.is_ok());
 
-        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
         let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
@@ -527,18 +528,20 @@ mod tests {
         let node_5 = &node_id_hash(&dot_structures::Id::Plain(String::from("5"))).to_string();
         let node_4 = &node_id_hash(&dot_structures::Id::Plain(String::from("4"))).to_string();
         let node_3 = &node_id_hash(&dot_structures::Id::Plain(String::from("3"))).to_string();
+        let node_2 = &node_id_hash(&dot_structures::Id::Plain(String::from("2"))).to_string();
         let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
         let expected_additions = vec![ 
             create_link_expression(node_5, node_5),
             create_link_expression(node_4, node_4),
             create_link_expression(node_3, node_3),
+            create_link_expression(node_2, node_2),
             create_link_expression(node_1, node_1),
         ];
 
         assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
 
-        //ensure that no merge was created
+        //ensure that a merge was created
         let latest = MockPerspectiveGraph::latest_revision();
-        assert!(latest.unwrap().unwrap().hash == latest_node_hash);
+        assert!(latest.unwrap().unwrap().hash != latest_node_hash);
     }
 }
