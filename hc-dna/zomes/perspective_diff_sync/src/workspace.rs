@@ -12,7 +12,7 @@ use itertools::Itertools;
 use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::topo_sort::topo_sort_diff_references;
-use crate::retriever::PerspectiveDiffRetreiver;
+use crate::retriever::{PerspectiveDiffRetreiver, hash_to_node_id};
 use crate::utils::get_now;
 
 pub struct Workspace {
@@ -24,10 +24,10 @@ pub struct Workspace {
     pub common_ancestors: Vec<Hash>,
     pub diffs: BTreeMap<Hash, PerspectiveDiffEntryReference>,
     pub back_links: BTreeMap::<Hash, BTreeSet<Hash>>,
-    unexplored_side_branches: Vec<Hash>
+    unexplored_side_branches: BTreeSet<Hash>
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct BfsSearch {
     pub found_ancestors: RefCell<Vec<Hash>>,
     pub bfs_branches: RefCell<VecDeque<Hash>>,
@@ -44,6 +44,20 @@ impl BfsSearch {
             found_ancestors: RefCell::new(Vec::new()),
             bfs_branches: branches,
             reached_end: false
+        }
+    }
+}
+
+impl std::fmt::Debug for BfsSearch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if cfg!(test) {
+            let mut ancestors = vec![];
+            ancestors = self.found_ancestors.borrow().clone().into_iter().map(|val| hash_to_node_id(val)).collect();
+            let mut branches = vec![];
+            branches = self.bfs_branches.borrow().clone().into_iter().map(|val| hash_to_node_id(val)).collect();
+            write!(f, "BfsSearch {{ found_ancestors: {:?},\n bfs_branches: {:?},\n reached_end: {:?} }}", ancestors, branches, self.reached_end)
+        } else {
+            write!(f, "BfsSearch {{ found_ancestors: {:?},\n bfs_branches: {:?},\n reached_end: {:?} }}", self.found_ancestors, self.bfs_branches, self.reached_end)
         }
     }
 }
@@ -72,7 +86,7 @@ impl Workspace {
             common_ancestors: vec![],
             diffs: BTreeMap::new(),
             back_links: BTreeMap::new(),
-            unexplored_side_branches: Vec::new(),
+            unexplored_side_branches: BTreeSet::new(),
         }
     }
 
@@ -166,31 +180,33 @@ impl Workspace {
 
         let common_ancestor = self.common_ancestors.last().unwrap();
 
+        //TODO; this should probably be a Map but tests break when it is a map
         let mut sorted: Vec<(Hash, PerspectiveDiffEntryReference)> = Vec::new();
         let mut next: VecDeque<Hash> = VecDeque::new();
-        self.unexplored_side_branches = Vec::new();
+        self.unexplored_side_branches = BTreeSet::new();
 
         next.push_back(common_ancestor.clone());
 
         while !next.is_empty() {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
-            println!("current: {:?}", current);
+            println!("current: {:?}", hash_to_node_id(current.clone()));
             match self.back_links.get(&current) {
                 Some(children) => {
                     println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
-                    println!("Children are: {:#?}", children);
+                    println!("Children are: {:#?}", children.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
                     for child in children.iter() {
                         let diff = self.diffs.get(&child).expect("Should child must exist");
                         if diff.parents.is_some() {
                             for parent in diff.parents.as_ref().unwrap() {
                                 if parent != &current {
-                                    println!("Found missing parent: {:?}", parent);
-                                    self.unexplored_side_branches.push(parent.clone());
+                                    println!("Found missing parent: {:?}", hash_to_node_id(parent.clone()));
+                                    self.unexplored_side_branches.insert(parent.clone());
                                 }
                             }
                         }
                     }
-                    next.append(&mut children.iter().cloned().collect());
+                    let mut unseen_children = children.to_owned().into_iter().filter(|child| !next.contains(child)).collect::<VecDeque<_>>();
+                    next.append(&mut unseen_children);
                 },
                 None => {}
             };
@@ -199,14 +215,20 @@ impl Workspace {
             if self.entry_map.get(&current).is_none() {
                 self.entry_map.insert(current, current_diff.clone());
             };
+            println!("SortGraph iter: Unexplored side branches: {:?}", self.unexplored_side_branches.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
         }
 
+        //TODO; next step; This needs to remember the unexplored branches from previous iterations of sort_graph; since now each time sort_graph is called we iterate over all the unexplored stuff again
+        //I think since we use the last element of this array as the input for the next iteration of collect_until_common_ancestor; its possible to get into a large iteration loop where we 
+        //keep exploring the same unexplored branches over and over
+        //simple fix might be just to filter on the self.sorted_diffs and not sorted
         self.unexplored_side_branches = self.unexplored_side_branches
             .iter()
             .filter(|b| !sorted.iter().find(|s| s.0 == **b).is_some())
             .cloned()
             .collect();
 
+        println!("Sorted is: {:?}", sorted.clone().into_iter().map(|val| hash_to_node_id(val.0)).collect::<Vec<_>>());
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
 
         let fn_end = get_now()?.time();
@@ -222,22 +244,23 @@ impl Workspace {
         let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
         self.common_ancestors.push(common_ancestor);
 
-        println!("===PerspectiveDiffSunc.build_diffs(): Got diffs: {:?}", self.diffs.iter().map(|x| x.0).collect::<Vec<_>>());
-        println!("===PerspectiveDiffSunc.build_diffs(): Got back_links: {:?}", self.back_links);
+        println!("===PerspectiveDiffSunc.build_diffs(): Got diffs: {:?}", self.diffs.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
+        println!("===PerspectiveDiffSunc.build_diffs(): Got back_links: {:?}", self.back_links.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
         
         self.sort_graph()?;
-        println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches);
+        println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches.iter().map(|x| hash_to_node_id(x.to_owned())).collect::<Vec<_>>());
         
         while self.unexplored_side_branches.len() > 0 {
-            debug!("===Workspace.build_diffs(): making an explored side branch iteration");
-            let unexplored_side_branch = self.unexplored_side_branches.pop().unwrap();
+            let unexplored_side_branch = self.unexplored_side_branches.iter().next_back().unwrap().to_owned();
+            let ours = self.common_ancestors.last().expect("There should have been a common ancestor above").to_owned();
+            println!("===Workspace.build_diffs(): making an explored side branch iteration: {:?} and ours: {:?}", hash_to_node_id(unexplored_side_branch.clone()), hash_to_node_id(ours.clone()));
             let common_ancestor = self.collect_until_common_ancestor::<Retriever>(
                 unexplored_side_branch,
-                self.common_ancestors.last().expect("There should have been a common ancestor above").to_owned()
+                ours
             )?;
             self.common_ancestors.push(common_ancestor.clone());
             self.sort_graph()?;
-            debug!("===PerspectiveDiffSunc.build_diffs(): Got common ancestor: {:?}", common_ancestor);
+            println!("===PerspectiveDiffSync.build_diffs(): Got common ancestor: {:?}", hash_to_node_id(common_ancestor));
         }
 
         let sorted_diffs = self.sorted_diffs.as_mut().unwrap();
@@ -443,8 +466,6 @@ impl Workspace {
                 }
             }
         }
-
-        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 3: {:#?} and common ancestor is: {:#?}", searches, common_ancestor);
         
         let fn_end = get_now()?.time();
         debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", (fn_end - fn_start).num_milliseconds()); 
@@ -452,6 +473,8 @@ impl Workspace {
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);
         };
+
+        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 3: {:#?} and common ancestor is: {:#?}", searches, hash_to_node_id(common_ancestor.clone().unwrap()));
 
         Ok(common_ancestor.unwrap())
     }
@@ -565,8 +588,6 @@ impl Workspace {
             Ok(None)
         }
     }
-
-
 
     fn add_node(
         &mut self,
@@ -695,14 +716,33 @@ impl Workspace {
     // }
 
     pub fn print_graph_debug(&self) {
-        debug!(
-            "Directed: {:?}\n",
-            Dot::with_config(&self.graph, &[Config::NodeIndexLabel])
-        );
-        debug!(
-           "Undirected: {:?}\n",
-           Dot::with_config(&self.undirected_graph, &[])
-        );
+        if cfg!(test) {
+            println!(
+                "Directed: {:?}\n",
+                Dot::with_config(&self.graph.map(|_node_index, node| {
+                    crate::retriever::hash_to_node_id(node.to_owned())
+                }, |_edge_index, _edge| {
+
+                }), &[])
+            );
+            println!(
+               "Undirected: {:?}\n",
+               Dot::with_config(&self.undirected_graph.map(|_node_index, node| {
+                crate::retriever::hash_to_node_id(node.to_owned())
+            }, |_edge_index, _edge| {
+
+            }), &[])
+            );
+        } else {
+            debug!(
+                "Directed: {:?}\n",
+                Dot::with_config(&self.graph, &[Config::NodeIndexLabel])
+            );
+            debug!(
+               "Undirected: {:?}\n",
+               Dot::with_config(&self.undirected_graph, &[])
+            );
+        }
     }
 }
 
