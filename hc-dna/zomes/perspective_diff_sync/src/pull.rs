@@ -155,9 +155,10 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 #[cfg(test)]
 mod tests {
     use dot_structures;
+    use perspective_diff_sync_integrity::LinkExpression;
 
     use super::pull;
-    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash, PerspectiveDiffRetreiver};
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash, PerspectiveDiffRetreiver, hash_to_node_id, create_node_id_vec};
     use crate::utils::create_link_expression;
 
     #[test]
@@ -538,6 +539,159 @@ mod tests {
             create_link_expression(node_1, node_1),
         ];
 
+        assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
+
+        //ensure that a merge was created
+        let latest = MockPerspectiveGraph::latest_revision();
+        assert!(latest.unwrap().unwrap().hash != latest_node_hash);
+    }
+
+    #[test]
+    fn test_high_complex_graph() {
+        fn update() {
+            let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
+            *graph = MockPerspectiveGraph::from_dot(r#"digraph {
+                1 [ label = "1" ]
+                2 [ label = "2" ]
+                3 [ label = "3" ]
+                4 [ label = "4" ]
+                5 [ label = "5" ]
+                6 [ label = "6" ]
+                7 [ label = "7" ]
+                8 [ label = "8" ]
+                9 [ label = "9" ]
+                10 [ label = "10" ]
+                11 [ label = "11" ]
+                12 [ label = "12" ]
+                13 [ label = "13" ]
+                14 [ label = "14" ]
+                15 [ label = "15" ]
+                16 [ label = "16" ]
+                17 [ label = "17" ]
+                18 [ label = "18" ]
+                19 [ label = "19" ]
+                20 [ label = "20" ]
+                21 [ label = "21" ]
+                22 [ label = "22" ]
+                23 [ label = "23" ]
+                24 [ label = "24" ]
+                25 [ label = "25" ]
+                26 [ label = "26" ]
+                27 [ label = "27" ]
+                28 [ label = "28" ]
+                29 [ label = "29" ]
+                30 [ label = "30" ]
+                31 [ label = "31" ]
+                32 [ label = "32" ]
+                33 [ label = "33" ]
+                34 [ label = "34" ]
+                35 [ label = "35" ]
+                36 [ label = "36" ]
+                37 [ label = "37" ]
+                38 [ label = "38" ]
+                39 [ label = "39" ]
+                40 [ label = "40" ]
+                41 [ label = "41" ]
+                42 [ label = "42" ]
+                43 [ label = "43" ]
+                44 [ label = "44" ]
+                45 [ label = "45" ]
+                46 [ label = "46" ]
+                47 [ label = "47" ]
+                48 [ label = "48" ]
+                49 [ label = "49" ]
+                50 [ label = "50" ]
+                51 [ label = "51" ]
+                52 [ label = "52" ]
+                53 [ label = "53" ]
+                54 [ label = "54" ]
+                55 [ label = "55" ]
+                2 -> 1 [ label = "()" ]
+                5 -> 4 [ label = "()" ]
+                6 -> 5 [ label = "()" ]
+                7 -> 6 [ label = "()" ]
+                8 -> 7 [ label = "()" ]
+                9 -> 8 [ label = "()" ]
+                10 -> 9 [ label = "()" ]
+                11 -> 10 [ label = "()" ]
+                12 -> 11 [ label = "()" ]
+                13 -> 3 [ label = "()" ]
+                13 -> 12 [ label = "()" ]
+                14 -> 13 [ label = "()" ]
+                15 -> 14 [ label = "()" ]
+                16 -> 15 [ label = "()" ]
+                18 -> 17 [ label = "()" ]
+                18 -> 16 [ label = "()" ]
+                19 -> 18 [ label = "()" ]
+                20 -> 19 [ label = "()" ]
+                21 -> 20 [ label = "()" ]
+                22 -> 2 [ label = "()" ]
+                22 -> 19 [ label = "()" ]
+                23 -> 22 [ label = "()" ]
+                23 -> 21 [ label = "()" ]
+                24 -> 23 [ label = "()" ]
+                25 -> 24 [ label = "()" ]
+                26 -> 25 [ label = "()" ]
+                27 -> 26 [ label = "()" ]
+                28 -> 27 [ label = "()" ]
+                29 -> 28 [ label = "()" ]
+                30 -> 29 [ label = "()" ]
+                31 -> 30 [ label = "()" ]
+                32 -> 31 [ label = "()" ]
+                33 -> 32 [ label = "()" ]
+                34 -> 33 [ label = "()" ]
+                35 -> 33 [ label = "()" ]
+                36 -> 34 [ label = "()" ]
+                36 -> 35 [ label = "()" ]
+                37 -> 36 [ label = "()" ]
+                38 -> 37 [ label = "()" ]
+                39 -> 38 [ label = "()" ]
+                40 -> 39 [ label = "()" ]
+                42 -> 41 [ label = "()" ]
+                42 -> 40 [ label = "()" ]
+                43 -> 42 [ label = "()" ]
+                44 -> 41 [ label = "()" ]
+                44 -> 40 [ label = "()" ]
+                45 -> 41 [ label = "()" ]
+                45 -> 40 [ label = "()" ]
+                46 -> 43 [ label = "()" ]
+                46 -> 45 [ label = "()" ]
+                47 -> 44 [ label = "()" ]
+                47 -> 46 [ label = "()" ]
+                48 -> 44 [ label = "()" ]
+                48 -> 46 [ label = "()" ]
+                49 -> 46 [ label = "()" ]
+                50 -> 49 [ label = "()" ]
+                50 -> 47 [ label = "()" ]
+                51 -> 49 [ label = "()" ]
+                51 -> 48 [ label = "()" ]
+                52 -> 51 [ label = "()" ]
+                52 -> 50 [ label = "()" ]
+                54 -> 53 [ label = "()" ]
+                55 -> 54 [ label = "()" ]
+                55 -> 22 [ label = "()" ]
+            }"#).unwrap();
+        }
+        update();
+
+        let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("52")));
+        let update_latest = MockPerspectiveGraph::update_latest_revision(latest_node_hash.clone(), chrono::Utc::now());
+        assert!(update_latest.is_ok());
+
+        let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("55")));
+        let update_current = MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
+        assert!(update_current.is_ok());
+
+        let pull_res = pull::<MockPerspectiveGraph>();
+        assert!(pull_res.is_ok());
+        //println!("{:#?}", pull_res);
+        let pull_res = pull_res.unwrap();
+
+        let expected_additions = create_node_id_vec(1, 52);
+
+        for addition in expected_additions.clone() {
+            assert!(pull_res.additions.contains(&addition));
+        };
         assert!(pull_res.additions.iter().all(|item| expected_additions.contains(item)));
 
         //ensure that a merge was created
