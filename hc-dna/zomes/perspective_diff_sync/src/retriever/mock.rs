@@ -1,4 +1,4 @@
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff, LocalHashReference, HashReference};
+use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff, LocalHashReference, HashReference, LinkExpression};
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use dot_structures;
@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use crate::Hash;
 use crate::utils::create_link_expression;
 use crate::errors::{SocialContextResult, SocialContextError};
+use crate::workspace::NULL_NODE;
 use super::PerspectiveDiffRetreiver;
 
 #[derive(Debug)]
@@ -116,6 +117,54 @@ pub fn node_id_hash(id: &dot_structures::Id) -> Hash {
 }
 
 #[allow(dead_code)]
+pub fn hash_to_node_id(hash: ActionHash) -> String {
+    if hash == NULL_NODE() {
+        return String::from("NULL_NODE")
+    };
+    let hash = hash.get_raw_36();
+    let node_id_string = std::str::from_utf8(hash).expect("could not get string from hash array");
+    let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
+    string_split.to_string()
+}
+
+// #[allow(dead_code)]
+// pub fn string_to_node_id(mut hash: String) -> String {
+//     if hash == NULL_NODE().to_string() {
+//         return String::from("NULL_NODE")
+//     };
+//     if hash.len() > 36 {
+//         let _ = hash.split_off(36);
+//     };
+//     let hash = ActionHash::from_raw_36(hash.into_bytes());
+//     let hash = hash.get_raw_36();
+//     let node_id_string = std::str::from_utf8(hash).expect("could not get string from hash array");
+//     let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
+//     string_split.to_string()
+// }
+
+#[allow(dead_code)]
+pub fn create_node_id_vec(range_start: u32, range_end: u32) -> Vec<LinkExpression> {
+    let mut out = vec![];
+    for n in range_start..=range_end {
+        let node = &node_id_hash(&dot_structures::Id::Plain(String::from(n.to_string()))).to_string();
+        out.push(create_link_expression(node, node));
+    };
+    out
+}
+
+// #[allow(dead_code)]
+// pub fn link_expression_to_node_id(links: &mut Vec<LinkExpression>) {
+//     links.iter_mut().for_each(|link| {
+//         if link.data.source.is_some() {
+//             link.data.source = Some(string_to_node_id(link.data.source.clone().unwrap()));
+//         }
+//         if link.data.target.is_some() {
+//             link.data.target = Some(string_to_node_id(link.data.target.clone().unwrap()));
+//         }
+//     })
+// }
+
+#[allow(dead_code)]
 fn unwrap_vertex(v: dot_structures::Vertex) -> Option<dot_structures::NodeId> {
     match v {
         dot_structures::Vertex::N(id) => Some(id),
@@ -188,8 +237,8 @@ impl MockPerspectiveGraph {
                                 let id_1 = e.1.0;
                                 let child = node_id_hash(&id_0);
                                 let parent = node_id_hash(&id_1);
-                                println!("Edge: {} -> {}", id_0, id_1);
-                                println!("Edge: {} -> {}", child, parent);
+                                //println!("Edge: {} -> {}", id_0, id_1);
+                                //println!("Edge: {} -> {}", child, parent);
                                 match parents.remove(&child) {
                                     None => parents.insert(child, vec![parent]),
                                     Some(mut prev) => {
