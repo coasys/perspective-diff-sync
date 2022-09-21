@@ -192,17 +192,17 @@ impl Workspace {
             if !visited.contains(&current) {
                 inner_iter += 1;
                 debug!("===Workspace.sort_graph(): Iteration: {}", inner_iter);
-                println!("current: {:?}", hash_to_node_id(current.clone()));
+                //println!("current: {:?}", hash_to_node_id(current.clone()));
                 match self.back_links.get(&current) {
                     Some(children) => {
-                        println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
-                        println!("Children are: {:#?}", children.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
+                        //println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
+                        //println!("Children are: {:#?}", children.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
                         for child in children.iter() {
                             let diff = self.diffs.get(&child).expect("Should child must exist");
                             if diff.parents.is_some() {
                                 for parent in diff.parents.as_ref().unwrap() {
                                     if parent != &current {
-                                        println!("Found missing parent: {:?}", hash_to_node_id(parent.clone()));
+                                        //println!("Found missing parent: {:?}", hash_to_node_id(parent.clone()));
                                         self.unexplored_side_branches.insert(parent.clone());
                                     }
                                 }
@@ -228,9 +228,9 @@ impl Workspace {
             .cloned()
             .collect();
 
-        println!("SortGraph iter: Unexplored side branches: {:?}", self.unexplored_side_branches.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
+        // println!("SortGraph iter: Unexplored side branches: {:?}", self.unexplored_side_branches.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
 
-        println!("Sorted is: {:?}", sorted.clone().into_iter().map(|val| hash_to_node_id(val.0)).collect::<Vec<_>>());
+        //println!("Sorted is: {:?}", sorted.clone().into_iter().map(|val| hash_to_node_id(val.0)).collect::<Vec<_>>());
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
 
         let fn_end = get_now()?.time();
@@ -246,23 +246,23 @@ impl Workspace {
         let common_ancestor = self.collect_until_common_ancestor::<Retriever>(theirs, ours)?;
         self.common_ancestors.push(common_ancestor);
 
-        println!("===PerspectiveDiffSunc.build_diffs(): Got diffs: {:?}", self.diffs.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
-        println!("===PerspectiveDiffSunc.build_diffs(): Got back_links: {:?}", self.back_links.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
+        //println!("===PerspectiveDiffSunc.build_diffs(): Got diffs: {:?}", self.diffs.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
+        //println!("===PerspectiveDiffSunc.build_diffs(): Got back_links: {:?}", self.back_links.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
         
         self.sort_graph()?;
-        println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches.iter().map(|x| hash_to_node_id(x.to_owned())).collect::<Vec<_>>());
+        //println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches.iter().map(|x| hash_to_node_id(x.to_owned())).collect::<Vec<_>>());
         
         while self.unexplored_side_branches.len() > 0 {
             let unexplored_side_branch = self.unexplored_side_branches.iter().next_back().unwrap().to_owned();
             let ours = self.common_ancestors.last().expect("There should have been a common ancestor above").to_owned();
-            println!("===Workspace.build_diffs(): making an explored side branch iteration: {:?} and ours: {:?}", hash_to_node_id(unexplored_side_branch.clone()), hash_to_node_id(ours.clone()));
+            //println!("===Workspace.build_diffs(): making an explored side branch iteration: {:?} and ours: {:?}", hash_to_node_id(unexplored_side_branch.clone()), hash_to_node_id(ours.clone()));
             let common_ancestor = self.collect_until_common_ancestor::<Retriever>(
                 unexplored_side_branch,
                 ours
             )?;
             self.common_ancestors.push(common_ancestor.clone());
             self.sort_graph()?;
-            println!("===PerspectiveDiffSync.build_diffs(): Got common ancestor: {:?}", hash_to_node_id(common_ancestor));
+            //println!("===PerspectiveDiffSync.build_diffs(): Got common ancestor: {:?}", hash_to_node_id(common_ancestor));
         }
 
         let sorted_diffs = self.sorted_diffs.as_mut().unwrap();
@@ -361,7 +361,7 @@ impl Workspace {
                     }
                     
                     if seen_on_other_side {
-                        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 SEEN ON OTHER SIDE");
+                        // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 SEEN ON OTHER SIDE");
 
                         //Add the diff to both searches if it is not there 
                         if !search.found_ancestors.borrow().contains(&current_hash) {
@@ -402,7 +402,7 @@ impl Workspace {
                             // We arrived at a leaf/orphan (no parents).
                             // So we can close this branch and potentially continue
                             // with other unprocessed branches, if they exist.
-                            println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
+                            // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
                             branches.remove(branch_index);
                             search.reached_end = true;
                             if common_ancestor.is_none() && other.reached_end == true {
@@ -453,7 +453,7 @@ impl Workspace {
             return Err(SocialContextError::NoCommonAncestorFound);
         };
 
-        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 3: {:#?} and common ancestor is: {:#?}", searches, hash_to_node_id(common_ancestor.clone().unwrap()));
+        // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 3: {:#?} and common ancestor is: {:#?}", searches, hash_to_node_id(common_ancestor.clone().unwrap()));
 
         Ok(common_ancestor.unwrap())
     }
