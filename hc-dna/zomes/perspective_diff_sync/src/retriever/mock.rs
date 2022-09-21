@@ -122,9 +122,14 @@ pub fn hash_to_node_id(hash: ActionHash) -> String {
         return String::from("NULL_NODE")
     };
     let hash = hash.get_raw_36();
-    let node_id_string = std::str::from_utf8(hash).expect("could not get string from hash array");
-    let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
-    string_split.to_string()
+    
+    match std::str::from_utf8(hash) {
+        Ok(node_id_str) => {
+            let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
+            string_split.to_string()
+        },
+        Err(_err) => hash.to_string()
+    }
 }
 
 // #[allow(dead_code)]
