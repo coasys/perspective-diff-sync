@@ -180,51 +180,55 @@ impl Workspace {
 
         //TODO; this should probably be a Map but tests break when it is a map
         let mut sorted: Vec<(Hash, PerspectiveDiffEntryReference)> = Vec::new();
+        let mut visited: HashSet<Hash> = HashSet::new();
         let mut next: VecDeque<Hash> = VecDeque::new();
         self.unexplored_side_branches = BTreeSet::new();
+        let mut inner_iter = 0;
 
         next.push_back(common_ancestor.clone());
 
         while !next.is_empty() {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
-            println!("current: {:?}", hash_to_node_id(current.clone()));
-            match self.back_links.get(&current) {
-                Some(children) => {
-                    println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
-                    println!("Children are: {:#?}", children.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
-                    for child in children.iter() {
-                        let diff = self.diffs.get(&child).expect("Should child must exist");
-                        if diff.parents.is_some() {
-                            for parent in diff.parents.as_ref().unwrap() {
-                                if parent != &current {
-                                    println!("Found missing parent: {:?}", hash_to_node_id(parent.clone()));
-                                    self.unexplored_side_branches.insert(parent.clone());
+            if !visited.contains(&current) {
+                inner_iter += 1;
+                debug!("===Workspace.sort_graph(): Iteration: {}", inner_iter);
+                println!("current: {:?}", hash_to_node_id(current.clone()));
+                match self.back_links.get(&current) {
+                    Some(children) => {
+                        println!("--> has {} children, checking the children to see if there is a missing parent link", children.len());
+                        println!("Children are: {:#?}", children.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
+                        for child in children.iter() {
+                            let diff = self.diffs.get(&child).expect("Should child must exist");
+                            if diff.parents.is_some() {
+                                for parent in diff.parents.as_ref().unwrap() {
+                                    if parent != &current {
+                                        println!("Found missing parent: {:?}", hash_to_node_id(parent.clone()));
+                                        self.unexplored_side_branches.insert(parent.clone());
+                                    }
                                 }
                             }
                         }
-                    }
-                    let mut unseen_children = children.to_owned().into_iter().filter(|child| !next.contains(child)).collect::<VecDeque<_>>();
-                    next.append(&mut unseen_children);
-                },
-                None => {}
-            };
-            let current_diff = self.diffs.get(&current).expect("diffs should be populated");
-            sorted.push((current.clone(), current_diff.clone()));
-            if self.entry_map.get(&current).is_none() {
-                self.entry_map.insert(current, current_diff.clone());
-            };
-            println!("SortGraph iter: Unexplored side branches: {:?}", self.unexplored_side_branches.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
+                        let mut unseen_children = children.to_owned().into_iter().filter(|child| !next.contains(child)).collect::<VecDeque<_>>();
+                        next.append(&mut unseen_children);
+                    },
+                    None => {}
+                };
+                let current_diff = self.diffs.get(&current).expect("diffs should be populated");
+                sorted.push((current.clone(), current_diff.clone()));
+                if self.entry_map.get(&current).is_none() {
+                    self.entry_map.insert(current.clone(), current_diff.clone());
+                };
+                visited.insert(current);
+            }
         }
 
-        //TODO; next step; This needs to remember the unexplored branches from previous iterations of sort_graph; since now each time sort_graph is called we iterate over all the unexplored stuff again
-        //I think since we use the last element of this array as the input for the next iteration of collect_until_common_ancestor; its possible to get into a large iteration loop where we 
-        //keep exploring the same unexplored branches over and over
-        //simple fix might be just to filter on the self.sorted_diffs and not sorted
         self.unexplored_side_branches = self.unexplored_side_branches
             .iter()
             .filter(|b| !sorted.iter().find(|s| s.0 == **b).is_some())
             .cloned()
             .collect();
+
+        println!("SortGraph iter: Unexplored side branches: {:?}", self.unexplored_side_branches.clone().into_iter().map(|child| hash_to_node_id(child)).collect::<Vec<String>>());
 
         println!("Sorted is: {:?}", sorted.clone().into_iter().map(|val| hash_to_node_id(val.0)).collect::<Vec<_>>());
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
