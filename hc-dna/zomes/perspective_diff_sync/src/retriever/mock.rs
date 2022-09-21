@@ -121,10 +121,10 @@ pub fn hash_to_node_id(hash: ActionHash) -> String {
     if hash == NULL_NODE() {
         return String::from("NULL_NODE")
     };
-    let hash = hash.get_raw_36();
+    let hash_bytes = hash.get_raw_36();
     
-    match std::str::from_utf8(hash) {
-        Ok(node_id_str) => {
+    match std::str::from_utf8(hash_bytes) {
+        Ok(node_id_string) => {
             let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
             string_split.to_string()
         },
