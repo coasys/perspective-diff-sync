@@ -156,7 +156,9 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 mod tests {
     use dot_structures;
     use super::pull;
-    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash, PerspectiveDiffRetreiver, create_node_id_vec};
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, PerspectiveDiffRetreiver,
+        node_id_hash, create_node_id_vec, create_node_id_link_expression
+    };
     use crate::utils::create_link_expression;
 
     #[test]
@@ -685,7 +687,9 @@ mod tests {
         //println!("{:#?}", pull_res);
         let pull_res = pull_res.unwrap();
 
-        let expected_additions = create_node_id_vec(1, 52);
+        let mut expected_additions = create_node_id_vec(23, 52);
+        expected_additions.push(create_node_id_link_expression(20));
+        expected_additions.push(create_node_id_link_expression(21));
 
         for addition in expected_additions.clone() {
             assert!(pull_res.additions.contains(&addition));

@@ -143,11 +143,18 @@ pub fn hash_to_node_id(hash: ActionHash) -> String {
 // }
 
 #[allow(dead_code)]
+pub fn create_node_id_link_expression(node_id: u32) -> LinkExpression {
+    let node_id = node_id.to_string();
+    let node_id = dot_structures::Id::Plain(node_id);
+    let node = &node_id_hash(&node_id).to_string();
+    create_link_expression(node, node)
+}
+
+#[allow(dead_code)]
 pub fn create_node_id_vec(range_start: u32, range_end: u32) -> Vec<LinkExpression> {
     let mut out = vec![];
     for n in range_start..=range_end {
-        let node = &node_id_hash(&dot_structures::Id::Plain(String::from(n.to_string()))).to_string();
-        out.push(create_link_expression(node, node));
+        out.push(create_node_id_link_expression(n));
     };
     out
 }
