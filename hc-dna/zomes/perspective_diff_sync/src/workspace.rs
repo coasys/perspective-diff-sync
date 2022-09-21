@@ -277,6 +277,48 @@ impl Workspace {
         Ok(())
     }
 
+    fn terminate_with_null_node(&mut self, current_hash: Hash, side: SearchSide, searches: &mut BTreeMap<SearchSide, BfsSearch>) -> SocialContextResult<()> {
+        let search_clone = searches.clone();
+        let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("search side not found"))?;
+        let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
+        
+
+        if !search.found_ancestors.borrow().contains(&NULL_NODE()) {
+            search.found_ancestors.get_mut().push(NULL_NODE());
+        };
+        if !other.found_ancestors.borrow().contains(&NULL_NODE()) {
+            let other_mut = searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("search side not found"))?;
+            other_mut.found_ancestors.get_mut().push(NULL_NODE());
+        };
+        if self.diffs.get(&NULL_NODE()).is_none() {
+            let current_diff = PerspectiveDiffEntryReference::new(NULL_NODE(), None);
+            self.diffs.insert(NULL_NODE(), current_diff.clone());
+        };
+
+        let mut set = if let Some(nodes_back_links) = self.back_links.get(&NULL_NODE()) {
+            let mut nodes_back_links = nodes_back_links.clone();
+            if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                if other_last != &NULL_NODE () {
+                    nodes_back_links.insert(other_last.clone());
+                }
+            }
+            nodes_back_links.clone()
+        } else {
+            let mut set = BTreeSet::new();
+            if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
+                if other_last != &NULL_NODE () {
+                    set.insert(other_last.clone());
+                }
+            }
+            set
+        };
+        if current_hash != NULL_NODE() {
+            set.insert(current_hash);
+        };
+        self.back_links.insert(NULL_NODE(), set);
+        Ok(())
+    }
+
     pub fn collect_until_common_ancestor<Retriever: PerspectiveDiffRetreiver>(&mut self, theirs: Hash, ours: Hash)
         -> SocialContextResult<Hash>
     {
@@ -345,39 +387,7 @@ impl Workspace {
                         search.reached_end = true;
                         if common_ancestor.is_none() && other.reached_end == true {
                             common_ancestor = Some(NULL_NODE());
-                            //Add the diff to both searches if it is not there 
-                            if !search.found_ancestors.borrow().contains(&NULL_NODE()) {
-                                search.found_ancestors.get_mut().push(NULL_NODE());
-                            };
-                            if !other.found_ancestors.borrow().contains(&NULL_NODE()) {
-                                searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(NULL_NODE());
-                            };
-                            if self.diffs.get(&NULL_NODE()).is_none() {
-                                let current_diff = PerspectiveDiffEntryReference::new(NULL_NODE(), None);
-                                self.diffs.insert(NULL_NODE(), current_diff.clone());
-                            };
-
-                            let mut set = if let Some(nodes_back_links) = self.back_links.get(&NULL_NODE()) {
-                                let mut nodes_back_links = nodes_back_links.clone();
-                                if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
-                                    if other_last != &NULL_NODE () {
-                                        nodes_back_links.insert(other_last.clone());
-                                    }
-                                }
-                                nodes_back_links.clone()
-                            } else {
-                                let mut set = BTreeSet::new();
-                                if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
-                                    if other_last != &NULL_NODE () {
-                                        set.insert(other_last.clone());
-                                    }
-                                }
-                                set
-                            };
-                            if current_hash != NULL_NODE() {
-                                set.insert(current_hash);
-                            };
-                            self.back_links.insert(NULL_NODE(), set);
+                            self.terminate_with_null_node(current_hash, side, &mut searches);
                         };
 
                         break;
@@ -396,39 +406,7 @@ impl Workspace {
                             search.reached_end = true;
                             if common_ancestor.is_none() && other.reached_end == true {
                                 common_ancestor = Some(NULL_NODE());
-                                //Add the diff to both searches if it is not there 
-                                if !search.found_ancestors.borrow().contains(&NULL_NODE()) {
-                                    search.found_ancestors.get_mut().push(NULL_NODE());
-                                };
-                                if !other.found_ancestors.borrow().contains(&NULL_NODE()) {
-                                    searches.get_mut(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?.found_ancestors.get_mut().push(NULL_NODE());
-                                };
-                                if self.diffs.get(&NULL_NODE()).is_none() {
-                                    let current_diff = PerspectiveDiffEntryReference::new(NULL_NODE(), None);
-                                    self.diffs.insert(NULL_NODE(), current_diff.clone());
-                                };
-
-                                let mut set = if let Some(nodes_back_links) = self.back_links.get(&NULL_NODE()) {
-                                    let mut nodes_back_links = nodes_back_links.clone();
-                                    if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
-                                        if other_last != &NULL_NODE () {
-                                            nodes_back_links.insert(other_last.clone());
-                                        }
-                                    }
-                                    nodes_back_links.clone()
-                                } else {
-                                    let mut set = BTreeSet::new();
-                                    if let Some(other_last) = other.found_ancestors.borrow().last().clone() {
-                                        if other_last != &NULL_NODE () {
-                                            set.insert(other_last.clone());
-                                        }
-                                    }
-                                    set
-                                };
-                                if current_hash != NULL_NODE() {
-                                    set.insert(current_hash);
-                                };
-                                self.back_links.insert(NULL_NODE(), set);
+                                self.terminate_with_null_node(current_hash, side, &mut searches);
                             };
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
