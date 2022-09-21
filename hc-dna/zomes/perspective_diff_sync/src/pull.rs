@@ -155,10 +155,8 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 #[cfg(test)]
 mod tests {
     use dot_structures;
-    use perspective_diff_sync_integrity::LinkExpression;
-
     use super::pull;
-    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash, PerspectiveDiffRetreiver, hash_to_node_id, create_node_id_vec};
+    use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash, PerspectiveDiffRetreiver, create_node_id_vec};
     use crate::utils::create_link_expression;
 
     #[test]

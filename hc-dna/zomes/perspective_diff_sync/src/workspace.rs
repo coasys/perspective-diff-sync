@@ -51,10 +51,8 @@ impl BfsSearch {
 impl std::fmt::Debug for BfsSearch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if cfg!(test) {
-            let mut ancestors = vec![];
-            ancestors = self.found_ancestors.borrow().clone().into_iter().map(|val| hash_to_node_id(val)).collect();
-            let mut branches = vec![];
-            branches = self.bfs_branches.borrow().clone().into_iter().map(|val| hash_to_node_id(val)).collect();
+            let ancestors: Vec<_> = self.found_ancestors.borrow().clone().into_iter().map(|val| hash_to_node_id(val)).collect();
+            let branches: Vec<_> = self.bfs_branches.borrow().clone().into_iter().map(|val| hash_to_node_id(val)).collect();
             write!(f, "BfsSearch {{ found_ancestors: {:?},\n bfs_branches: {:?},\n reached_end: {:?} }}", ancestors, branches, self.reached_end)
         } else {
             write!(f, "BfsSearch {{ found_ancestors: {:?},\n bfs_branches: {:?},\n reached_end: {:?} }}", self.found_ancestors, self.bfs_branches, self.reached_end)
@@ -282,7 +280,6 @@ impl Workspace {
         let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("search side not found"))?;
         let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
         
-
         if !search.found_ancestors.borrow().contains(&NULL_NODE()) {
             search.found_ancestors.get_mut().push(NULL_NODE());
         };
@@ -387,7 +384,7 @@ impl Workspace {
                         search.reached_end = true;
                         if common_ancestor.is_none() && other.reached_end == true {
                             common_ancestor = Some(NULL_NODE());
-                            self.terminate_with_null_node(current_hash, side, &mut searches);
+                            self.terminate_with_null_node(current_hash, side, &mut searches)?;
                         };
 
                         break;
@@ -406,7 +403,7 @@ impl Workspace {
                             search.reached_end = true;
                             if common_ancestor.is_none() && other.reached_end == true {
                                 common_ancestor = Some(NULL_NODE());
-                                self.terminate_with_null_node(current_hash, side, &mut searches);
+                                self.terminate_with_null_node(current_hash, side, &mut searches)?;
                             };
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
@@ -730,7 +727,6 @@ mod tests {
     use crate::retriever::{GLOBAL_MOCKED_GRAPH, MockPerspectiveGraph, node_id_hash};
     use crate::workspace::Workspace;
     use super::NULL_NODE;
-    use crate::errors::SocialContextError;
 
     #[test]
     fn test_collect_until_common_ancestor_forked() {
