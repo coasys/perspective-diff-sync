@@ -82,10 +82,15 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone())?;
 
     let fast_forward_possible = workspace.common_ancestors.contains(&current.hash);
-    println!("fast_forward_possible: {}", fast_forward_possible);
+    // println!("fast_forward_possible: {}, {:#?}", fast_forward_possible, workspace.common_ancestors);
+    
     //Get all the diffs which exist between current and the last ancestor that we got
+    let start = get_now()?.time();
     let seen_diffs = workspace.all_ancestors(&current.hash)?;
-    println!("SEEN DIFFS: {:#?}", seen_diffs);
+    let end = get_now()?.time();
+    debug!("Took: {} to calculated all_ancestors for current", (end - start).num_milliseconds());
+    // println!("SEEN DIFFS: {:#?}", seen_diffs);
+    
     //Get all the diffs in the graph which we havent seen
     let unseen_diffs = if seen_diffs.len() > 0 {
         let diffs = workspace.sorted_diffs.clone().expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
