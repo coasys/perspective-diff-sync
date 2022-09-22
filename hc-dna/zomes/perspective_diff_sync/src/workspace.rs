@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use petgraph::{
-    algo::{all_simple_paths, dominators::simple_fast},
+    algo::dominators::simple_fast,
     dot::{Config, Dot},
     graph::{DiGraph, Graph, NodeIndex, UnGraph},
 };
@@ -30,7 +30,7 @@ pub struct Workspace {
 #[derive(Clone)]
 struct BfsSearch {
     pub found_ancestors: RefCell<Vec<Hash>>,
-    pub bfs_branches: RefCell<VecDeque<Hash>>,
+    pub bfs_branches: RefCell<Vec<Hash>>,
     pub reached_end: bool
 }
 
@@ -39,7 +39,7 @@ pub fn NULL_NODE() -> ActionHash { ActionHash::from_raw_36(vec![0xdb; 36]) }
 
 impl BfsSearch {
     pub fn new(start: Hash) -> BfsSearch {
-        let branches = RefCell::new(VecDeque::from([start]));
+        let branches = RefCell::new(Vec::from([start]));
         BfsSearch {
             found_ancestors: RefCell::new(Vec::new()),
             bfs_branches: branches,
@@ -338,19 +338,20 @@ impl Workspace {
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-                // println!("Checking side: {:#?}", side);
+                // println!("Checking side: {:#?}",side);
                 let search_clone = searches.clone();
                 let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
                 let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
                 let branches = search.bfs_branches.get_mut();
+                branches.dedup();
 
                 for branch_index in 0..branches.len() {
                     // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
-                    // println!("Checking current hash: {:#?}", current_hash);
+                    // println!("Checking current hash: {:#?}", hash_to_node_id(current_hash.clone()));
 
                     let already_visited = search.found_ancestors.borrow().contains(&current_hash);
-                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
+                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash);
 
                     if already_visited {
                         // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
@@ -404,16 +405,19 @@ impl Workspace {
                             // with other unprocessed branches, if they exist.
                             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
                             branches.remove(branch_index);
-                            search.reached_end = true;
-                            if common_ancestor.is_none() && other.reached_end == true {
-                                common_ancestor = Some(NULL_NODE());
-                                self.terminate_with_null_node(current_hash, side, &mut searches)?;
-                            };
+                            //If there are no more branches and we have truly reached the end
+                            if branches.len() == 0 {
+                                search.reached_end = true;
+                                if common_ancestor.is_none() && other.reached_end == true {
+                                    common_ancestor = Some(NULL_NODE());
+                                    self.terminate_with_null_node(current_hash, side, &mut searches)?;
+                                };
+                            }
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
                         },
                         Some(parents) => {
-                            //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, more parents: {:#?}", parents);
+                            // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, more parents: {:#?}", parents);
                             for parent_index in 0..parents.len() {
                                 //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.5, more parents after filter");
                                 let parent = parents[parent_index].clone();
@@ -431,10 +435,10 @@ impl Workspace {
                                     let _ = std::mem::replace(&mut branches[branch_index], parent.clone());
                                 } else {
                                     let already_visited = search.found_ancestors.borrow().contains(&parent) || other.bfs_branches.borrow().contains(&parent);
-                                    let seen_on_other_side = other.found_ancestors.borrow().contains(&parent) || other.bfs_branches.borrow().contains(&parent);
+                                    let seen_on_other_side = other.found_ancestors.borrow().contains(&parent);
                                     if !already_visited && !seen_on_other_side {
-                                        //println!("===Workspace.collect_until_common_ancestor(): Adding a new branch");
-                                        branches.push_back(parent.clone())
+                                        // println!("===Workspace.collect_until_common_ancestor(): Adding a new branch");
+                                        branches.push(parent.clone())
                                     }
                                 }
                             }
@@ -592,24 +596,24 @@ impl Workspace {
         self.node_index_map.get(node)
     }
 
-    pub fn get_paths(
-        &self,
-        child: &Hash,
-        ancestor: &Hash,
-    ) -> SocialContextResult<Vec<Vec<NodeIndex>>> {
-        debug!("===Workspace.get_paths(): Function start");
-        let fn_start = get_now()?.time();
+    // pub fn get_paths(
+    //     &self,
+    //     child: &Hash,
+    //     ancestor: &Hash,
+    // ) -> SocialContextResult<Vec<Vec<NodeIndex>>> {
+    //     debug!("===Workspace.get_paths(): Function start");
+    //     let fn_start = get_now()?.time();
 
-        let child_node = self.get_node_index(child).expect("Could not get child node index");
-        let ancestor_node = self.get_node_index(ancestor).expect("Could not get ancestor node index");
-        let paths = all_simple_paths::<Vec<_>, _>(&self.graph, *child_node, *ancestor_node, 0, None)
-            .collect::<Vec<_>>();
+    //     let child_node = self.get_node_index(child).expect("Could not get child node index");
+    //     let ancestor_node = self.get_node_index(ancestor).expect("Could not get ancestor node index");
+    //     let paths = all_simple_paths::<Vec<_>, _>(&self.graph, *child_node, *ancestor_node, 0, None)
+    //         .collect::<Vec<_>>();
 
-        let fn_end = get_now()?.time();
-        debug!("===Workspace.get_paths() - Profiling: Took: {} to complete get_paths() function", (fn_end - fn_start).num_milliseconds()); 
+    //     let fn_end = get_now()?.time();
+    //     debug!("===Workspace.get_paths() - Profiling: Took: {} to complete get_paths() function", (fn_end - fn_start).num_milliseconds()); 
 
-        Ok(paths)
-    }
+    //     Ok(paths)
+    // }
 
     pub fn _find_common_ancestor(
         &self,
