@@ -19,6 +19,7 @@ mod utils;
 mod workspace;
 mod retriever;
 mod tests;
+mod test_graphs;
 
 #[macro_use] extern crate maplit;
 

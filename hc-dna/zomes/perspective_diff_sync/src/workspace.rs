@@ -338,7 +338,7 @@ impl Workspace {
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
             // do the same BFS for theirs_branches and ours_branches..
             for side in vec![SearchSide::Theirs, SearchSide::Ours] {
-                // println!("Checking side: {:#?}",side);
+                println!("Checking side: {:#?}",side);
                 let search_clone = searches.clone();
                 let other = search_clone.get(&other_side(&side)).ok_or(SocialContextError::InternalError("other search side not found"))?;
                 let search = searches.get_mut(&side).ok_or(SocialContextError::InternalError("search side not found"))?;
@@ -346,15 +346,15 @@ impl Workspace {
                 branches.dedup();
 
                 for branch_index in 0..branches.len() {
-                    // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
+                    println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
-                    // println!("Checking current hash: {:#?}", hash_to_node_id(current_hash.clone()));
+                    println!("Checking current hash: {:#?}", hash_to_node_id(current_hash.clone()));
 
                     let already_visited = search.found_ancestors.borrow().contains(&current_hash);
                     let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash);
 
                     if already_visited {
-                        // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
+                        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
                         // We've seen this diff on this side, so we are at the end of a branch.
                         // Just ignore this hash and close the branch.
                         branches.remove(branch_index);
@@ -362,7 +362,7 @@ impl Workspace {
                     }
                     
                     if seen_on_other_side {
-                        // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 SEEN ON OTHER SIDE");
+                        println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 SEEN ON OTHER SIDE");
 
                         //Add the diff to both searches if it is not there 
                         if !search.found_ancestors.borrow().contains(&current_hash) {
@@ -395,6 +395,7 @@ impl Workspace {
                         break;
                     }
 
+                    //TODO; this should have caching builtin, since on some iterations we will get the same P reference multiple times
                     let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
                     self.diffs.insert(current_hash.clone(), current_diff.clone());
                     
@@ -403,11 +404,12 @@ impl Workspace {
                             // We arrived at a leaf/orphan (no parents).
                             // So we can close this branch and potentially continue
                             // with other unprocessed branches, if they exist.
-                            // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
+                            println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, no more parents");
                             branches.remove(branch_index);
                             //If there are no more branches and we have truly reached the end
+                            search.reached_end = true;
+                            //NOTE: this if block is the code that breaks the test_latest_join tests, with it removed the tests pass, but test three null parents fails
                             if branches.len() == 0 {
-                                search.reached_end = true;
                                 if common_ancestor.is_none() && other.reached_end == true {
                                     common_ancestor = Some(NULL_NODE());
                                     self.terminate_with_null_node(current_hash, side, &mut searches)?;
@@ -419,7 +421,7 @@ impl Workspace {
                         Some(parents) => {
                             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, more parents: {:#?}", parents);
                             for parent_index in 0..parents.len() {
-                                //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.5, more parents after filter");
+                                println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.5, more parents after filter");
                                 let parent = parents[parent_index].clone();
                                 if let Some(links) =  self.back_links.get_mut(&parent) {
                                     links.insert(current_hash.clone());
@@ -431,13 +433,13 @@ impl Workspace {
                                 // The first parent is taken as the successor for the current branch.
                                 // If there are multiple parents (i.e. merge commit), we create a new branch..
                                 if parent_index == 0 {
-                                    //println!("Adding new parent to existing branch index");
+                                    println!("Adding new parent to existing branch index");
                                     let _ = std::mem::replace(&mut branches[branch_index], parent.clone());
                                 } else {
                                     let already_visited = search.found_ancestors.borrow().contains(&parent) || other.bfs_branches.borrow().contains(&parent);
                                     let seen_on_other_side = other.found_ancestors.borrow().contains(&parent);
                                     if !already_visited && !seen_on_other_side {
-                                        // println!("===Workspace.collect_until_common_ancestor(): Adding a new branch");
+                                        println!("===Workspace.collect_until_common_ancestor(): Adding a new branch");
                                         branches.push(parent.clone())
                                     }
                                 }
@@ -1270,6 +1272,7 @@ mod tests {
 
         let mut workspace = Workspace::new();
         let res = workspace.build_diffs::<MockPerspectiveGraph>(node_16.clone(), node_10.clone());
+        assert!(res.is_ok());
         assert_eq!(workspace.common_ancestors.len(), 6);
         assert_eq!(workspace.common_ancestors.first().unwrap(), &node_8);
         println!("Got result: {:#?}", res);
