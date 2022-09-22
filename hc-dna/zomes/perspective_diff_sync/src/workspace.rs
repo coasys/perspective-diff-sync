@@ -723,6 +723,33 @@ impl Workspace {
             );
         }
     }
+
+    pub fn all_ancestors(&self, child: &Hash) -> SocialContextResult<Vec<Hash>> {
+        debug!("===Workspace.all_ancestors(): Function start");
+        let fn_start = get_now()?.time();
+
+        let child_node = self.get_node_index(child).expect("Could not get child node index");
+        let mut ancestors = vec![];
+        let mut visited = HashSet::new();
+        let mut stack = vec![*child_node];
+        while !stack.is_empty() {
+            let current = stack.pop().unwrap();
+            if visited.contains(&current) {
+                continue;
+            }
+            visited.insert(current);
+            let mut parents = self.graph.neighbors_directed(current, petgraph::Direction::Outgoing);
+            while let Some(parent) = parents.next() {
+                stack.push(parent);
+            }
+            ancestors.push(self.graph.node_weight(current).unwrap().to_owned());
+        }
+
+        let fn_end = get_now()?.time();
+        debug!("===Workspace.all_ancestors() - Profiling: Took: {} to complete all_ancestors() function", (fn_end - fn_start).num_milliseconds()); 
+
+        Ok(ancestors)
+    }
 }
 
 #[cfg(test)]

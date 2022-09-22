@@ -81,10 +81,11 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 
     workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone())?;
 
-    //See what fast forward paths exist between latest and current
-    let fast_foward_paths = workspace.get_paths(&latest.hash, &current.hash)?;
+    let fast_forward_possible = workspace.common_ancestors.contains(&current.hash);
+    println!("fast_forward_possible: {}", fast_forward_possible);
     //Get all the diffs which exist between current and the last ancestor that we got
-    let seen_diffs = workspace.get_paths(&current.hash, workspace.common_ancestors.last().to_owned().expect("Should be atleast 1 common ancestor"))?;
+    let seen_diffs = workspace.all_ancestors(&current.hash)?;
+    println!("SEEN DIFFS: {:#?}", seen_diffs);
     //Get all the diffs in the graph which we havent seen
     let unseen_diffs = if seen_diffs.len() > 0 {
         let diffs = workspace.sorted_diffs.clone().expect("should be unseen diffs after build_diffs() call").into_iter().filter(|val| {
@@ -94,11 +95,8 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
             if val.0 == current.hash {
                 return false;
             };
-            let node_index = workspace.get_node_index(&val.0).expect("Should find the node index for a given diff ref");
-            for seen_diff in &seen_diffs {
-                if seen_diff.contains(node_index) {
-                    return false;
-                };
+            if seen_diffs.contains(&val.0) {
+                return false;
             };
             true
         }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>();
@@ -109,7 +107,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
         }).collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>()
     };
 
-    if fast_foward_paths.len() > 0 {
+    if fast_forward_possible {
         debug!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
         let mut out = PerspectiveDiff {
             additions: vec![],
