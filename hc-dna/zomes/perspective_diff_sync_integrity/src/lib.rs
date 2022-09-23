@@ -33,7 +33,8 @@ pub struct PerspectiveDiff {
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct PerspectiveDiffReference {
-    pub reference_hash: String,
+    pub reference_hash: HoloHash<holo_hash::hash_type::Action>,
+    pub reference: PerspectiveDiffEntryReference,
     pub diff: PerspectiveDiff,
 }
 

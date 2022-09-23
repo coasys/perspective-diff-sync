@@ -4,7 +4,8 @@ extern crate lazy_static;
 use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 use lazy_static::lazy_static;
-use perspective_diff_sync_integrity::{Perspective, PerspectiveDiff};
+
+use perspective_diff_sync_integrity::{Perspective, PerspectiveDiff, PerspectiveDiffReference};
 
 mod chunked_diffs;
 mod commit;
@@ -46,7 +47,8 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
     let sig: PerspectiveDiffReference = PerspectiveDiffReference::try_from(signal.clone())
         .map_err(|error| utils::err(&format!("{}", error)))?;
-    Ok(emit_signal(&sig)?)
+    emit_signal(sig)?;
+    Ok(())
 }
 
 #[hdk_extern]
@@ -102,8 +104,8 @@ pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
 }
 
 #[hdk_extern]
-pub fn fast_forward_signal(revision: Hash) -> ExternResult<()> {
-    pull::fast_forward_signal(revision).map_err(|error| utils::err(&format!("{}", error)))
+pub fn fast_forward_signal(perspective_diff_ref: PerspectiveDiffReference) -> ExternResult<()> {
+    pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref).map_err(|error| utils::err(&format!("{}", error)))
 }
 
 //not loading from DNA properies since dna zome properties is always null for some reason

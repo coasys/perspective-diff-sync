@@ -59,7 +59,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         let now = get_now()?.time();
         Retriever::create_entry(EntryTypes::Snapshot(snapshot.clone()))?;
         create_link(
-            hash_entry(diff_entry_ref_entry)?,
+            hash_entry(diff_entry_ref_entry.clone())?,
             hash_entry(snapshot)?,
             LinkTypes::Snapshot,
             LinkTag::new("snapshot"),
@@ -100,16 +100,24 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
             .into_iter()
             .map(|val| val.agent)
             .collect::<Vec<AgentPubKey>>();
-        let recent_agents = dedup(&recent_agents);
+
+        //Dedup the agents
+        let mut recent_agents = dedup(&recent_agents);
+        //Remove ourself from the agents
+        let me = agent_info()?.agent_latest_pubkey;
+        let index = recent_agents.iter().position(|x| *x == me).unwrap();
+        recent_agents.remove(index);
+
         debug!(
             "Social-Context.add_link: Sending signal to agents: {:#?}",
             recent_agents
         );
-        let now = get_now()?.time();
 
+        let now = get_now()?.time();
         let signal_data = PerspectiveDiffReference {
             diff,
-            reference_hash: diff_entry_reference
+            reference: diff_entry_ref_entry,
+            reference_hash: diff_entry_reference.clone()
         };
         remote_signal(signal_data.get_sb()?, recent_agents)?;
         let after = get_now()?.time();

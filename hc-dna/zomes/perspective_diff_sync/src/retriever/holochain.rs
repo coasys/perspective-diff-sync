@@ -16,13 +16,30 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
     {
         get(hash, GetOptions::latest())?
             .ok_or(SocialContextError::InternalError(
-                "HolochainRetreiver: Could not find entry while populating search",
+                "HolochainRetreiver: Could not find entry",
             ))?
             .entry()
             .to_app_option::<T>()?
             .ok_or(SocialContextError::InternalError(
                 "Expected element to contain app entry data",
             ))
+    }
+
+    fn get_with_timestamp<T>(hash: Hash) -> SocialContextResult<(T, DateTime<Utc>)> 
+            where
+            T: TryFrom<SerializedBytes, Error = SerializedBytesError> {
+        let element = get(hash, GetOptions::latest())?;
+        let element = element.ok_or(SocialContextError::InternalError(
+            "HolochainRetreiver: Could not find entry",
+        ))?;
+        let entry = element.entry();
+        let timestamp = element.action().timestamp().0 as u64;
+        let duration = std::time::Duration::from_micros(timestamp);
+        let timestamp = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(duration.as_secs() as i64, duration.subsec_nanos()), Utc);
+        let entry = entry.to_app_option::<T>()?.ok_or(SocialContextError::InternalError(
+            "Expected element to contain app entry data",
+        ))?;
+        Ok((entry, timestamp))
     }
 
     fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
