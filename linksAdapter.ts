@@ -61,6 +61,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   async handleHolochainSignal(signal: any): Promise<void> {
     //Check if this signal came from another agent & contains a diff and reference_hash
     if (signal.data.payload.diff) {
+      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signal from another agent, checking if we can fast forward to this signal");
       let diff = signal.data.payload.diff;
       let diff_hash_reference = signal.data.payload.reference_hash;
 
@@ -70,6 +71,7 @@ export class LinkAdapter implements LinkSyncAdapter {
         this.linkCallback(diff);
       }
     } else {
+      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal");
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
       if (this.linkCallback) {
         this.linkCallback(signal.data.payload);
