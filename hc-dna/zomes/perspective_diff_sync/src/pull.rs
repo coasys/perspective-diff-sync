@@ -81,7 +81,12 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
 
     workspace.build_diffs::<Retriever>(latest.hash.clone(), current.hash.clone())?;
 
-    let fast_forward_possible = workspace.common_ancestors.contains(&current.hash);
+    let fast_forward_possible = if workspace.common_ancestors.first() == Some(&NULL_NODE()) {
+        workspace.all_ancestors(&latest.hash)?.contains(&current.hash)
+    } else {
+        workspace.common_ancestors.contains(&current.hash)
+    };
+     
     // println!("fast_forward_possible: {}, {:#?}", fast_forward_possible, workspace.common_ancestors);
     
     //Get all the diffs which exist between current and the last ancestor that we got
