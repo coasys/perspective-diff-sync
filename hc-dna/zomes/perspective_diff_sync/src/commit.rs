@@ -2,7 +2,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use hc_time_index::SearchStrategy;
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
+    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference
 };
 
 //use crate::errors::SocialContextError;
@@ -20,16 +20,6 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     debug!("===PerspectiveDiffSync.commit(): Function start");
     let now_fn_start = get_now()?.time();
     let current_revision = current_revision::<Retriever>()?;
-
-    //if pre_current_revision != pre_latest_revision {
-    //    let new_diffs = pull::<Retriever>()?;
-    //    emit_signal(new_diffs)?;
-    //    if pre_latest_revision.is_some() {
-    //        entries_since_snapshot = get_entries_since_snapshot(latest_revision::<Retriever>()?.ok_or(
-    //            SocialContextError::InternalError("Expected to have latest revision"),
-    //        )?)?;
-    //    };
-    //} else {
 
     let mut entries_since_snapshot = 0;
     if current_revision.is_some() {
@@ -116,7 +106,12 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
             recent_agents
         );
         let now = get_now()?.time();
-        remote_signal(diff.get_sb()?, recent_agents)?;
+
+        let signal_data = PerspectiveDiffReference {
+            diff,
+            reference_hash: diff_entry_reference
+        };
+        remote_signal(signal_data.get_sb()?, recent_agents)?;
         let after = get_now()?.time();
         debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to send signal to active agents", (after - now).num_milliseconds());
     };

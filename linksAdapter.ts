@@ -1,4 +1,4 @@
-import type { Expression, LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression } from "@perspect3vism/ad4m";
+import type { LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression } from "@perspect3vism/ad4m";
 import type { DID } from "@perspect3vism/ad4m/lib/DID";
 import { Perspective } from "@perspect3vism/ad4m";
 import { DNA_NICK, ZOME_NAME } from "./dna";
@@ -58,9 +58,22 @@ export class LinkAdapter implements LinkSyncAdapter {
     return 1;
   }
 
-  handleHolochainSignal(signal: any): void {
-    if (this.linkCallback) {
-      this.linkCallback(signal.data.payload);
+  async handleHolochainSignal(signal: any): Promise<void> {
+    //Check if this signal came from another agent & contains a diff and reference_hash
+    if (signal.data.payload.diff) {
+      let diff = signal.data.payload.diff;
+      let diff_hash_reference = signal.data.payload.reference_hash;
+
+      await this.hcDna.call(DNA_NICK, ZOME_NAME, "fast_forward_signal", diff_hash_reference);
+
+      if (this.linkCallback) {
+        this.linkCallback(diff);
+      }
+    } else {
+      //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
+      if (this.linkCallback) {
+        this.linkCallback(signal.data.payload);
+      }
     }
   }
 

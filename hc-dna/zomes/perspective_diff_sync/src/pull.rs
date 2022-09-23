@@ -155,6 +155,25 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
     }
 }
 
+pub fn fast_forward_signal<Retriever: PerspectiveDiffRetreiver>(revision: Hash) -> SocialContextResult<()> {
+    let diff = Retriever::get::<PerspectiveDiffEntryReference>(current_hash.clone())?;
+    let current_revision = current_revision()?;
+
+    if current_revision.is_some() {
+        if diff.parents.contains(&current_revision) {
+            update_current_revision(revision, diff.timestamp)?;
+        } else {
+            let pull_data = pull()?;
+            emit_signal(pull_data)
+        }
+    } else {
+        let pull_data = pull()?;
+        emit_signal(pull_data);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use dot_structures;

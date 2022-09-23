@@ -31,6 +31,12 @@ pub struct PerspectiveDiff {
     pub removals: Vec<LinkExpression>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct PerspectiveDiffReference {
+    pub reference_hash: String,
+    pub diff: PerspectiveDiff,
+}
+
 impl PerspectiveDiff {
     pub fn new() -> Self {
         Self {
@@ -49,10 +55,6 @@ app_entry!(PerspectiveDiff);
 pub struct Snapshot {
     pub diff_chunks: Vec<HoloHash<holo_hash::hash_type::Action>>,
     pub included_diffs: Vec<HoloHash<holo_hash::hash_type::Action>>,
-    //pub diff_graph: Vec<(
-    //    HoloHash<holo_hash::hash_type::Action>,
-    //    PerspectiveDiffEntryReference,
-    //)>,
 }
 
 app_entry!(Snapshot);

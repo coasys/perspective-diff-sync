@@ -44,13 +44,13 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 
 #[hdk_extern]
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    let sig: PerspectiveDiff = PerspectiveDiff::try_from(signal.clone())
+    let sig: PerspectiveDiffReference = PerspectiveDiffReference::try_from(signal.clone())
         .map_err(|error| utils::err(&format!("{}", error)))?;
     Ok(emit_signal(&sig)?)
 }
 
 #[hdk_extern]
-pub fn commit(diff: PerspectiveDiff) -> ExternResult<HoloHash<holo_hash::hash_type::Action>> {
+pub fn commit(diff: PerspectiveDiff) -> ExternResult<Hash> {
     commit::commit::<retriever::HolochainRetreiver>(diff).map_err(|error| utils::err(&format!("{}", error)))
 }
 
@@ -60,12 +60,12 @@ pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
 }
 
 #[hdk_extern]
-pub fn latest_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
+pub fn latest_revision(_: ()) -> ExternResult<Option<Hash>> {
     revisions::latest_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
-pub fn current_revision(_: ()) -> ExternResult<Option<HoloHash<holo_hash::hash_type::Action>>> {
+pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
     revisions::current_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
 }
 
@@ -82,7 +82,7 @@ pub fn render(_: ()) -> ExternResult<Perspective> {
 }
 
 #[hdk_extern]
-pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> ExternResult<()> {
+pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
         revisions::update_current_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
@@ -92,7 +92,7 @@ pub fn update_current_revision(_hash: HoloHash<holo_hash::hash_type::Action>) ->
 }
 
 #[hdk_extern]
-pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> ExternResult<()> {
+pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
         revisions::update_latest_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
@@ -101,9 +101,14 @@ pub fn update_latest_revision(_hash: HoloHash<holo_hash::hash_type::Action>) -> 
     Ok(())
 }
 
+#[hdk_extern]
+pub fn fast_forward_signal(revision: Hash) -> ExternResult<()> {
+    pull::fast_forward_signal(revision).map_err(|error| utils::err(&format!("{}", error)))
+}
+
 //not loading from DNA properies since dna zome properties is always null for some reason
 lazy_static! {
-    pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(300);
+    pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(3600);
     pub static ref ENABLE_SIGNALS: bool = true;
     pub static ref SNAPSHOT_INTERVAL: usize = 100;
     pub static ref CHUNK_SIZE: u16 = 10000;
