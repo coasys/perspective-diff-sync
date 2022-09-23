@@ -333,7 +333,7 @@ impl Workspace {
             SearchSide::Ours => BfsSearch::new(ours),
         };
 
-        while common_ancestor.is_none() && (!searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow().is_empty() | !searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow().is_empty()) {
+        while common_ancestor.is_none() {
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow());
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
             // do the same BFS for theirs_branches and ours_branches..
@@ -351,7 +351,7 @@ impl Workspace {
                     println!("Checking current hash: {:#?}", hash_to_node_id(current_hash.clone()));
 
                     let already_visited = search.found_ancestors.borrow().contains(&current_hash);
-                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash);
+                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
 
                     if already_visited {
                         println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
@@ -409,12 +409,10 @@ impl Workspace {
                             //If there are no more branches and we have truly reached the end
                             search.reached_end = true;
                             //NOTE: this if block is the code that breaks the test_latest_join tests, with it removed the tests pass, but test three null parents fails
-                            if branches.len() == 0 {
-                                if common_ancestor.is_none() && other.reached_end == true {
-                                    common_ancestor = Some(NULL_NODE());
-                                    self.terminate_with_null_node(current_hash, side, &mut searches)?;
-                                };
-                            }
+                            if common_ancestor.is_none() && other.reached_end == true {
+                                common_ancestor = Some(NULL_NODE());
+                                self.terminate_with_null_node(current_hash, side, &mut searches)?;
+                            };
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
                         },
