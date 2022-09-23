@@ -13,7 +13,7 @@ use crate::Hash;
 use crate::errors::{SocialContextError, SocialContextResult};
 use crate::topo_sort::topo_sort_diff_references;
 use crate::retriever::{PerspectiveDiffRetreiver, hash_to_node_id};
-use crate::utils::get_now;
+use crate::utils::{get_now, check_if_vec_item_in_another_vec};
 
 pub struct Workspace {
     pub graph: DiGraph<Hash, ()>,
@@ -250,7 +250,7 @@ impl Workspace {
         //println!("===PerspectiveDiffSunc.build_diffs(): Got back_links: {:?}", self.back_links.iter().map(|x| hash_to_node_id(x.0.to_owned())).collect::<Vec<_>>());
         
         self.sort_graph()?;
-        //println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches.iter().map(|x| hash_to_node_id(x.to_owned())).collect::<Vec<_>>());
+        // println!("===PerspectiveDiffSunc.build_diffs(): Got unexplored side branches parent: {:#?}", self.unexplored_side_branches.iter().map(|x| hash_to_node_id(x.to_owned())).collect::<Vec<_>>());
         
         while self.unexplored_side_branches.len() > 0 {
             let unexplored_side_branch = self.unexplored_side_branches.iter().next_back().unwrap().to_owned();
@@ -324,6 +324,7 @@ impl Workspace {
         -> SocialContextResult<Hash>
     {
         debug!("===Workspace.collect_until_common_ancestor(): Function start");
+        let mut iterations = 0;
         let fn_start = get_now()?.time();
 
         let mut common_ancestor: Option<Hash> = None;
@@ -333,7 +334,7 @@ impl Workspace {
             SearchSide::Ours => BfsSearch::new(ours),
         };
 
-        while common_ancestor.is_none() && (!searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow().is_empty() | !searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow().is_empty()) {
+        while common_ancestor.is_none() {
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Theirs).unwrap().bfs_branches.borrow());
             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2: {:#?}", searches.get(&SearchSide::Ours).unwrap().bfs_branches.borrow());
             // do the same BFS for theirs_branches and ours_branches..
@@ -346,12 +347,13 @@ impl Workspace {
                 branches.dedup();
 
                 for branch_index in 0..branches.len() {
+                    iterations += 1;
                     println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.1");
                     let current_hash = branches[branch_index].clone();
                     println!("Checking current hash: {:#?}", hash_to_node_id(current_hash.clone()));
 
                     let already_visited = search.found_ancestors.borrow().contains(&current_hash);
-                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash);
+                    let seen_on_other_side = other.found_ancestors.borrow().contains(&current_hash) || other.bfs_branches.borrow().contains(&current_hash);
 
                     if already_visited {
                         println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.2 ALREADY VISITED");
@@ -380,10 +382,6 @@ impl Workspace {
                         break;
                     } 
 
-
-                    //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.3");
-                    search.found_ancestors.get_mut().push(current_hash.clone());
-
                     if current_hash == NULL_NODE() {
                         branches.remove(branch_index);
                         search.reached_end = true;
@@ -391,7 +389,6 @@ impl Workspace {
                             common_ancestor = Some(NULL_NODE());
                             self.terminate_with_null_node(current_hash, side, &mut searches)?;
                         };
-
                         break;
                     }
 
@@ -399,6 +396,9 @@ impl Workspace {
                     let current_diff = Self::get_p_diff_reference::<Retriever>(current_hash.clone())?;
                     self.diffs.insert(current_hash.clone(), current_diff.clone());
                     
+                    //println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.3");
+                    search.found_ancestors.get_mut().push(current_hash.clone());
+
                     match &current_diff.parents {
                         None => {
                             // We arrived at a leaf/orphan (no parents).
@@ -408,20 +408,16 @@ impl Workspace {
                             branches.remove(branch_index);
                             //If there are no more branches and we have truly reached the end
                             search.reached_end = true;
-                            //NOTE: this if block is the code that breaks the test_latest_join tests, with it removed the tests pass, but test three null parents fails
-                            if branches.len() == 0 {
-                                if common_ancestor.is_none() && other.reached_end == true {
-                                    common_ancestor = Some(NULL_NODE());
-                                    self.terminate_with_null_node(current_hash, side, &mut searches)?;
-                                };
-                            }
+                            if common_ancestor.is_none() && other.reached_end == true && !check_if_vec_item_in_another_vec(branches, &other.found_ancestors.borrow()) {
+                                common_ancestor = Some(NULL_NODE());
+                                self.terminate_with_null_node(current_hash, side, &mut searches)?;
+                            };
                             // We have to break out of loop to avoid having branch_index run out of bounds
                             break;
                         },
                         Some(parents) => {
                             // println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.4, more parents: {:#?}", parents);
                             for parent_index in 0..parents.len() {
-                                println!("===Workspace.collect_until_common_ancestor(): collect_until_common_ancestor 2.5, more parents after filter");
                                 let parent = parents[parent_index].clone();
                                 if let Some(links) =  self.back_links.get_mut(&parent) {
                                     links.insert(current_hash.clone());
@@ -453,7 +449,7 @@ impl Workspace {
         }
         
         let fn_end = get_now()?.time();
-        debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", (fn_end - fn_start).num_milliseconds()); 
+        debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function and made {} iterations", (fn_end - fn_start).num_milliseconds(), iterations); 
 
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);

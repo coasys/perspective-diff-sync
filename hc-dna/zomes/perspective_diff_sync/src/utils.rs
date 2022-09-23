@@ -26,6 +26,15 @@ pub fn dedup<T: Eq + Hash + Clone>(vs: &Vec<T>) -> Vec<T> {
     hs.into_iter().collect()
 }
 
+pub fn check_if_vec_item_in_another_vec<T: PartialEq>(vec1: &Vec<T>, vec2: &Vec<T>) -> bool {
+    for item in vec1 {
+        if vec2.contains(item) {
+            return true;
+        }
+    }
+    false
+}
+
 pub(crate) fn err(reason: &str) -> WasmError {
     wasm_error!(WasmErrorInner::Host(String::from(reason)))
 }
