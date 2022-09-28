@@ -171,7 +171,7 @@ pub fn fast_forward_signal<Retriever: PerspectiveDiffRetreiver>(diff: Perspectiv
         if revision == current_revision.hash {
             Ok(())
         } else if diff_reference.parents == Some(vec![current_revision.hash]) {
-            update_current_revision::<Retriever>(revision, chrono::Utc::now())?;
+            update_current_revision::<Retriever>(revision, get_now()?)?;
             Ok(())
         } else {
             let mut pull_data = pull::<Retriever>()?;
