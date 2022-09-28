@@ -671,7 +671,7 @@ mod tests {
 
         let pull_res = pull::<MockPerspectiveGraph>();
         assert!(pull_res.is_ok());
-        //let pull_res = pull_res.unwrap();
+        let pull_res = pull_res.unwrap();
 
         let expected_additions = vec![
             create_node_id_link_expression(304),
@@ -704,7 +704,7 @@ mod tests {
 
         let pull_res = pull::<MockPerspectiveGraph>();
         assert!(pull_res.is_ok());
-        //let pull_res = pull_res.unwrap();
+        let pull_res = pull_res.unwrap();
 
         let expected_additions = create_node_id_vec(1, 301);
 
