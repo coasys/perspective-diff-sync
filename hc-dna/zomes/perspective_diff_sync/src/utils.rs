@@ -30,6 +30,17 @@ pub(crate) fn err(reason: &str) -> WasmError {
     wasm_error!(WasmErrorInner::Host(String::from(reason)))
 }
 
+pub fn remove_from_vec<T: PartialEq>(vec: &mut Vec<T>, values: &Vec<T>) {
+    let mut i = 0;
+    while i < vec.len() {
+        if values.contains(&vec[i]) {
+            vec.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub fn create_link_expression(source: &str, target: &str) -> LinkExpression {
     LinkExpression {

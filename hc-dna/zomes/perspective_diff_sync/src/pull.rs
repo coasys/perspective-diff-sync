@@ -1,11 +1,11 @@
 use hdk::prelude::*;
-use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference};
+use perspective_diff_sync_integrity::{EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference};
 
 use crate::errors::SocialContextResult;
 use crate::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
-use crate::utils::get_now;
+use crate::utils::{get_now, remove_from_vec};
 use crate::workspace::{Workspace, NULL_NODE};
 use crate::retriever::{PerspectiveDiffRetreiver};
 use crate::Hash;
@@ -155,6 +155,55 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
         debug!("===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function", (fn_end - fn_start).num_milliseconds()); 
         Ok(out)
     }
+}
+
+pub fn fast_forward_signal<Retriever: PerspectiveDiffRetreiver>(diff: PerspectiveDiffReference) -> SocialContextResult<()> {
+    debug!("===PerspectiveDiffSync.fast_forward_signal(): Function start");
+    let fn_start = get_now()?.time();
+
+    let diff_reference = diff.reference;
+    let revision = diff.reference_hash;
+    
+    let current_revision = current_revision::<Retriever>()?;
+    
+    let res = if current_revision.is_some() {
+        let current_revision = current_revision.unwrap();
+        if revision == current_revision.hash {
+            debug!("===PerspectiveDiffSync.fast_forward_signal(): Revision is the same as current");
+            Ok(())
+        } else if diff_reference.parents == Some(vec![current_revision.hash]) {
+            debug!("===PerspectiveDiffSync.fast_forward_signal(): Revisions parent is the same as current, we can fast forward our current");
+            update_current_revision::<Retriever>(revision, get_now()?)?;
+            Ok(())
+        } else {
+            debug!("===PerspectiveDiffSync.fast_forward_signal(): Revisions parent is not the same as current, making a pull");
+            let mut pull_data = pull::<Retriever>()?;
+
+            if pull_data.additions.len() > 0 || pull_data.removals.len() > 0 {
+                //Remove the values of this signal from the pull data, since we already emitted when the linkLanguage received the signal
+                remove_from_vec(&mut pull_data.additions, &diff.diff.additions);
+                remove_from_vec(&mut pull_data.removals, &diff.diff.removals);
+                debug!("===PerspectiveDiffSync.fast_forward_signal(): Emitting {} additions and {} removals", pull_data.additions.len(), pull_data.removals.len());
+                emit_signal(pull_data)?;
+            };
+            Ok(())
+        }
+    } else {
+        debug!("===PerspectiveDiffSync.fast_forward_signal(): No current so making a pull");
+        let mut pull_data = pull::<Retriever>()?;
+        if pull_data.additions.len() > 0 || pull_data.removals.len() > 0 {
+            //Remove the values of this signal from the pull data, since we already emitted when the linkLanguage received the signal
+            remove_from_vec(&mut pull_data.additions, &diff.diff.additions);
+            remove_from_vec(&mut pull_data.removals, &diff.diff.removals);
+            debug!("===PerspectiveDiffSync.fast_forward_signal(): Emitting {} additions and {} removals", pull_data.additions.len(), pull_data.removals.len());
+            emit_signal(pull_data)?;
+        };
+        emit_signal(pull_data)?;
+        Ok(())
+    };
+    let fn_end = get_now()?.time();
+    debug!("===PerspectiveDiffSync.fast_forward_signal() - Profiling: Took: {} to complete fast_forward_signal() function", (fn_end - fn_start).num_milliseconds()); 
+    res
 }
 
 #[cfg(test)]

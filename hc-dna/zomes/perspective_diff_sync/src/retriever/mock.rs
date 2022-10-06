@@ -27,6 +27,13 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
         Ok(T::try_from(value.to_owned())?)
     }
 
+    fn get_with_timestamp<T>(hash: Hash) -> SocialContextResult<(T, DateTime<Utc>)> 
+            where
+            T: TryFrom<SerializedBytes, Error = SerializedBytesError> {
+                let value = &GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned();
+        Ok((T::try_from(value.to_owned())?, Utc::now()))
+    }
+
     fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
         where
         ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,

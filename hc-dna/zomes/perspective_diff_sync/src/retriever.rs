@@ -15,6 +15,10 @@ pub trait PerspectiveDiffRetreiver {
         where
         T: TryFrom<SerializedBytes, Error = SerializedBytesError>;
 
+    fn get_with_timestamp<T>(hash: Hash) -> SocialContextResult<(T, DateTime<Utc>)> 
+        where
+        T: TryFrom<SerializedBytes, Error = SerializedBytesError>;
+
     fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
         where
         ScopedEntryDefIndex: for<'a> TryFrom<&'a I, Error = E2>,

@@ -6,7 +6,7 @@ function interactions(expression: Address): Interaction[] {
   return [];
 }
 
-const activeAgentDurationSecs = 300;
+const activeAgentDurationSecs = 3600;
 
 //@ad4m-template-variable
 const name = "perspective-diff-sync";
@@ -18,7 +18,7 @@ export default async function create(context: LanguageContext): Promise<Language
 
   await Holochain.registerDNAs(
     [{ file: DNA, nick: DNA_NICK }],
-    (signal) => { linksAdapter.handleHolochainSignal(signal) }
+    async (signal) => { await linksAdapter.handleHolochainSignal(signal) }
   );
 
   await linksAdapter.addActiveAgentLink(Holochain);

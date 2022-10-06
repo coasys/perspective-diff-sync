@@ -1,7 +1,7 @@
 use hc_time_index::IndexableEntry;
 use hdk::prelude::*;
 
-use crate::{AgentReference, HashReference, PerspectiveDiff};
+use crate::{AgentReference, HashReference, PerspectiveDiff, PerspectiveDiffReference};
 
 impl IndexableEntry for HashReference {
     fn entry_time(&self) -> chrono::DateTime<chrono::Utc> {
@@ -24,6 +24,13 @@ impl IndexableEntry for AgentReference {
 }
 
 impl PerspectiveDiff {
+    pub fn get_sb(self) -> ExternResult<SerializedBytes> {
+        self.try_into()
+            .map_err(|error| wasm_error!(WasmErrorInner::Host(String::from(error))))
+    }
+}
+
+impl PerspectiveDiffReference {
     pub fn get_sb(self) -> ExternResult<SerializedBytes> {
         self.try_into()
             .map_err(|error| wasm_error!(WasmErrorInner::Host(String::from(error))))

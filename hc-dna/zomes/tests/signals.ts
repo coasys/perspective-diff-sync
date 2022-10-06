@@ -50,8 +50,7 @@ export async function signals(t) {
     //Sleep to give time for signals to arrive
     await sleep(1000)
     
-    t.deepEqual(aliceSignalCount, 1);
-    t.deepEqual(bobSignalCount, 1);    
+    t.deepEqual(bobSignalCount, 1);
 
     await scenario.cleanUp();
 }
