@@ -1,4 +1,4 @@
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff, LocalHashReference, HashReference};
+use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference, PerspectiveDiff, LocalHashReference, HashReference, LinkExpression};
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 use dot_structures;
@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use crate::Hash;
 use crate::utils::create_link_expression;
 use crate::errors::{SocialContextResult, SocialContextError};
+use crate::workspace::NULL_NODE;
 use super::PerspectiveDiffRetreiver;
 
 #[derive(Debug)]
@@ -24,6 +25,13 @@ impl PerspectiveDiffRetreiver for MockPerspectiveGraph  {
     {
         let value = &GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned();
         Ok(T::try_from(value.to_owned())?)
+    }
+
+    fn get_with_timestamp<T>(hash: Hash) -> SocialContextResult<(T, DateTime<Utc>)> 
+            where
+            T: TryFrom<SerializedBytes, Error = SerializedBytesError> {
+                let value = &GLOBAL_MOCKED_GRAPH.lock().expect("Could not get lock on graph map").graph_map.get(&hash).expect("Could not find entry in map").to_owned();
+        Ok((T::try_from(value.to_owned())?, Utc::now()))
     }
 
     fn create_entry<I, E: std::fmt::Debug, E2>(entry: I) -> SocialContextResult<Hash>
@@ -116,6 +124,66 @@ pub fn node_id_hash(id: &dot_structures::Id) -> Hash {
 }
 
 #[allow(dead_code)]
+pub fn hash_to_node_id(hash: ActionHash) -> String {
+    if hash == NULL_NODE() {
+        return String::from("NULL_NODE")
+    };
+    let hash_bytes = hash.get_raw_36();
+    
+    match std::str::from_utf8(hash_bytes) {
+        Ok(node_id_string) => {
+            let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
+            string_split.to_string()
+        },
+        Err(_err) => hash.to_string()
+    }
+}
+
+// #[allow(dead_code)]
+// pub fn string_to_node_id(mut hash: String) -> String {
+//     if hash == NULL_NODE().to_string() {
+//         return String::from("NULL_NODE")
+//     };
+//     if hash.len() > 36 {
+//         let _ = hash.split_off(36);
+//     };
+//     let hash = ActionHash::from_raw_36(hash.into_bytes());
+//     let hash = hash.get_raw_36();
+//     let node_id_string = std::str::from_utf8(hash).expect("could not get string from hash array");
+//     let string_split = node_id_string.split("x").collect::<Vec<&str>>().first().unwrap().to_owned();
+//     string_split.to_string()
+// }
+
+#[allow(dead_code)]
+pub fn create_node_id_link_expression(node_id: u32) -> LinkExpression {
+    let node_id = node_id.to_string();
+    let node_id = dot_structures::Id::Plain(node_id);
+    let node = &node_id_hash(&node_id).to_string();
+    create_link_expression(node, node)
+}
+
+#[allow(dead_code)]
+pub fn create_node_id_vec(range_start: u32, range_end: u32) -> Vec<LinkExpression> {
+    let mut out = vec![];
+    for n in range_start..=range_end {
+        out.push(create_node_id_link_expression(n));
+    };
+    out
+}
+
+// #[allow(dead_code)]
+// pub fn link_expression_to_node_id(links: &mut Vec<LinkExpression>) {
+//     links.iter_mut().for_each(|link| {
+//         if link.data.source.is_some() {
+//             link.data.source = Some(string_to_node_id(link.data.source.clone().unwrap()));
+//         }
+//         if link.data.target.is_some() {
+//             link.data.target = Some(string_to_node_id(link.data.target.clone().unwrap()));
+//         }
+//     })
+// }
+
+#[allow(dead_code)]
 fn unwrap_vertex(v: dot_structures::Vertex) -> Option<dot_structures::NodeId> {
     match v {
         dot_structures::Vertex::N(id) => Some(id),
@@ -188,8 +256,8 @@ impl MockPerspectiveGraph {
                                 let id_1 = e.1.0;
                                 let child = node_id_hash(&id_0);
                                 let parent = node_id_hash(&id_1);
-                                println!("Edge: {} -> {}", id_0, id_1);
-                                println!("Edge: {} -> {}", child, parent);
+                                //println!("Edge: {} -> {}", id_0, id_1);
+                                //println!("Edge: {} -> {}", child, parent);
                                 match parents.remove(&child) {
                                     None => parents.insert(child, vec![parent]),
                                     Some(mut prev) => {

@@ -2,7 +2,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use hc_time_index::SearchStrategy;
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
+    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference
 };
 
 //use crate::errors::SocialContextError;
@@ -20,16 +20,6 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     debug!("===PerspectiveDiffSync.commit(): Function start");
     let now_fn_start = get_now()?.time();
     let current_revision = current_revision::<Retriever>()?;
-
-    //if pre_current_revision != pre_latest_revision {
-    //    let new_diffs = pull::<Retriever>()?;
-    //    emit_signal(new_diffs)?;
-    //    if pre_latest_revision.is_some() {
-    //        entries_since_snapshot = get_entries_since_snapshot(latest_revision::<Retriever>()?.ok_or(
-    //            SocialContextError::InternalError("Expected to have latest revision"),
-    //        )?)?;
-    //    };
-    //} else {
 
     let mut entries_since_snapshot = 0;
     if current_revision.is_some() {
@@ -69,7 +59,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         let now = get_now()?.time();
         Retriever::create_entry(EntryTypes::Snapshot(snapshot.clone()))?;
         create_link(
-            hash_entry(diff_entry_ref_entry)?,
+            hash_entry(diff_entry_ref_entry.clone())?,
             hash_entry(snapshot)?,
             LinkTypes::Snapshot,
             LinkTag::new("snapshot"),
@@ -110,13 +100,26 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
             .into_iter()
             .map(|val| val.agent)
             .collect::<Vec<AgentPubKey>>();
-        let recent_agents = dedup(&recent_agents);
+
+        //Dedup the agents
+        let mut recent_agents = dedup(&recent_agents);
+        //Remove ourself from the agents
+        let me = agent_info()?.agent_latest_pubkey;
+        let index = recent_agents.iter().position(|x| *x == me).unwrap();
+        recent_agents.remove(index);
+
         debug!(
             "Social-Context.add_link: Sending signal to agents: {:#?}",
             recent_agents
         );
+
         let now = get_now()?.time();
-        remote_signal(diff.get_sb()?, recent_agents)?;
+        let signal_data = PerspectiveDiffReference {
+            diff,
+            reference: diff_entry_ref_entry,
+            reference_hash: diff_entry_reference.clone()
+        };
+        remote_signal(signal_data.get_sb()?, recent_agents)?;
         let after = get_now()?.time();
         debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to send signal to active agents", (after - now).num_milliseconds());
     };
