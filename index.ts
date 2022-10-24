@@ -22,7 +22,7 @@ export default async function create(context: LanguageContext): Promise<Language
   );
 
   await linksAdapter.addActiveAgentLink(Holochain);
-  setInterval(
+  const activeAgentInterval = setInterval(
     async () => {
       console.log("===Perspective-diff-sync: attempting to add a new active agent link");
       await linksAdapter.addActiveAgentLink(Holochain)
@@ -30,9 +30,14 @@ export default async function create(context: LanguageContext): Promise<Language
     activeAgentDurationSecs * 1000
   );
 
+  const teardown = function() {
+    clearInterval(activeAgentInterval);
+  }
+
   return {
     name,
     linksAdapter,
     interactions,
+    teardown
   } as Language;
 }
