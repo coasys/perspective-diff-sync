@@ -73,21 +73,7 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
 
         let revision = match query {
             Ok(records) => {
-                //Iterate over records, run them to a LocalHashReference and then print to debug
-                let _records_parsed = records
-                    .iter()
-                    .map(|record| {
-                        let entry = record
-                            .entry
-                            .to_app_option::<LocalHashReference>()
-                            .unwrap()
-                            .unwrap();
-                        debug!("Current revision: {:?}", entry);
-                        entry
-                    })
-                    .collect::<Vec<LocalHashReference>>();
                 if records.len() == 0 {
-                    debug!("Did not find and LocalHashReference entries");
                     None
                 } else {
                     let record = records[0].clone();
@@ -100,7 +86,7 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
                 }
             }
             Err(e) => {
-                debug!("Error when getting current revision: {:?}", e);
+                debug!("PerspectiveDiffSync.current_revision(): Error when getting current revision: {:?}", e);
                 None
             }
         };
