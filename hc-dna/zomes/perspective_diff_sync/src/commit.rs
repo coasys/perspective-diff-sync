@@ -2,17 +2,18 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use hc_time_index::SearchStrategy;
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference
+    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
+    PerspectiveDiffReference,
 };
 
 //use crate::errors::SocialContextError;
 use crate::errors::SocialContextResult;
 //use crate::pull::pull;
+use crate::retriever::PerspectiveDiffRetreiver;
 use crate::revisions::{current_revision, update_current_revision, update_latest_revision};
 use crate::snapshots::generate_snapshot;
 use crate::utils::{dedup, get_now};
 use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
-use crate::retriever::PerspectiveDiffRetreiver;
 
 pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     diff: PerspectiveDiff,
@@ -23,10 +24,15 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
 
     let mut entries_since_snapshot = 0;
     if current_revision.is_some() {
-        let current = Retriever::get::<PerspectiveDiffEntryReference>(current_revision.clone().unwrap().hash)?;
+        let current = Retriever::get::<PerspectiveDiffEntryReference>(
+            current_revision.clone().unwrap().hash,
+        )?;
         entries_since_snapshot = current.diffs_since_snapshot;
     };
-    debug!("===PerspectiveDiffSync.commit(): Entries since snapshot: {:#?}", entries_since_snapshot);
+    debug!(
+        "===PerspectiveDiffSync.commit(): Entries since snapshot: {:#?}",
+        entries_since_snapshot
+    );
     //Add one since we are comitting an entry here
     entries_since_snapshot += 1;
 
@@ -48,8 +54,14 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         diff_entry_ref_entry.clone(),
     ))?;
     let after = get_now()?.time();
-    debug!("===PerspectiveDiffSync.commit(): Created diff entry ref: {:#?}", diff_entry_reference);
-    debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to create a PerspectiveDiff", (after - now).num_milliseconds());
+    debug!(
+        "===PerspectiveDiffSync.commit(): Created diff entry ref: {:#?}",
+        diff_entry_reference
+    );
+    debug!(
+        "===PerspectiveDiffSync.commit() - Profiling: Took {} to create a PerspectiveDiff",
+        (after - now).num_milliseconds()
+    );
 
     if create_snapshot_here {
         //fetch all the diff's, we need a new function which will traverse graph and then return + diffs + next found snapshot
@@ -72,7 +84,10 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     let now_profile = get_now()?.time();
     update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
     let after = get_now()?.time();
-    debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to update the latest revision", (after - now_profile).num_milliseconds());
+    debug!(
+        "===PerspectiveDiffSync.commit() - Profiling: Took {} to update the latest revision",
+        (after - now_profile).num_milliseconds()
+    );
     update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
 
     if *ENABLE_SIGNALS {
@@ -95,7 +110,10 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
             LinkTypes::TimePath,
         )?;
         let after = get_now()?.time();
-        debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to get the active agents", (after - now_profile).num_milliseconds());
+        debug!(
+            "===PerspectiveDiffSync.commit() - Profiling: Took {} to get the active agents",
+            (after - now_profile).num_milliseconds()
+        );
         let recent_agents = recent_agents
             .into_iter()
             .map(|val| val.agent)
@@ -105,8 +123,10 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         let mut recent_agents = dedup(&recent_agents);
         //Remove ourself from the agents
         let me = agent_info()?.agent_latest_pubkey;
-        let index = recent_agents.iter().position(|x| *x == me).unwrap();
-        recent_agents.remove(index);
+        let index = recent_agents.iter().position(|x| *x == me);
+        if let Some(index) = index {
+            recent_agents.remove(index);
+        }
 
         debug!(
             "Social-Context.add_link: Sending signal to agents: {:#?}",
@@ -117,15 +137,21 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         let signal_data = PerspectiveDiffReference {
             diff,
             reference: diff_entry_ref_entry,
-            reference_hash: diff_entry_reference.clone()
+            reference_hash: diff_entry_reference.clone(),
         };
         remote_signal(signal_data.get_sb()?, recent_agents)?;
         let after = get_now()?.time();
-        debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to send signal to active agents", (after - now).num_milliseconds());
+        debug!(
+            "===PerspectiveDiffSync.commit() - Profiling: Took {} to send signal to active agents",
+            (after - now).num_milliseconds()
+        );
     };
 
     let after_fn_end = get_now()?.time();
-    debug!("===PerspectiveDiffSync.commit() - Profiling: Took {} to complete whole commit function", (after_fn_end - now_fn_start).num_milliseconds());
+    debug!(
+        "===PerspectiveDiffSync.commit() - Profiling: Took {} to complete whole commit function",
+        (after_fn_end - now_fn_start).num_milliseconds()
+    );
     Ok(diff_entry_reference)
 }
 

@@ -233,6 +233,7 @@ test("pull", async (t) => {
         await unSyncFetch(t);
         await mergeFetch(t);
     } catch(e) {
+        console.error("Pull test failed with error", e);
         //@ts-ignore
         t.fail(e)
         t.end()

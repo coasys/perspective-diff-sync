@@ -60,42 +60,50 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
     }
 
     fn current_revision() -> SocialContextResult<Option<LocalHashReference>> {
-        let chain_head = agent_info()?.chain_head;
-        let mut record = get_details(chain_head.0, GetOptions::latest())?.unwrap();
-        let mut revision = None;
+        let query = query(
+            QueryFilter::new()
+                .entry_type(EntryType::App(AppEntryDef {
+                    entry_index: 4.into(),
+                    zome_index: 0.into(),
+                    visibility: EntryVisibility::Private,
+                }))
+                .include_entries(true)
+                .descending(),
+        );
 
-        while revision.is_none() {
-            match record {
-                Details::Record(record_details) => {
-                    let entry = record_details
-                        .record
+        let revision = match query {
+            Ok(records) => {
+                //Iterate over records, run them to a LocalHashReference and then print to debug
+                let _records_parsed = records
+                    .iter()
+                    .map(|record| {
+                        let entry = record
+                            .entry
+                            .to_app_option::<LocalHashReference>()
+                            .unwrap()
+                            .unwrap();
+                        debug!("Current revision: {:?}", entry);
+                        entry
+                    })
+                    .collect::<Vec<LocalHashReference>>();
+                if records.len() == 0 {
+                    debug!("Did not find and LocalHashReference entries");
+                    None
+                } else {
+                    let record = records[0].clone();
+                    let entry = record
                         .entry
-                        .to_app_option::<LocalHashReference>();
-
-                    match entry {
-                        Ok(deser_entry) => match deser_entry {
-                            Some(local_hash_reference) => revision = Some(local_hash_reference),
-                            None => {
-                                //debug!("Not a LocalHashReference, moving on...")
-                            }
-                        },
-                        Err(_err) => {
-                            //debug!("Not a LocalHashReference, moving on...")
-                        }
-                    }
-                    let prev_action = record_details.record.action().prev_action();
-                    match prev_action {
-                        Some(prev_action) => {
-                            record =
-                                get_details(prev_action.to_owned(), GetOptions::latest())?.unwrap();
-                        }
-                        None => break,
-                    }
+                        .to_app_option::<LocalHashReference>()
+                        .unwrap()
+                        .unwrap();
+                    Some(entry)
                 }
-                _ => unreachable!(),
             }
-        }
-
+            Err(e) => {
+                debug!("Error when getting current revision: {:?}", e);
+                None
+            }
+        };
         Ok(revision)
     }
 

@@ -1,17 +1,17 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot, LinkExpression
+    LinkExpression, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot,
 };
 
-use crate::{Hash, CHUNK_SIZE};
-use crate::errors::{SocialContextError, SocialContextResult};
 use crate::chunked_diffs::ChunkedDiffs;
+use crate::errors::{SocialContextError, SocialContextResult};
 use crate::retriever::HolochainRetreiver;
 use crate::utils::get_now;
+use crate::{Hash, CHUNK_SIZE};
 
 struct SearchPosition {
     hash: Hash,
-    is_unseen: bool
+    is_unseen: bool,
 }
 
 pub fn generate_snapshot(
@@ -21,7 +21,7 @@ pub fn generate_snapshot(
     let fn_start = get_now()?.time();
     let mut search_position = SearchPosition {
         hash: latest.clone(),
-        is_unseen: false
+        is_unseen: false,
     };
     let mut seen: HashSet<Hash> = HashSet::new();
     let mut unseen_parents = vec![];
@@ -50,26 +50,41 @@ pub fn generate_snapshot(
             debug!("===PerspectiveDiffSync.generate_snapshot() - Profiling: Took {} to get the snapshot links", (after - now).num_milliseconds());
             if snapshot_links.len() == 0 {
                 debug!("===PerspectiveDiffSync.generate_snapshot() - ERROR: Did not find snapshot link where we expected to!");
-                let should_break = handle_parents(diff, &mut search_position, &mut seen, &mut unseen_parents, &mut all_additions, &mut all_removals)?;
+                let should_break = handle_parents(
+                    diff,
+                    &mut search_position,
+                    &mut seen,
+                    &mut unseen_parents,
+                    &mut all_additions,
+                    &mut all_removals,
+                )?;
                 if should_break {
                     break;
                 }
             } else {
                 let now = get_now()?.time();
                 //get snapshot and add elements to out
-                let snapshot = get(snapshot_links.remove(0).target, GetOptions::latest())?
-                    .ok_or(SocialContextError::InternalError(
-                        "Could not find diff entry for given diff entry reference",
-                    ))?
-                    .entry()
-                    .to_app_option::<Snapshot>()?
-                    .ok_or(SocialContextError::InternalError(
-                        "Expected element to contain app entry data",
-                    ))?;
+                let snapshot = get(
+                    snapshot_links
+                        .remove(0)
+                        .target
+                        .into_entry_hash()
+                        .expect("Could not get entry_hash"),
+                    GetOptions::latest(),
+                )?
+                .ok_or(SocialContextError::InternalError(
+                    "Could not find diff entry for given diff entry reference",
+                ))?
+                .entry()
+                .to_app_option::<Snapshot>()?
+                .ok_or(SocialContextError::InternalError(
+                    "Expected element to contain app entry data",
+                ))?;
                 let after = get_now()?.time();
                 debug!("===PerspectiveDiffSync.generate_snapshot() - Profiling: Took {} to get the snapshot entry", (after - now).num_milliseconds());
-                
-                let diff = ChunkedDiffs::from_entries::<HolochainRetreiver>(snapshot.diff_chunks)?.into_aggregated_diff();
+
+                let diff = ChunkedDiffs::from_entries::<HolochainRetreiver>(snapshot.diff_chunks)?
+                    .into_aggregated_diff();
                 for addition in diff.additions.iter() {
                     all_additions.insert(addition.clone());
                 }
@@ -88,7 +103,14 @@ pub fn generate_snapshot(
                 }
             };
         } else {
-            let should_break = handle_parents(diff, &mut search_position, &mut seen, &mut unseen_parents, &mut all_additions, &mut all_removals)?;
+            let should_break = handle_parents(
+                diff,
+                &mut search_position,
+                &mut seen,
+                &mut unseen_parents,
+                &mut all_additions,
+                &mut all_removals,
+            )?;
             if should_break {
                 break;
             }
@@ -112,11 +134,11 @@ pub fn generate_snapshot(
 
 fn handle_parents(
     diff: PerspectiveDiffEntryReference,
-    search_position: &mut SearchPosition, 
-    seen: &mut HashSet<Hash>, 
-    unseen_parents: &mut Vec<SearchPosition>, 
-    all_additions: &mut BTreeSet<LinkExpression>, 
-    all_removals: &mut BTreeSet<LinkExpression>
+    search_position: &mut SearchPosition,
+    seen: &mut HashSet<Hash>,
+    unseen_parents: &mut Vec<SearchPosition>,
+    all_additions: &mut BTreeSet<LinkExpression>,
+    all_removals: &mut BTreeSet<LinkExpression>,
 ) -> SocialContextResult<bool> {
     //Check if entry is already in graph
     if !seen.contains(&search_position.hash) {
@@ -154,7 +176,7 @@ fn handle_parents(
             let mut parents = diff.parents.unwrap();
             //Check if all parents have already been seen, if so then break or move onto next unseen parents
             //TODO; we should use a seen set here versus array iter
-            if parents.iter().all(|val| { seen.contains(val)}) {
+            if parents.iter().all(|val| seen.contains(val)) {
                 if unseen_parents.len() == 0 {
                     debug!("Parents of item seen and unseen 0");
                     return Ok(true);
@@ -166,14 +188,17 @@ fn handle_parents(
             } else {
                 *search_position = SearchPosition {
                     hash: parents.remove(0),
-                    is_unseen: false
+                    is_unseen: false,
                 };
                 debug!("Appending parents to look up: {:?}", parents);
                 unseen_parents.append(
-                    &mut parents.into_iter().map(|val| SearchPosition {
-                        hash: val,
-                        is_unseen: true
-                    }).collect()
+                    &mut parents
+                        .into_iter()
+                        .map(|val| SearchPosition {
+                            hash: val,
+                            is_unseen: true,
+                        })
+                        .collect(),
                 );
                 Ok(false)
             }
@@ -205,7 +230,7 @@ fn handle_parents(
             let mut parents = diff.parents.unwrap();
             //Check if all parents have already been seen, if so then break or move onto next unseen parents
             //TODO; we should use a seen set here versus array iter
-            if parents.iter().all(|val| { seen.contains(val)}) {
+            if parents.iter().all(|val| seen.contains(val)) {
                 if unseen_parents.len() == 0 {
                     debug!("Parents of item seen and unseen 0");
                     Ok(true)
@@ -217,14 +242,17 @@ fn handle_parents(
             } else {
                 *search_position = SearchPosition {
                     hash: parents.remove(0),
-                    is_unseen: false
+                    is_unseen: false,
                 };
                 debug!("Appending parents to look up: {:?}", parents);
                 unseen_parents.append(
-                    &mut parents.into_iter().map(|val| SearchPosition {
-                        hash: val,
-                        is_unseen: true
-                    }).collect()
+                    &mut parents
+                        .into_iter()
+                        .map(|val| SearchPosition {
+                            hash: val,
+                            is_unseen: true,
+                        })
+                        .collect(),
                 );
                 Ok(false)
             }

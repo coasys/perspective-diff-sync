@@ -1,6 +1,6 @@
 import type { Address, Language, Interaction, HolochainLanguageDelegate, LanguageContext } from "@perspect3vism/ad4m";
 import { LinkAdapter } from "./linksAdapter";
-import { DNA, DNA_NICK } from "./dna";
+import { DNA, DNA_NICK, ZOME_NAME } from "./dna";
 
 function interactions(expression: Address): Interaction[] {
   return [];
@@ -17,7 +17,18 @@ export default async function create(context: LanguageContext): Promise<Language
   const linksAdapter = new LinkAdapter(context);
 
   await Holochain.registerDNAs(
-    [{ file: DNA, nick: DNA_NICK }],
+    //@ts-ignore
+    [{ file: DNA, nick: DNA_NICK, zomeCalls: 
+      [
+        [ZOME_NAME, "add_active_agent_link"],
+        [ZOME_NAME, "latest_revision"],
+        [ZOME_NAME, "current_revision"],
+        [ZOME_NAME, "pull"],
+        [ZOME_NAME, "render"],
+        [ZOME_NAME, "commit"],
+        [ZOME_NAME, "fast_forward_signal"]
+      ]
+    }],
     async (signal) => { await linksAdapter.handleHolochainSignal(signal) }
   );
 

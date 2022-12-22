@@ -272,7 +272,7 @@ export async function renderMerges(t) {
     });
     console.warn("Alice rendered with", alice_render2);
     //@ts-ignore
-    t.isEqual(alice_render2.links.length, 6);
+    t.isEqual(alice_render2.links.length, 4);
 
     await conductor1.shutDown();
     await conductor2.shutDown();
