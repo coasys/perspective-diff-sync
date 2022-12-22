@@ -1,9 +1,11 @@
-import { AgentHapp, CallableCell, Conductor } from "@holochain/tryorama";
+import { AgentApp, CallableCell, Conductor } from "@holochain/tryorama";
+import { authorizeSigningCredentials } from "@holochain/client"
 import faker from "faker";
 import { dnas } from './common';
 import { createConductor } from "@holochain/tryorama";
+import { resolve } from "path";
 
-export async function call(happ: AgentHapp, fn_name: string, payload?: any) {
+export async function call(happ: AgentApp, fn_name: string, payload?: any) {
     return await happ.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
         fn_name,
@@ -35,17 +37,45 @@ export function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function createConductors(num: number): Promise<{agent_happ: AgentHapp, conductor: Conductor}[]> {
-    let out = [] as {agent_happ: AgentHapp, conductor: Conductor}[];
+export async function createConductors(num: number): Promise<{agent_happ: AgentApp, conductor: Conductor}[]> {
+    let out = [] as {agent_happ: AgentApp, conductor: Conductor}[];
     for (let n of Array(num).keys()) {
         let conductor = await createConductor();
-        let [happ] = await conductor.installAgentsHapps({
-            agentsDnas: [{dnas}],
-        });
-        out.push({
-            agent_happ: happ,
-            conductor
-        })
+        try {
+            let app = await conductor.installApp({
+                bundle: {
+                    manifest: {
+                        manifest_version: "1",
+                        name: "perspective-diff-sync",
+                        roles: [{
+                            name: "main",
+                            dna: {
+                                //@ts-ignore
+                                path: resolve(dnas[0].source.path)
+                            }
+                        }]
+                    },
+                    resources: {}
+                }
+            });
+            await conductor.adminWs().enableApp({installed_app_id: app.appId})
+            const sign = await authorizeSigningCredentials(conductor.adminWs(), app.cells[0].cell_id, [
+                ["perspective_diff_sync", "add_active_agent_link"],
+                ["perspective_diff_sync", "latest_revision"],
+                ["perspective_diff_sync", "current_revision"],
+                ["perspective_diff_sync", "pull"],
+                ["perspective_diff_sync", "render"],
+                ["perspective_diff_sync", "commit"],
+                ["perspective_diff_sync", "fast_forward_signal"]
+            ])
+            console.log(sign);
+            out.push({
+                agent_happ: app,
+                conductor
+            })
+        } catch (e) {
+            console.error(e);
+        }
     }
     return out
 }

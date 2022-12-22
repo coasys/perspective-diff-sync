@@ -138,6 +138,8 @@ export async function testManyLatestRevisionUpdates(t) {
     //@ts-ignore
     t.isEqual(commit, current_revision2.toString("base64"))
 
+    await sleep(1000)
+
     //test bobs latest revision is updated
     let bob_latest_revision = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -156,6 +158,8 @@ export async function testManyLatestRevisionUpdates(t) {
     console.warn("latest_bob", latest_bob);
     //@ts-ignore
     t.isEqual(bob_commit, latest_bob.toString("base64"))
+
+    await sleep(1000)
 
     let latest_alice = await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -176,6 +180,8 @@ export async function testManyLatestRevisionUpdates(t) {
     //@ts-ignore
     t.isEqual(commit2, latest_revision3.toString("base64"))
 
+    await sleep(1000)
+
     //test bobs latest revision is updated
     let bob_latest_revision2 = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -191,7 +197,7 @@ export async function testManyLatestRevisionUpdates(t) {
 }
 
 test("test revision updates", async (t) => {
-    //await testRevisionUpdates(t);
+    await testRevisionUpdates(t);
     await testManyLatestRevisionUpdates(t);
     t.end()
 })
