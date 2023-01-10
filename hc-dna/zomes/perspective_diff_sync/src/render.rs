@@ -2,20 +2,21 @@ use hdk::prelude::*;
 use perspective_diff_sync_integrity::PerspectiveDiff;
 
 use crate::errors::{SocialContextError, SocialContextResult};
-use crate::revisions::current_revision;
-use crate::Perspective;
-use crate::workspace::Workspace;
 use crate::retriever::PerspectiveDiffRetreiver;
+use crate::revisions::current_revision;
 use crate::utils::get_now;
+use crate::workspace::Workspace;
+use crate::Perspective;
 
 pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspective> {
-    debug!("===PerspectiveDiffSunc.render(): Function start");
+    debug!("===PerspectiveDiffSync.render(): Function start");
     let fn_start = get_now()?.time();
 
-    let current = current_revision::<Retriever>()?
-        .ok_or(SocialContextError::InternalError("Can't render when we have no current revision"))?;
-    
-    debug!("===PerspectiveDiffSunc.render(): current: {:?}", current);
+    let current = current_revision::<Retriever>()?.ok_or(SocialContextError::InternalError(
+        "Can't render when we have no current revision",
+    ))?;
+
+    debug!("===PerspectiveDiffSync.render(): current: {:?}", current);
 
     let mut workspace = Workspace::new();
     workspace.collect_only_from_latest::<Retriever>(current.hash)?;
@@ -31,8 +32,11 @@ pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Pers
             perspective.links.retain(|l| l != &removal);
         }
     }
-    
+
     let fn_end = get_now()?.time();
-    debug!("===PerspectiveDiffSunc.render() - Profiling: Took: {} to complete render() function", (fn_end - fn_start).num_milliseconds()); 
+    debug!(
+        "===PerspectiveDiffSync.render() - Profiling: Took: {} to complete render() function",
+        (fn_end - fn_start).num_milliseconds()
+    );
     Ok(perspective)
 }

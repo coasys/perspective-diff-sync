@@ -1,17 +1,25 @@
-use hdk::prelude::*;
-use std::collections::{BTreeSet};
-use perspective_diff_sync_integrity::{PerspectiveDiffEntryReference};
 use crate::errors::{SocialContextError, SocialContextResult};
+use hdk::prelude::*;
+use perspective_diff_sync_integrity::PerspectiveDiffEntryReference;
+use std::collections::BTreeSet;
 
 // Applies Kahn's algorithm for topologically sorting a graph
-pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>) 
-    -> SocialContextResult<Vec<(HoloHash<holo_hash::hash_type::Action>, PerspectiveDiffEntryReference)>>
-{
-    type Hash = HoloHash<holo_hash::hash_type::Action>;   
+pub fn topo_sort_diff_references(
+    arr: &Vec<(
+        HoloHash<holo_hash::hash_type::Action>,
+        PerspectiveDiffEntryReference,
+    )>,
+) -> SocialContextResult<
+    Vec<(
+        HoloHash<holo_hash::hash_type::Action>,
+        PerspectiveDiffEntryReference,
+    )>,
+> {
+    type Hash = HoloHash<holo_hash::hash_type::Action>;
     let mut result = Vec::<(Hash, PerspectiveDiffEntryReference)>::new();
 
     // first collect orphaned nodes (=without parent) as starting points:
-    let mut orphaned_nodes: Vec::<(Hash, PerspectiveDiffEntryReference)> = arr
+    let mut orphaned_nodes: Vec<(Hash, PerspectiveDiffEntryReference)> = arr
         .iter()
         .filter(|&e| e.1.parents == None)
         .cloned()
@@ -19,7 +27,9 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
 
     if orphaned_nodes.len() == 0 {
         debug!("No orphans found! Length: {}, list: {:?}", arr.len(), arr);
-        return Err(SocialContextError::InternalError("Can't topologically sort list without orphan!"));
+        return Err(SocialContextError::InternalError(
+            "Can't topologically sort list without orphan!",
+        ));
     }
 
     let mut edges = BTreeSet::new();
@@ -32,7 +42,7 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
             }
         }
     }
-    
+
     // Starting from the nodes without parents...
     while let Some(n) = orphaned_nodes.pop() {
         //.. we put them into the result list.
@@ -42,7 +52,11 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
 
         // and then we look for any nodes that have it as parent
         // (using the edges set)
-        let edges_with_n_as_parent = edges.iter().filter(|&e| e.1 == n.0).cloned().collect::<Vec<(Hash, Hash)>>();
+        let edges_with_n_as_parent = edges
+            .iter()
+            .filter(|&e| e.1 == n.0)
+            .cloned()
+            .collect::<Vec<(Hash, Hash)>>();
 
         println!("Edges with orphan as parent {:?}", edges_with_n_as_parent);
 
@@ -56,7 +70,11 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
             let child = edge.0.clone();
 
             println!("Found child {:?}", child);
-            let edges_with_child_as_child = edges.iter().filter(|&e| e.0 == child).cloned().collect::<Vec<(Hash, Hash)>>();
+            let edges_with_child_as_child = edges
+                .iter()
+                .filter(|&e| e.0 == child)
+                .cloned()
+                .collect::<Vec<(Hash, Hash)>>();
 
             println!("Edges with child as child {:?}", edges_with_child_as_child);
 
@@ -71,28 +89,30 @@ pub fn topo_sort_diff_references(arr:&Vec<(HoloHash<holo_hash::hash_type::Action
     }
 
     if edges.len() > 0 {
-        debug!("Unresolved parent links after topologically sorting: {:?}", edges);
-        debug!("Input list: {:?}", arr);
+        debug!(
+            "Unresolved parent links after topologically sorting: {:?}",
+            edges
+        );
 
         debug!("Number of unresolved parent links {:?}", edges.len());
         debug!("Number of items to sort: {:?}", arr.len());
-        Err(SocialContextError::InternalError("Cycle or missing nodes detected. Unresolved parent links after topologically sorting."))
+        Err(SocialContextError::InternalError(
+            "Cycle or missing nodes detected. Unresolved parent links after topologically sorting.",
+        ))
         //Ok(result)
     } else {
         Ok(result)
-    }    
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::topo_sort_diff_references;
     use hdk::prelude::*;
     use perspective_diff_sync_integrity::PerspectiveDiffEntryReference;
-    use super::topo_sort_diff_references;
-
 
     #[test]
     fn test_topo_sort_diff_references() {
-        
         let h1 = HoloHash::<holo_hash::hash_type::Action>::from_raw_36(vec![1; 36]);
         let h2 = HoloHash::<holo_hash::hash_type::Action>::from_raw_36(vec![2; 36]);
         let h3 = HoloHash::<holo_hash::hash_type::Action>::from_raw_36(vec![3; 36]);
@@ -103,21 +123,21 @@ mod tests {
         let r3 = PerspectiveDiffEntryReference::new(h3.clone(), Some(vec![h4.clone()]));
         let r4 = PerspectiveDiffEntryReference::new(h4.clone(), None);
 
-        let e1 = (h1,r1);
-        let e2 = (h2,r2);
-        let e3 = (h3,r3);
-        let e4 = (h4,r4);
+        let e1 = (h1, r1);
+        let e2 = (h2, r2);
+        let e3 = (h3, r3);
+        let e4 = (h4, r4);
 
         assert_eq!(e1.0, e1.1.diff);
         assert_eq!(e2.0, e2.1.diff);
         assert_eq!(e3.0, e3.1.diff);
         assert_eq!(e4.0, e4.1.diff);
-        
+
         let test_vec = vec![e1.clone(), e2.clone(), e3.clone(), e4.clone()];
         let expected = vec![e4, e3, e2, e1];
 
         let result = topo_sort_diff_references(&test_vec).expect("topo sort to not error");
-        
+
         assert_eq!(result, expected);
     }
 }

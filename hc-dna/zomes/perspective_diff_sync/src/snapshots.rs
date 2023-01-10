@@ -128,7 +128,7 @@ pub fn generate_snapshot(
     };
 
     let fn_end = get_now()?.time();
-    debug!("===PerspectiveDiffSunc.generate_snapshot() - Profiling: Took: {} to complete generate_snapshot function", (fn_end - fn_start).num_milliseconds());
+    debug!("===PerspectiveDiffSync.generate_snapshot() - Profiling: Took: {} to complete generate_snapshot function", (fn_end - fn_start).num_milliseconds());
     Ok(snapshot)
 }
 
@@ -190,7 +190,7 @@ fn handle_parents(
                     hash: parents.remove(0),
                     is_unseen: false,
                 };
-                debug!("Appending parents to look up: {:?}", parents);
+                debug!("Appending parents to look up");
                 unseen_parents.append(
                     &mut parents
                         .into_iter()
@@ -244,7 +244,7 @@ fn handle_parents(
                     hash: parents.remove(0),
                     is_unseen: false,
                 };
-                debug!("Appending parents to look up: {:?}", parents);
+                debug!("Appending parents to look up");
                 unseen_parents.append(
                     &mut parents
                         .into_iter()

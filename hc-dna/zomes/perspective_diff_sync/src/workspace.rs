@@ -230,7 +230,6 @@ impl Workspace {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
             if !visited.contains(&current) {
                 inner_iter += 1;
-                debug!("===Workspace.sort_graph(): Iteration: {}", inner_iter);
                 //println!("current: {:?}", hash_to_node_id(current.clone()));
                 match self.back_links.get(&current) {
                     Some(children) => {
@@ -264,6 +263,10 @@ impl Workspace {
                 visited.insert(current);
             }
         }
+        debug!(
+            "===Workspace.sort_graph(): Made {:?} total iterations",
+            inner_iter
+        );
 
         self.unexplored_side_branches = self
             .unexplored_side_branches
