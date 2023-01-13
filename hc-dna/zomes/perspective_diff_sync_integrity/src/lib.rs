@@ -4,13 +4,17 @@ use hdi::prelude::*;
 
 pub mod impls;
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(
+    Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd,
+)]
 pub struct ExpressionProof {
     pub signature: String,
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(
+    Serialize, Deserialize, Clone, SerializedBytes, Debug, PartialEq, Eq, Hash, Ord, PartialOrd,
+)]
 pub struct Triple {
     pub source: Option<String>,
     pub target: Option<String>,
@@ -69,7 +73,7 @@ pub struct PerspectiveDiffEntryReference {
 
 impl PerspectiveDiffEntryReference {
     pub fn new(
-        diff: HoloHash<holo_hash::hash_type::Action>, 
+        diff: HoloHash<holo_hash::hash_type::Action>,
         parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
     ) -> Self {
         Self {
@@ -124,12 +128,9 @@ pub struct LocalTimestampReference {
 app_entry!(LocalTimestampReference);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
-pub struct AgentReference {
-    pub agent: AgentPubKey,
-    pub timestamp: DateTime<Utc>,
-}
+pub struct Anchor(pub String);
 
-app_entry!(AgentReference);
+app_entry!(Anchor);
 
 #[hdk_entry_defs]
 #[unit_enum(UnitEntryTypes)]
@@ -144,10 +145,10 @@ pub enum EntryTypes {
     PerspectiveDiffEntryReference(PerspectiveDiffEntryReference),
     #[entry_def(visibility = "private")]
     LocalHashReference(LocalHashReference),
-    #[entry_def(visibility = "public")]
-    AgentReference(AgentReference),
     #[entry_def(visibility = "private")]
-    LocalTimestampReference(LocalTimestampReference)
+    LocalTimestampReference(LocalTimestampReference),
+    #[entry_def(visibility = "public")]
+    Anchor(Anchor),
 }
 
 #[hdk_link_types]

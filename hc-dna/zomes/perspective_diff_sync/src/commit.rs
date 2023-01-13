@@ -1,8 +1,6 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
-use hc_time_index::SearchStrategy;
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    AgentReference, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
+    Anchor, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
     PerspectiveDiffReference,
 };
 
@@ -13,7 +11,7 @@ use crate::retriever::PerspectiveDiffRetreiver;
 use crate::revisions::{current_revision, update_current_revision, update_latest_revision};
 use crate::snapshots::generate_snapshot;
 use crate::utils::{dedup, get_now};
-use crate::{ACTIVE_AGENT_DURATION, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
+use crate::{ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 
 pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     diff: PerspectiveDiff,
@@ -92,23 +90,12 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
 
     if *ENABLE_SIGNALS {
         let now_profile = get_now()?.time();
-        let now = sys_time()?.as_seconds_and_nanos();
-        let now = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(now.0, now.1), Utc);
-        //Get recent agents (agents which have marked themselves online in time period now -> ACTIVE_AGENT_DURATION as derived from DNA properties)
-        let recent_agents = hc_time_index::get_links_and_load_for_time_span::<
-            AgentReference,
-            LinkTypes,
-            LinkTypes,
-        >(
-            String::from("active_agent"),
-            now - *ACTIVE_AGENT_DURATION,
-            now,
-            Some(LinkTag::new("")),
-            SearchStrategy::Bfs,
-            None,
+        let recent_agents = get_links(
+            hash_entry(get_active_agent_anchor())?,
             LinkTypes::Index,
-            LinkTypes::TimePath,
+            Some(LinkTag::new("active_agent")),
         )?;
+
         let after = get_now()?.time();
         debug!(
             "===PerspectiveDiffSync.commit() - Profiling: Took {} to get the active agents",
@@ -116,7 +103,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
         );
         let recent_agents = recent_agents
             .into_iter()
-            .map(|val| val.agent)
+            .map(|val| AgentPubKey::from(EntryHash::from(val.target)))
             .collect::<Vec<AgentPubKey>>();
 
         //Dedup the agents
@@ -155,68 +142,25 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     Ok(diff_entry_reference)
 }
 
-pub fn add_active_agent_link() -> SocialContextResult<Option<DateTime<Utc>>> {
+pub fn add_active_agent_link<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<()> {
     debug!("===PerspectiveDiffSync.add_active_agent_link(): Function start");
     let now_fn_start = get_now()?.time();
-    let now = get_now()?;
-    //Get the recent agents so we can check that the current agent is not already
-    let recent_agents =
-        hc_time_index::get_links_and_load_for_time_span::<AgentReference, LinkTypes, LinkTypes>(
-            String::from("active_agent"),
-            now - *ACTIVE_AGENT_DURATION,
-            now,
-            Some(LinkTag::new("")),
-            SearchStrategy::Bfs,
-            None,
-            LinkTypes::Index,
-            LinkTypes::TimePath,
-        )?;
+    let agent_root_entry = get_active_agent_anchor();
+    let _agent_root_entry_action =
+        Retriever::create_entry(EntryTypes::Anchor(agent_root_entry.clone()))?;
 
-    let current_agent_online = recent_agents.iter().find(|agent| {
-        agent.agent
-            == agent_info()
-                .expect("Could not get agent info")
-                .agent_latest_pubkey
-    });
-    match current_agent_online {
-        Some(agent_ref) => {
-            //If the agent is already marked online then return the timestamp of them being online so the zome caller can add another active_agent link at the correct time in the future
-            //But for now this is TODO and we will just add an agent reference anyway
-            let new_agent_ref = AgentReference {
-                agent: agent_info()?.agent_initial_pubkey,
-                timestamp: now,
-            };
-            debug!("CREATE_ENTRY AgentReference");
-            create_entry(&EntryTypes::AgentReference(new_agent_ref.clone()))?;
-            hc_time_index::index_entry(
-                String::from("active_agent"),
-                new_agent_ref,
-                LinkTag::new(""),
-                LinkTypes::Index,
-                LinkTypes::TimePath,
-            )?;
-            let after_fn_end = get_now()?.time();
-            debug!("===PerspectiveDiffSync.add_active_agent_link() - Profiling: Took {} to complete whole add_active_agent_link()", (after_fn_end - now_fn_start).num_milliseconds());
-            Ok(Some(agent_ref.timestamp))
-        }
-        None => {
-            //Agent is not marked online so lets add an online agent reference
-            let agent_ref = AgentReference {
-                agent: agent_info()?.agent_initial_pubkey,
-                timestamp: now,
-            };
-            debug!("CREATE_ENTRY AgentReference");
-            create_entry(&EntryTypes::AgentReference(agent_ref.clone()))?;
-            hc_time_index::index_entry(
-                String::from("active_agent"),
-                agent_ref,
-                LinkTag::new(""),
-                LinkTypes::Index,
-                LinkTypes::TimePath,
-            )?;
-            let after_fn_end = get_now()?.time();
-            debug!("===PerspectiveDiffSync.add_active_agent_link() - Profiling: Took {} to complete whole add_active_agent_link()", (after_fn_end - now_fn_start).num_milliseconds());
-            Ok(None)
-        }
-    }
+    let agent = agent_info()?.agent_initial_pubkey;
+    create_link(
+        hash_entry(agent_root_entry)?,
+        agent,
+        LinkTypes::Index,
+        LinkTag::new("active_agent"),
+    )?;
+    let after_fn_end = get_now()?.time();
+    debug!("===PerspectiveDiffSync.add_active_agent_link() - Profiling: Took {} to complete whole add_active_agent_link()", (after_fn_end - now_fn_start).num_milliseconds());
+    Ok(())
+}
+
+fn get_active_agent_anchor() -> Anchor {
+    Anchor("active_agent".to_string())
 }

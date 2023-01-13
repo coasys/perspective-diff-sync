@@ -20,7 +20,6 @@ export default async function create(context: LanguageContext): Promise<Language
     //@ts-ignore
     [{ file: DNA, nick: DNA_NICK, zomeCalls: 
       [
-        [ZOME_NAME, "add_active_agent_link"],
         [ZOME_NAME, "latest_revision"],
         [ZOME_NAME, "current_revision"],
         [ZOME_NAME, "pull"],
@@ -32,23 +31,9 @@ export default async function create(context: LanguageContext): Promise<Language
     async (signal) => { await linksAdapter.handleHolochainSignal(signal) }
   );
 
-  await linksAdapter.addActiveAgentLink(Holochain);
-  const activeAgentInterval = setInterval(
-    async () => {
-      console.log("===Perspective-diff-sync: attempting to add a new active agent link");
-      await linksAdapter.addActiveAgentLink(Holochain)
-    },
-    activeAgentDurationSecs * 1000
-  );
-
-  const teardown = function() {
-    clearInterval(activeAgentInterval);
-  }
-
   return {
     name,
     linksAdapter,
-    interactions,
-    teardown
+    interactions
   } as Language;
 }
