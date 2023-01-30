@@ -53,7 +53,9 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
     Ok(())
 }
 
-pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<PerspectiveDiff> {
+pub fn pull<Retriever: PerspectiveDiffRetreiver>(
+    emit: bool,
+) -> SocialContextResult<PerspectiveDiff> {
     debug!("===PerspectiveDiffSync.pull(): Function start");
     let fn_start = get_now()?.time();
 
@@ -138,7 +140,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
             .collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>()
     };
 
-    if fast_forward_possible {
+    let diffs = if fast_forward_possible {
         debug!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
         let mut out = PerspectiveDiff {
             additions: vec![],
@@ -155,7 +157,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
             "===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function",
             (fn_end - fn_start).num_milliseconds()
         );
-        Ok(out)
+        out
     } else {
         debug!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
         //Get the entries we missed from unseen diff
@@ -175,8 +177,15 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspe
             "===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function",
             (fn_end - fn_start).num_milliseconds()
         );
-        Ok(out)
+        out
+    };
+    //Emit the signal in case the client connection has a timeout during the zome call
+    if emit {
+        if diffs.additions.len() > 0 || diffs.removals.len() > 0 {
+            emit_signal(diffs.clone())?;
+        }
     }
+    Ok(diffs)
 }
 
 pub fn fast_forward_signal<Retriever: PerspectiveDiffRetreiver>(
@@ -201,7 +210,7 @@ pub fn fast_forward_signal<Retriever: PerspectiveDiffRetreiver>(
             Ok(())
         } else {
             debug!("===PerspectiveDiffSync.fast_forward_signal(): Revisions parent is not the same as current, making a pull");
-            let mut pull_data = pull::<Retriever>()?;
+            let mut pull_data = pull::<Retriever>(false)?;
 
             if pull_data.additions.len() > 0 || pull_data.removals.len() > 0 {
                 //Remove the values of this signal from the pull data, since we already emitted when the linkLanguage received the signal
@@ -214,7 +223,7 @@ pub fn fast_forward_signal<Retriever: PerspectiveDiffRetreiver>(
         }
     } else {
         debug!("===PerspectiveDiffSync.fast_forward_signal(): No current so making a pull");
-        let mut pull_data = pull::<Retriever>()?;
+        let mut pull_data = pull::<Retriever>(false)?;
         if pull_data.additions.len() > 0 || pull_data.removals.len() > 0 {
             //Remove the values of this signal from the pull data, since we already emitted when the linkLanguage received the signal
             remove_from_vec(&mut pull_data.additions, &diff.diff.additions);

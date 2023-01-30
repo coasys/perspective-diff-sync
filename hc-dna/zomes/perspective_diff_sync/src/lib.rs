@@ -13,16 +13,17 @@ mod errors;
 mod inputs;
 mod pull;
 mod render;
+mod retriever;
 mod revisions;
 mod snapshots;
+mod test_graphs;
+mod tests;
 mod topo_sort;
 mod utils;
 mod workspace;
-mod retriever;
-mod tests;
-mod test_graphs;
 
-#[macro_use] extern crate maplit;
+#[macro_use]
+extern crate maplit;
 
 pub type Hash = HoloHash<holo_hash::hash_type::Action>;
 
@@ -53,7 +54,8 @@ fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
 
 #[hdk_extern]
 pub fn commit(diff: PerspectiveDiff) -> ExternResult<Hash> {
-    commit::commit::<retriever::HolochainRetreiver>(diff).map_err(|error| utils::err(&format!("{}", error)))
+    commit::commit::<retriever::HolochainRetreiver>(diff)
+        .map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
@@ -63,32 +65,40 @@ pub fn add_active_agent_link(_: ()) -> ExternResult<Option<DateTime<Utc>>> {
 
 #[hdk_extern]
 pub fn latest_revision(_: ()) -> ExternResult<Option<Hash>> {
-    revisions::latest_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
+    revisions::latest_revision::<retriever::HolochainRetreiver>()
+        .map_err(|error| utils::err(&format!("{}", error)))
+        .map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
-    revisions::current_revision::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error))).map(|val| val.map(|val| val.hash))
+    revisions::current_revision::<retriever::HolochainRetreiver>()
+        .map_err(|error| utils::err(&format!("{}", error)))
+        .map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull::<retriever::HolochainRetreiver>()
+    pull::pull::<retriever::HolochainRetreiver>(true)
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|res| res)
 }
 
 #[hdk_extern]
 pub fn render(_: ()) -> ExternResult<Perspective> {
-    render::render::<retriever::HolochainRetreiver>().map_err(|error| utils::err(&format!("{}", error)))
+    render::render::<retriever::HolochainRetreiver>()
+        .map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
 pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_current_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
-            .map_err(|err| utils::err(&format!("{}", err)))?;
+        revisions::update_current_revision::<retriever::HolochainRetreiver>(
+            _hash,
+            utils::get_now().unwrap(),
+        )
+        .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
 }
@@ -97,15 +107,19 @@ pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
 pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_latest_revision::<retriever::HolochainRetreiver>(_hash, utils::get_now().unwrap())
-            .map_err(|err| utils::err(&format!("{}", err)))?;
+        revisions::update_latest_revision::<retriever::HolochainRetreiver>(
+            _hash,
+            utils::get_now().unwrap(),
+        )
+        .map_err(|err| utils::err(&format!("{}", err)))?;
     }
     Ok(())
 }
 
 #[hdk_extern]
 pub fn fast_forward_signal(perspective_diff_ref: PerspectiveDiffReference) -> ExternResult<()> {
-    pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref).map_err(|error| utils::err(&format!("{}", error)))
+    pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref)
+        .map_err(|error| utils::err(&format!("{}", error)))
 }
 
 //not loading from DNA properies since dna zome properties is always null for some reason
