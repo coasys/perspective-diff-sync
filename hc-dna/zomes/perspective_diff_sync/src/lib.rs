@@ -75,7 +75,7 @@ pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull::<retriever::HolochainRetreiver>()
+    pull::pull::<retriever::HolochainRetreiver>(true)
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|res| res)
 }

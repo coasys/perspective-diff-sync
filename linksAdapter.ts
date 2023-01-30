@@ -77,7 +77,7 @@ export class LinkAdapter implements LinkSyncAdapter {
       //Note; when we have many signals coming in it could cause many fast forward to be build up in the dna request queue (since all DNA calls are sync) and thus block other calls from coming in
       await this.hcDna.call(DNA_NICK, ZOME_NAME, "fast_forward_signal", signal.data.payload);
     } else {
-      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal");
+      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull");
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
       if (this.linkCallback) {
         this.linkCallback(signal.data.payload);
