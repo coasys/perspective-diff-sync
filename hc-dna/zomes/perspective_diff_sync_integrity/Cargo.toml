@@ -16,6 +16,3 @@ chrono = { version = "0.4.22", default-features = false, features = ["clock", "s
 holo_hash = "0.0.35"
 hdi = "0.1.10"
 hdk = "0.0.163"
-
-hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index" }
-#hc_time_index = { path = "../../../../holochain-time-index" }

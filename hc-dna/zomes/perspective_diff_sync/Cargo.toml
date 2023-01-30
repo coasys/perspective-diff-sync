@@ -13,8 +13,6 @@ derive_more = "0"
 serde = "1"
 lazy_static = "*"
 chrono = { version = "0.4.22", default-features = false, features = ["clock", "std", "oldtime", "serde"] }
-hc_time_index = { git = "https://github.com/holochain-open-dev/holochain-time-index" }
-#hc_time_index = { path = "../../../../holochain-time-index" }
 thiserror = "1.0.20"
 petgraph = "0.6.2"
 maplit = "1.0.2"
