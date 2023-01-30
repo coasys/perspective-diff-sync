@@ -1,10 +1,13 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, NaiveDateTime, Utc};
 use hdk::prelude::*;
-use perspective_diff_sync_integrity::{EntryTypes, HashReference, LinkTypes, LocalHashReference};
+use perspective_diff_sync_integrity::{
+    Anchor, EntryTypes, HashReference, LinkTypes, LocalHashReference,
+};
 
 use super::PerspectiveDiffRetreiver;
 use crate::errors::{SocialContextError, SocialContextResult};
-use crate::utils::get_now;
 use crate::Hash;
 
 pub struct HolochainRetreiver;
@@ -94,18 +97,39 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
     }
 
     fn latest_revision() -> SocialContextResult<Option<HashReference>> {
-        let mut latest =
-            hc_time_index::get_links_and_load_for_time_span::<HashReference, LinkTypes, LinkTypes>(
-                String::from("current_rev"),
-                get_now()?,
-                DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
-                None,
-                hc_time_index::SearchStrategy::Dfs,
-                Some(1),
-                LinkTypes::Index,
-                LinkTypes::TimePath,
-            )?;
-        Ok(latest.pop())
+        let latest_root_entry = get_latest_revision_anchor();
+        let latest_root_entry_hash = hash_entry(latest_root_entry.clone())?;
+
+        let mut latest_revision_links = get_links(latest_root_entry_hash, LinkTypes::Index, None)?;
+
+        latest_revision_links.sort_by(|link_a, link_b| {
+            let link_a_str = std::str::from_utf8(&link_a.tag.0).unwrap();
+            let link_b_str = std::str::from_utf8(&link_b.tag.0).unwrap();
+            let link_a = DateTime::<Utc>::from_str(link_a_str).unwrap();
+            let link_b = DateTime::<Utc>::from_str(link_b_str).unwrap();
+            link_a.cmp(&link_b)
+        });
+
+        let mut latest_hash_revisions = latest_revision_links
+            .into_iter()
+            .map(|link| {
+                let hash =
+                    link.target
+                        .into_action_hash()
+                        .ok_or(SocialContextError::InternalError(
+                            "Could not convert link target to hash",
+                        ))?;
+                let timestamp = std::str::from_utf8(&link.tag.0)
+                    .map_err(|_| SocialContextError::InternalError("Could not tag to string"))?;
+
+                let timestamp = DateTime::<Utc>::from_str(timestamp).map_err(|_| {
+                    SocialContextError::InternalError("Could not convert string to timestamp")
+                })?;
+                Ok(HashReference { hash, timestamp })
+            })
+            .collect::<SocialContextResult<Vec<HashReference>>>()?;
+
+        Ok(latest_hash_revisions.pop())
     }
 
     fn update_current_revision(hash: Hash, timestamp: DateTime<Utc>) -> SocialContextResult<()> {
@@ -115,15 +139,21 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
     }
 
     fn update_latest_revision(hash: Hash, timestamp: DateTime<Utc>) -> SocialContextResult<()> {
-        let hash_ref = HashReference { hash, timestamp };
-        create_entry(EntryTypes::HashReference(hash_ref.clone()))?;
-        hc_time_index::index_entry(
-            String::from("current_rev"),
-            hash_ref,
-            LinkTag::new(""),
+        let latest_root_entry = get_latest_revision_anchor();
+        let _latest_root_entry_action =
+            self::create_entry(EntryTypes::Anchor(latest_root_entry.clone()))?;
+
+        create_link(
+            hash_entry(latest_root_entry)?,
+            hash,
             LinkTypes::Index,
-            LinkTypes::TimePath,
+            LinkTag::new(timestamp.to_string()),
         )?;
+
         Ok(())
     }
+}
+
+fn get_latest_revision_anchor() -> Anchor {
+    Anchor("latest_revision".to_string())
 }

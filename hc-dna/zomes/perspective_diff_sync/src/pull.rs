@@ -280,7 +280,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         let pull_res = pull_res.unwrap();
 
@@ -333,7 +333,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         let pull_res = pull_res.unwrap();
 
@@ -399,7 +399,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         let pull_res = pull_res.unwrap();
 
@@ -457,7 +457,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         let pull_res = pull_res.unwrap();
 
@@ -514,7 +514,7 @@ mod tests {
         let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
         let expected_additions = vec![create_link_expression(node_1, node_1)];
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         assert!(pull_res
             .unwrap()
@@ -577,7 +577,7 @@ mod tests {
             create_link_expression(node_2, node_2),
         ];
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         assert!(pull_res
             .unwrap()
@@ -624,7 +624,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         println!("{:#?}", pull_res);
         let pull_res = pull_res.unwrap();
@@ -685,7 +685,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         println!("{:#?}", pull_res);
         let pull_res = pull_res.unwrap();
@@ -734,7 +734,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         //println!("{:#?}", pull_res);
         let pull_res = pull_res.unwrap();
@@ -776,7 +776,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         //println!("{:#?}", pull_res);
         let pull_res = pull_res.unwrap();
@@ -813,7 +813,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         let pull_res = pull_res.unwrap();
 
@@ -853,7 +853,7 @@ mod tests {
             MockPerspectiveGraph::update_current_revision(current_node_hash, chrono::Utc::now());
         assert!(update_current.is_ok());
 
-        let pull_res = pull::<MockPerspectiveGraph>();
+        let pull_res = pull::<MockPerspectiveGraph>(false);
         assert!(pull_res.is_ok());
         let pull_res = pull_res.unwrap();
 
