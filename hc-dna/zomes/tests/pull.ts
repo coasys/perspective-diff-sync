@@ -194,7 +194,7 @@ export async function mergeFetch(t) {
     //Connect nodes togther
     await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
     //note; running this test on some machines may require more than 200ms wait
-    await sleep(500)
+    await sleep(1000)
     
     //Alice tries to merge
     let merge_alice = await aliceHapps.cells[0].callZome({

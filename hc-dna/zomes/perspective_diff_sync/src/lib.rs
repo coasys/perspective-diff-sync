@@ -28,11 +28,7 @@ pub type Hash = HoloHash<holo_hash::hash_type::Action>;
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
-    let mut functions: GrantedFunctions = BTreeSet::new();
-    functions.insert((
-        ZomeName::from("perspective_diff_sync"),
-        "recv_remote_signal".into(),
-    ));
+    let functions: GrantedFunctions = GrantedFunctions::All;
 
     create_cap_grant(CapGrantEntry {
         tag: "".into(),

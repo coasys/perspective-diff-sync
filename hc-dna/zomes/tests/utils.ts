@@ -1,5 +1,4 @@
 import { AgentApp, CallableCell, Conductor } from "@holochain/tryorama";
-import { authorizeSigningCredentials } from "@holochain/client"
 import faker from "faker";
 import { dnas } from './common';
 import { createConductor } from "@holochain/tryorama";
@@ -59,16 +58,6 @@ export async function createConductors(num: number): Promise<{agent_happ: AgentA
                 }
             });
             await conductor.adminWs().enableApp({installed_app_id: app.appId})
-            const sign = await authorizeSigningCredentials(conductor.adminWs(), app.cells[0].cell_id, [
-                ["perspective_diff_sync", "add_active_agent_link"],
-                ["perspective_diff_sync", "latest_revision"],
-                ["perspective_diff_sync", "current_revision"],
-                ["perspective_diff_sync", "pull"],
-                ["perspective_diff_sync", "render"],
-                ["perspective_diff_sync", "commit"],
-                ["perspective_diff_sync", "fast_forward_signal"]
-            ])
-            console.log(sign);
             out.push({
                 agent_happ: app,
                 conductor
