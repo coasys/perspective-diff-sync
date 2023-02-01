@@ -9,41 +9,48 @@ export async function signals(t) {
     let aliceSignalCount = 0;
     let bobSignalCount = 0;
     
-    const aliceHapps = await scenario.addPlayerWithApp({
-        bundle: {
-            manifest: {
-                manifest_version: "1",
-                name: "perspective-diff-sync",
-                roles: [{
-                    name: "main",
-                    dna: {
-                        //@ts-ignore
-                        path: resolve(dnas[0].source.path)
-                    }
-                }]
+    const aliceHapps = await scenario.addPlayerWithApp(
+        {
+            bundle: {
+                manifest: {
+                    manifest_version: "1",
+                    name: "perspective-diff-sync",
+                    roles: [{
+                        name: "main",
+                        dna: {
+                            //@ts-ignore
+                            path: resolve(dnas[0].source.path)
+                        }
+                    }]
+                },
+                resources: {}
             },
-            resources: {}
-        }, 
-        signalHandler: (signal) => {
-            console.log("Alice Received Signal:",signal)
-            aliceSignalCount += 1;
+        },
+        {
+            signalHandler: (signal) => {
+                console.log("Alice Received Signal:",signal)
+                aliceSignalCount += 1;
+            }
         }
-    });
-    const bobHapps = await scenario.addPlayerWithApp({
-        bundle: {
-            manifest: {
-                manifest_version: "1",
-                name: "perspective-diff-sync",
-                roles: [{
-                    name: "main",
-                    dna: {
-                        //@ts-ignore
-                        path: resolve(dnas[0].source.path)
-                    }
-                }]
-            },
-            resources: {}
+    );
+    const bobHapps = await scenario.addPlayerWithApp(
+        {
+            bundle: {
+                manifest: {
+                    manifest_version: "1",
+                    name: "perspective-diff-sync",
+                    roles: [{
+                        name: "main",
+                        dna: {
+                            //@ts-ignore
+                            path: resolve(dnas[0].source.path)
+                        }
+                    }]
+                },
+                resources: {}
+            }
         }, 
+        {
         signalHandler: (signal) => {
             console.log("Bob Received Signal:",signal)
             bobSignalCount += 1;
