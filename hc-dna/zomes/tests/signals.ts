@@ -2,6 +2,7 @@ import { Scenario } from "@holochain/tryorama";
 import { sleep, generate_link_expression } from "./utils";
 import { dnas } from "./common";
 import test from "tape-promise/tape.js";
+import { resolve } from "path";
 
 //@ts-ignore
 export async function signals(t) {
@@ -25,14 +26,12 @@ export async function signals(t) {
                 },
                 resources: {}
             },
-        },
-        {
-            signalHandler: (signal) => {
-                console.log("Alice Received Signal:",signal)
-                aliceSignalCount += 1;
-            }
         }
     );
+    aliceHapps.conductor.appWs().on("signal", (signal) => {
+        console.log("Alice Received Signal:",signal)
+        aliceSignalCount += 1;
+    });
     const bobHapps = await scenario.addPlayerWithApp(
         {
             bundle: {
@@ -49,29 +48,25 @@ export async function signals(t) {
                 },
                 resources: {}
             }
-        }, 
-        {
-        signalHandler: (signal) => {
-            console.log("Bob Received Signal:",signal)
-            bobSignalCount += 1;
         }
-    });
+    );
+    bobHapps.conductor.appWs().on("signal", (signal) => {
+        console.log("Bob Received Signal:",signal)
+        bobSignalCount += 1;
+    })
 
     await scenario.shareAllAgents();
-    //Register as active agent
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "add_active_agent_link"
-    })
-    
-    //Register as active agent
+
+    //Sleep to give time for bob active agent link to arrive at alice
+    await sleep(2000)
+
+    //Test case where subject object and predicate are given
+    let bob_link_data = generate_link_expression("bob");
     await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
-        fn_name: "add_active_agent_link"
-    })
-    
-    //Sleep to give time for bob active agent link to arrive at alice
-    await sleep(500)
+        fn_name: "commit", 
+        payload: {additions: [bob_link_data], removals: []}
+    });
     
     //Test case where subject object and predicate are given
     let link_data = generate_link_expression("alice");
