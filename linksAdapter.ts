@@ -64,23 +64,23 @@ export class LinkAdapter implements LinkSyncAdapter {
 
   async handleHolochainSignal(signal: any): Promise<void> {
     //Check if this signal came from another agent & contains a diff and reference_hash
-    if (signal.data.payload.diff && signal.data.payload.reference_hash && signal.data.payload.reference) {
+    if (signal.payload.diff && signal.payload.reference_hash && signal.payload.reference) {
       console.log("PerspectiveDiffSync.handleHolochainSignal: received a signal from another agent, checking if we can fast forward to this signal");
 
       //First just emit the signal since we dont want to wait for the fast forward to finish
       if (this.linkCallback) {
-        this.linkCallback(signal.data.payload.diff);
+        this.linkCallback(signal.payload.diff);
       }
 
       //wait 500ms to be sure we will find the diff in the agents data
       await sleep(500);
       //Note; when we have many signals coming in it could cause many fast forward to be build up in the dna request queue (since all DNA calls are sync) and thus block other calls from coming in
-      await this.hcDna.call(DNA_NICK, ZOME_NAME, "fast_forward_signal", signal.data.payload);
+      await this.hcDna.call(DNA_NICK, ZOME_NAME, "fast_forward_signal", signal.payload);
     } else {
       console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull");
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
       if (this.linkCallback) {
-        this.linkCallback(signal.data.payload);
+        this.linkCallback(signal.payload);
       }
     }
   }
