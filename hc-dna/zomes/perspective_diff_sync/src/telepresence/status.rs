@@ -134,7 +134,7 @@ pub fn get_online_agents() -> SocialContextResult<Vec<OnlineAgent>> {
             "perspective_diff_sync",
             "get_online_status".into(),
             None,
-            "",
+            {},
         );
         if online_agent_status.is_ok() {
             let online_agent_response = online_agent_status.unwrap();
