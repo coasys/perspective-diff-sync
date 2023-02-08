@@ -1,4 +1,4 @@
-import type { Address, Language, Interaction, HolochainLanguageDelegate, LanguageContext } from "@perspect3vism/ad4m";
+import type { Address, Language, Interaction, HolochainLanguageDelegate, LanguageContext, AgentService } from "@perspect3vism/ad4m";
 import { LinkAdapter } from "./linksAdapter";
 import { TelepresenceAdapterImplementation } from "./telepresenceAdapter";
 import { DNA, DNA_NICK, ZOME_NAME } from "./dna";
@@ -12,6 +12,7 @@ const name = "perspective-diff-sync";
 
 export default async function create(context: LanguageContext): Promise<Language> {
   const Holochain = context.Holochain as HolochainLanguageDelegate;
+  const agent = context.agent as AgentService;
 
   const linksAdapter = new LinkAdapter(context);
   const telepresenceAdapter = new TelepresenceAdapterImplementation(context);
@@ -39,6 +40,9 @@ export default async function create(context: LanguageContext): Promise<Language
       }
     }
   );
+
+  //Setup the link between did and agent pub key
+  await Holochain.call(DNA_NICK, ZOME_NAME, "create_did_pub_key_link", agent.did);
 
   return {
     name,
