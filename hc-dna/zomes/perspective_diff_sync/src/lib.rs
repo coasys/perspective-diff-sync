@@ -148,17 +148,17 @@ pub fn get_online_agents(_: ()) -> ExternResult<Vec<OnlineAgent>> {
 }
 
 #[hdk_extern]
-pub fn send_signal(signal_data: inputs::SignalData) -> ExternResult<()> {
-    telepresence::signal::send_signal(signal_data)
+pub fn send_signal(signal_data: inputs::SignalData) -> ExternResult<PerspectiveExpression> {
+    let res = telepresence::signal::send_signal(signal_data)
         .map_err(|error| utils::err(&format!("{}", error)))?;
-    Ok(())
+    Ok(res)
 }
 
 #[hdk_extern]
-pub fn send_broadcast(data: PerspectiveExpression) -> ExternResult<()> {
-    telepresence::signal::send_broadcast(data)
+pub fn send_broadcast(data: PerspectiveExpression) -> ExternResult<PerspectiveExpression> {
+    let res = telepresence::signal::send_broadcast(data)
         .map_err(|error| utils::err(&format!("{}", error)))?;
-    Ok(())
+    Ok(res)
 }
 
 //not loading from DNA properies since dna zome properties is always null for some reason

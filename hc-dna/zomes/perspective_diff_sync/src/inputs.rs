@@ -16,6 +16,6 @@ pub struct Triple {
 
 #[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
 pub struct SignalData {
-    pub agent: String,
-    pub perspective_expression: PerspectiveExpression,
+    pub remote_agent_did: String,
+    pub payload: PerspectiveExpression,
 }
