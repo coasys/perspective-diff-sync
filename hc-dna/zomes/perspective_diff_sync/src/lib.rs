@@ -5,7 +5,8 @@ use hdk::prelude::*;
 use lazy_static::lazy_static;
 
 use perspective_diff_sync_integrity::{
-    OnlineAgent, Perspective, PerspectiveDiff, PerspectiveDiffReference, PerspectiveExpression,
+    OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff, PerspectiveDiffReference,
+    PerspectiveExpression,
 };
 
 mod errors;
@@ -79,7 +80,7 @@ pub fn render(_: ()) -> ExternResult<Perspective> {
 pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_current_revision::<retriever::HolochainRetreiver>(
+        link_adapter::revisions::update_current_revision::<retriever::HolochainRetreiver>(
             _hash,
             utils::get_now().unwrap(),
         )
@@ -92,7 +93,7 @@ pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
 pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_latest_revision::<retriever::HolochainRetreiver>(
+        link_adapter::revisions::update_latest_revision::<retriever::HolochainRetreiver>(
             _hash,
             utils::get_now().unwrap(),
         )
@@ -143,6 +144,13 @@ pub fn create_did_pub_key_link(did: String) -> ExternResult<()> {
 #[hdk_extern]
 pub fn get_online_agents(_: ()) -> ExternResult<Vec<OnlineAgent>> {
     let res = telepresence::status::get_online_agents()
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn get_online_status(_: ()) -> ExternResult<OnlineAgentAndAction> {
+    let res = telepresence::status::get_online_status()
         .map_err(|error| utils::err(&format!("{}", error)))?;
     Ok(res)
 }
