@@ -2,10 +2,10 @@ use hdk::prelude::*;
 use perspective_diff_sync_integrity::PerspectiveDiff;
 
 use crate::errors::{SocialContextError, SocialContextResult};
+use crate::link_adapter::revisions::current_revision;
+use crate::link_adapter::workspace::Workspace;
 use crate::retriever::PerspectiveDiffRetreiver;
-use crate::revisions::current_revision;
 use crate::utils::get_now;
-use crate::workspace::Workspace;
 use crate::Perspective;
 
 pub fn render<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Perspective> {

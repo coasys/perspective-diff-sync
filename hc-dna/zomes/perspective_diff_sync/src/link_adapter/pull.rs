@@ -4,12 +4,12 @@ use perspective_diff_sync_integrity::{
 };
 
 use crate::errors::SocialContextResult;
-use crate::retriever::PerspectiveDiffRetreiver;
-use crate::revisions::{
+use crate::link_adapter::revisions::{
     current_revision, latest_revision, update_current_revision, update_latest_revision,
 };
+use crate::link_adapter::workspace::{Workspace, NULL_NODE};
+use crate::retriever::PerspectiveDiffRetreiver;
 use crate::utils::{get_now, remove_from_vec};
-use crate::workspace::{Workspace, NULL_NODE};
 use crate::Hash;
 
 fn merge<Retriever: PerspectiveDiffRetreiver>(
@@ -717,8 +717,10 @@ mod tests {
     fn test_high_complex_graph() {
         fn update() {
             let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
-            *graph =
-                MockPerspectiveGraph::from_dot(&crate::test_graphs::HIGH_COMPLEX_GRAPH).unwrap();
+            *graph = MockPerspectiveGraph::from_dot(
+                &crate::link_adapter::test_graphs::HIGH_COMPLEX_GRAPH,
+            )
+            .unwrap();
         }
         update();
 
@@ -760,7 +762,8 @@ mod tests {
     fn test_late_join() {
         fn update() {
             let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
-            *graph = MockPerspectiveGraph::from_dot(&crate::test_graphs::LATE_JOIN).unwrap();
+            *graph = MockPerspectiveGraph::from_dot(&crate::link_adapter::test_graphs::LATE_JOIN)
+                .unwrap();
         }
         update();
 
@@ -797,7 +800,8 @@ mod tests {
     fn test_late_join_from_syncd() {
         fn update() {
             let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
-            *graph = MockPerspectiveGraph::from_dot(&crate::test_graphs::LATE_JOIN2).unwrap();
+            *graph = MockPerspectiveGraph::from_dot(&crate::link_adapter::test_graphs::LATE_JOIN2)
+                .unwrap();
         }
         update();
 
@@ -837,7 +841,8 @@ mod tests {
     fn test_late_join_from_unsyncd() {
         fn update() {
             let mut graph = GLOBAL_MOCKED_GRAPH.lock().unwrap();
-            *graph = MockPerspectiveGraph::from_dot(&crate::test_graphs::LATE_JOIN2).unwrap();
+            *graph = MockPerspectiveGraph::from_dot(&crate::link_adapter::test_graphs::LATE_JOIN2)
+                .unwrap();
         }
         update();
 

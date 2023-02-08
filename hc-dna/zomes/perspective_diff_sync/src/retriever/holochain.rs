@@ -8,6 +8,7 @@ use perspective_diff_sync_integrity::{
 
 use super::PerspectiveDiffRetreiver;
 use crate::errors::{SocialContextError, SocialContextResult};
+use crate::utils::dedup;
 use crate::Hash;
 
 pub struct HolochainRetreiver;
@@ -156,4 +157,32 @@ impl PerspectiveDiffRetreiver for HolochainRetreiver {
 
 fn get_latest_revision_anchor() -> Anchor {
     Anchor("latest_revision".to_string())
+}
+
+pub fn get_active_agent_anchor() -> Anchor {
+    Anchor("active_agent".to_string())
+}
+
+pub fn get_active_agents() -> SocialContextResult<Vec<AgentPubKey>> {
+    let recent_agents = get_links(
+        hash_entry(get_active_agent_anchor())?,
+        LinkTypes::Index,
+        Some(LinkTag::new("active_agent")),
+    )?;
+
+    let recent_agents = recent_agents
+        .into_iter()
+        .map(|val| AgentPubKey::from(EntryHash::from(val.target)))
+        .collect::<Vec<AgentPubKey>>();
+
+    //Dedup the agents
+    let mut recent_agents = dedup(&recent_agents);
+    //Remove ourself from the agents
+    let me = agent_info()?.agent_latest_pubkey;
+    let index = recent_agents.iter().position(|x| *x == me);
+    if let Some(index) = index {
+        recent_agents.remove(index);
+    };
+
+    Ok(recent_agents)
 }

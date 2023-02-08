@@ -132,6 +132,26 @@ pub struct Anchor(pub String);
 
 app_entry!(Anchor);
 
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct PerspectiveExpression {
+    pub links: Vec<LinkExpression>,
+}
+
+app_entry!(PerspectiveExpression);
+
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct OnlineAgent {
+    pub did: String,
+    pub status: Option<PerspectiveExpression>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct OnlineAgentAndAction {
+    pub did: String,
+    pub status: Option<PerspectiveExpression>,
+    pub status_action: Option<ActionHash>,
+}
+
 #[hdk_entry_defs]
 #[unit_enum(UnitEntryTypes)]
 pub enum EntryTypes {
@@ -149,6 +169,8 @@ pub enum EntryTypes {
     LocalTimestampReference(LocalTimestampReference),
     #[entry_def(visibility = "public")]
     Anchor(Anchor),
+    #[entry_def(visibility = "private")]
+    PerspectiveExpression(PerspectiveExpression),
 }
 
 #[hdk_link_types]
@@ -158,4 +180,5 @@ pub enum LinkTypes {
     HashRef,
     TimePath,
     Index,
+    DidLink,
 }
