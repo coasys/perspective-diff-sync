@@ -14,7 +14,19 @@ export class TelepresenceAdapterImplementation implements TelepresenceAdapter {
     }
 
     async getOnlineAgents(): Promise<OnlineAgent[]> {
-        let onlineAgents = await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_online_agents", null);
+        const onlineAgents = [];
+        const getActiveAgents = await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_active_agents", null);
+        for (const activeAgent of getActiveAgents) {
+            await new Promise((resolve) => {
+                setTimeout(async () => {
+                    const getOnlineStatus = await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_online_status", activeAgent.agent_did);
+                    if (getOnlineStatus) {
+                        onlineAgents.push(getOnlineStatus);
+                    };
+                    resolve("")
+                }, 1000)
+            })
+        }
         return onlineAgents as OnlineAgent[];
     }
 

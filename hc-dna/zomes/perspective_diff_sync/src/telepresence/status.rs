@@ -129,34 +129,48 @@ pub fn get_online_agents() -> SocialContextResult<Vec<OnlineAgent>> {
     let active_agents = get_active_agents()?;
     let mut online_agents = Vec::new();
     for active_agent in active_agents {
-        let online_agent_status = call_remote(
-            active_agent.clone(),
-            "perspective_diff_sync",
-            "get_online_status".into(),
-            None,
-            {},
-        );
-        if online_agent_status.is_ok() {
-            let online_agent_response = online_agent_status.unwrap();
-            match online_agent_response {
-                ZomeCallResponse::Ok(online_agent) => {
-                    let online_agent = online_agent.decode::<OnlineAgentAndAction>()?;
-                    online_agents.push(OnlineAgent {
-                        did: online_agent.did,
-                        status: online_agent.status,
-                    });
-                }
-                ZomeCallResponse::Unauthorized(..) => {
-                    debug!("Unauthorized to call agent {}", active_agent);
-                }
-                ZomeCallResponse::NetworkError(..) => {
-                    debug!("Agent {} is offline", active_agent);
-                }
-                ZomeCallResponse::CountersigningSession(_) => {
-                    debug!("Agent {} had countersigning session error", active_agent);
-                }
-            }
+        let online_agent_status = get_agents_status(active_agent);
+        if online_agent_status.is_some() {
+            online_agents.push(online_agent_status.unwrap());
         }
     }
     Ok(online_agents)
+}
+
+pub fn get_agents_status(agent: AgentPubKey) -> Option<OnlineAgent> {
+    let online_agent_status = call_remote(
+        agent.clone(),
+        "perspective_diff_sync",
+        "get_online_status".into(),
+        None,
+        {},
+    );
+    if online_agent_status.is_ok() {
+        let online_agent_response = online_agent_status.unwrap();
+        match online_agent_response {
+            ZomeCallResponse::Ok(online_agent) => {
+                let online_agent = online_agent
+                    .decode::<OnlineAgentAndAction>()
+                    .expect("Could not decode online agent");
+                Some(OnlineAgent {
+                    did: online_agent.did,
+                    status: online_agent.status,
+                })
+            }
+            ZomeCallResponse::Unauthorized(..) => {
+                debug!("Unauthorized to call agent {}", agent.clone());
+                None
+            }
+            ZomeCallResponse::NetworkError(..) => {
+                debug!("Agent {} is offline", agent.clone());
+                None
+            }
+            ZomeCallResponse::CountersigningSession(_) => {
+                debug!("Agent {} had countersigning session error", agent);
+                None
+            }
+        }
+    } else {
+        None
+    }
 }

@@ -156,6 +156,12 @@ pub fn get_online_status(_: ()) -> ExternResult<OnlineAgentAndAction> {
 }
 
 #[hdk_extern]
+pub fn get_agents_status(agent: AgentPubKey) -> ExternResult<Option<OnlineAgent>> {
+    let res = telepresence::status::get_agents_status(agent);
+    Ok(res)
+}
+
+#[hdk_extern]
 pub fn send_signal(signal_data: inputs::SignalData) -> ExternResult<PerspectiveExpression> {
     let res = telepresence::signal::send_signal(signal_data)
         .map_err(|error| utils::err(&format!("{}", error)))?;
@@ -165,6 +171,13 @@ pub fn send_signal(signal_data: inputs::SignalData) -> ExternResult<PerspectiveE
 #[hdk_extern]
 pub fn send_broadcast(data: PerspectiveExpression) -> ExternResult<PerspectiveExpression> {
     let res = telepresence::signal::send_broadcast(data)
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn get_active_agents(_: ()) -> ExternResult<Vec<AgentPubKey>> {
+    let res = retriever::holochain::get_active_agents()
         .map_err(|error| utils::err(&format!("{}", error)))?;
     Ok(res)
 }
