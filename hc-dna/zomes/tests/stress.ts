@@ -1,4 +1,4 @@
-import { AgentHapp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
+import { AgentApp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
 import test from "tape-promise/tape.js";
@@ -8,7 +8,7 @@ import divide from 'divide-bigint'
 
 let createdLinks = new Map<string, Array<LinkExpression>>()
 
-async function createLinks(happ: AgentHapp, agentName: string, count: number) {
+async function createLinks(happ: AgentApp, agentName: string, count: number) {
     if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
     for(let i=0; i < count; i++) {
         let { data } = await create_link_expression(happ.cells[0], agentName);
