@@ -61,21 +61,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v13
+    - uses: actions-rs/toolchain@v1
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v9
+        toolchain: 1.63.0
+    - name: Cache cargo
+      id: cache-cargo
+      uses: actions/cache@v3
       with:
-        name: perspect3vism
-        # If you chose API tokens for write access OR if you have a private cache
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: rustup target add wasm32-unknown-unknown
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-render"
+    - run: npm install -g npm
+    - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
+    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-render
 
   revisions:
     name: Revisions
@@ -90,21 +99,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v13
+    - uses: actions-rs/toolchain@v1
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v9
+        toolchain: 1.63.0
+    - name: Cache cargo
+      id: cache-cargo
+      uses: actions/cache@v3
       with:
-        name: perspect3vism
-        # If you chose API tokens for write access OR if you have a private cache
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: rustup target add wasm32-unknown-unknown
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-revisions"
+    - run: npm install -g npm
+    - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
+    - run: cargo install --version 0.2.3 lair_keystore
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-revisions
 
   signals:
     name: Signals
@@ -119,21 +137,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v13
+    - uses: actions-rs/toolchain@v1
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v9
+        toolchain: 1.63.0
+    - name: Cache cargo
+      id: cache-cargo
+      uses: actions/cache@v3
       with:
-        name: perspect3vism
-        # If you chose API tokens for write access OR if you have a private cache
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: rustup target add wasm32-unknown-unknown
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-signals"
+    - run: npm install -g npm
+    - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
+    - run: cargo install --version 0.2.3 lair_keystore
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-signals
 
 
   stress:
@@ -149,21 +176,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v13
+    - uses: actions-rs/toolchain@v1
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v9
+        toolchain: 1.63.0
+    - name: Cache cargo
+      id: cache-cargo
+      uses: actions/cache@v3
       with:
-        name: perspect3vism
-        # If you chose API tokens for write access OR if you have a private cache
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: rustup target add wasm32-unknown-unknown
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-stress"
+    - run: npm install -g npm
+    - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
+    - run: cargo install --version 0.2.3 lair_keystore
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-stress
 
   telepresence:
     name: Telepresence
@@ -178,18 +214,27 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: cachix/install-nix-action@v13
+    - uses: actions-rs/toolchain@v1
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v9
+        toolchain: 1.63.0
+    - name: Cache cargo
+      id: cache-cargo
+      uses: actions/cache@v3
       with:
-        name: perspect3vism
-        # If you chose API tokens for write access OR if you have a private cache
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: rustup target add wasm32-unknown-unknown
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-telepresence"
+    - run: npm install -g npm
+    - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
+    - run: cargo install --version 0.2.3 lair_keystore
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-telepresence
