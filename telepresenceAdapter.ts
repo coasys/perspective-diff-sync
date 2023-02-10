@@ -17,7 +17,7 @@ export class TelepresenceAdapterImplementation implements TelepresenceAdapter {
         const getActiveAgents = await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_active_agents", null);
         let calls = [];
         for (const activeAgent of getActiveAgents) {
-            calls.push({dnaNick: DNA_NICK, zomeName: ZOME_NAME, fnName: "get_online_status", params: activeAgent.agent_did});
+            calls.push({dnaNick: DNA_NICK, zomeName: ZOME_NAME, fnName: "get_agents_status", params: activeAgent});
         };
         return await this.hcDna.callAsync(calls, 1000) as OnlineAgent[];
     }
