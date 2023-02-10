@@ -3,7 +3,18 @@ import { sleep, generate_link_expression, sortedObject } from "./utils";
 import test from "tape-promise/tape.js";
 import { resolve } from "path";
 import { dnas } from "./common";
+import { PerspectiveExpression } from "@perspect3vism/ad4m";
 
+function generate_perspective_expression(author: string, linkContent: string): PerspectiveExpression {
+    return {
+        author: author,
+        timestamp: new Date().toISOString(), 
+        data: {
+            links: [generate_link_expression(linkContent)]
+        },
+        proof: {signature: "sig", key: "key"},
+    };
+}
 //@ts-ignore
 export async function testTelepresence(t) {
     const scenario = new Scenario();
@@ -78,9 +89,7 @@ export async function testTelepresence(t) {
     await sleep(2000)
 
     //Test setting and getting agent status
-    let perspectiveExpression = {
-        links: [generate_link_expression("alice")]
-    };
+    let perspectiveExpression = generate_perspective_expression(aliceDid, "alice");
     await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync",
         fn_name: "set_online_status",
@@ -95,12 +104,11 @@ export async function testTelepresence(t) {
     //@ts-ignore
     t.isEqual(bobSeenStatus.length, 1);
     //@ts-ignore
-    t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status.links[0])), JSON.stringify(sortedObject(perspectiveExpression.links[0])));
+    t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status.data.links[0])), JSON.stringify(sortedObject(perspectiveExpression.data.links[0])));
 
     //Test that if alice updates her online status that bob sees the update, and does not get duplicates
-    perspectiveExpression = {
-        links: [generate_link_expression("alice")]
-    };
+    perspectiveExpression = generate_perspective_expression(aliceDid, "alice2");
+
     await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync",
         fn_name: "set_online_status",
@@ -113,7 +121,7 @@ export async function testTelepresence(t) {
     //@ts-ignore
     t.isEqual(bobSeenStatus.length, 1);
     //@ts-ignore
-    t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status.links[0])), JSON.stringify(sortedObject(perspectiveExpression.links[0])));
+    t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status.data.links[0])), JSON.stringify(sortedObject(perspectiveExpression.data.links[0])));
 
     //Test sending signal to single agent
     await aliceHapps.cells[0].callZome({

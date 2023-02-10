@@ -98,7 +98,7 @@ impl Ord for PerspectiveDiffEntryReference {
 
 app_entry!(PerspectiveDiffEntryReference);
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Perspective {
     pub links: Vec<LinkExpression>,
 }
@@ -134,7 +134,10 @@ app_entry!(Anchor);
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct PerspectiveExpression {
-    pub links: Vec<LinkExpression>,
+    pub author: String,
+    pub data: Perspective,
+    pub timestamp: DateTime<Utc>,
+    pub proof: ExpressionProof,
 }
 
 app_entry!(PerspectiveExpression);
@@ -170,7 +173,7 @@ pub enum EntryTypes {
     #[entry_def(visibility = "public")]
     Anchor(Anchor),
     #[entry_def(visibility = "private")]
-    PerspectiveExpression(PerspectiveExpression),
+    PrivateOnlineStatus(PerspectiveExpression),
 }
 
 #[hdk_link_types]
