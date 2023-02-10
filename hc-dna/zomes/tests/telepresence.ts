@@ -1,4 +1,4 @@
-import { Scenario } from "@holochain/tryorama";
+import { addAllAgentsToAllConductors, Scenario } from "@holochain/tryorama";
 import { sleep, generate_link_expression, sortedObject } from "./utils";
 import test from "tape-promise/tape.js";
 import { resolve } from "path";
@@ -56,9 +56,7 @@ export async function testTelepresence(t) {
     })
 
     await scenario.shareAllAgents();
-
-    //Sleep to give time for gossip
-    await sleep(2000)
+    await addAllAgentsToAllConductors([aliceHapps.conductor, bobHapps.conductor]);
 
     const bobDid = "did:key:bob";
     const aliceDid = "did:key:alice";
@@ -75,6 +73,9 @@ export async function testTelepresence(t) {
         payload: bobDid
     });
     console.log("Set did pub key links");
+
+    //Sleep to give time for gossip
+    await sleep(2000)
 
     //Test setting and getting agent status
     let perspectiveExpression = {
@@ -121,7 +122,7 @@ export async function testTelepresence(t) {
         payload: {remote_agent_did: "did:key:bob", payload: perspectiveExpression}
     });
     //Sleep to give time for signals to arrive
-    await sleep(10000)
+    await sleep(1000)
     //@ts-ignore
     t.isEqual(bobSignalCount, 1);
 
@@ -133,7 +134,7 @@ export async function testTelepresence(t) {
         payload: perspectiveExpression
     });
     //Sleep to give time for signals to arrive
-    await sleep(5000)
+    await sleep(1000)
     //@ts-ignore
     t.isEqual(aliceSignalCount, 1);
 
