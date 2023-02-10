@@ -124,6 +124,8 @@ export async function stressTest(t) {
 
     }
 
+    // Wait for gossip of latest_revision, needed for render
+    await sleep(1000)
 
     const startRenderA = hrtime.bigint();
     let alice_rendered = await call(aliceHapps, "render") as Perspective
