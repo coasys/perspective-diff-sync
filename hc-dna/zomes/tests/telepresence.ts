@@ -104,6 +104,8 @@ export async function testTelepresence(t) {
     //@ts-ignore
     t.isEqual(bobSeenStatus.length, 1);
     //@ts-ignore
+    t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status)), JSON.stringify(sortedObject(perspectiveExpression)));
+    //@ts-ignore
     t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status.data.links[0])), JSON.stringify(sortedObject(perspectiveExpression.data.links[0])));
 
     //Test that if alice updates her online status that bob sees the update, and does not get duplicates
@@ -120,6 +122,8 @@ export async function testTelepresence(t) {
     });
     //@ts-ignore
     t.isEqual(bobSeenStatus.length, 1);
+    //@ts-ignore
+    t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status)), JSON.stringify(sortedObject(perspectiveExpression)));
     //@ts-ignore
     t.equal(JSON.stringify(sortedObject(bobSeenStatus[0].status.data.links[0])), JSON.stringify(sortedObject(perspectiveExpression.data.links[0])));
 
