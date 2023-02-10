@@ -36,7 +36,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "rustup target add wasm32-unknown-unknown && npm run test-pull"
+    - run: rustup target add wasm32-unknown-unknown
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-pull"
 
   render:
     name: Render
@@ -64,7 +65,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "rustup target add wasm32-unknown-unknown && npm run test-render"
+    - run: rustup target add wasm32-unknown-unknown
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-render"
 
   revisions:
     name: Revisions
@@ -92,7 +94,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "rustup target add wasm32-unknown-unknown && npm run test-revisions"
+    - run: rustup target add wasm32-unknown-unknown
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-revisions"
 
   signals:
     name: Signals
@@ -120,7 +123,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "rustup target add wasm32-unknown-unknown && npm run test-signals"
+    - run: rustup target add wasm32-unknown-unknown
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-signals"
 
 
   stress:
@@ -149,7 +153,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "rustup target add wasm32-unknown-unknown && npm run test-stress"
+    - run: rustup target add wasm32-unknown-unknown
+    - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-stress"
 
   telepresence:
     name: Telepresence
@@ -177,4 +182,5 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+    - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build && nix-shell ../../default.nix --run "npm run test-telepresence"
