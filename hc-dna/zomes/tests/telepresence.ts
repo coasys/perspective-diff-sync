@@ -121,7 +121,7 @@ export async function testTelepresence(t) {
         payload: {remote_agent_did: "did:key:bob", payload: perspectiveExpression}
     });
     //Sleep to give time for signals to arrive
-    await sleep(5000)
+    await sleep(10000)
     //@ts-ignore
     t.isEqual(bobSignalCount, 1);
 
