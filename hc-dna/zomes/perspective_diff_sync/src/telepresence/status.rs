@@ -8,10 +8,6 @@ use crate::errors::{SocialContextError, SocialContextResult};
 use crate::retriever::holochain::get_active_agents;
 
 pub fn set_online_status(status: PerspectiveExpression) -> SocialContextResult<()> {
-    let existing_status = get_online_status()?;
-    if existing_status.status_action.is_some() {
-        delete_entry(existing_status.status_action.unwrap())?;
-    };
     let entry = EntryTypes::PerspectiveExpression(status);
     create_entry(&entry)?;
     Ok(())

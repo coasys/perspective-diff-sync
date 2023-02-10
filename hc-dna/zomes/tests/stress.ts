@@ -103,7 +103,7 @@ export async function stressTest(t) {
             }
         }
         
-        await sleep(1000)
+        await sleep(3000)
         
 
         let alice_latest_revision = await call(aliceHapps, "latest_revision")
@@ -125,19 +125,20 @@ export async function stressTest(t) {
     }
 
     // Wait for gossip of latest_revision, needed for render
-    await sleep(1000)
+    await sleep(5000)
 
     const startRenderA = hrtime.bigint();
+    await call(aliceHapps, "pull");
     let alice_rendered = await call(aliceHapps, "render") as Perspective
     const endRenderA = hrtime.bigint();
-    console.log(`Alice render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
+    console.log(`Alice pull + render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
     
 
     const startRenderB = hrtime.bigint();
     await call(bobHapps, "pull");
-    const endRenderB = hrtime.bigint();
-    console.log(`Bob render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
     let bob_rendered = await call(bobHapps, "render") as Perspective
+    const endRenderB = hrtime.bigint();
+    console.log(`Bob pull + render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 
