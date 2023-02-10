@@ -251,7 +251,7 @@ export async function renderMerges(t) {
         fn_name: "update_current_revision", 
         payload: commit6
     });
-    await sleep(500)
+    await sleep(2000)
 
     console.log("bob pull");
     await call(bobHapps, "pull")
