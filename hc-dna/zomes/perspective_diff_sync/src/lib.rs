@@ -182,6 +182,13 @@ pub fn get_active_agents(_: ()) -> ExternResult<Vec<AgentPubKey>> {
     Ok(res)
 }
 
+#[hdk_extern]
+pub fn get_others(_: ()) -> ExternResult<Vec<String>> {
+    let res =
+        telepresence::status::get_others().map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
 //not loading from DNA properies since dna zome properties is always null for some reason
 lazy_static! {
     pub static ref ACTIVE_AGENT_DURATION: chrono::Duration = chrono::Duration::seconds(3600);

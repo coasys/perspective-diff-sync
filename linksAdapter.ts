@@ -24,8 +24,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async others(): Promise<DID[]> {
-    const agents = await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_active_agents", null);
-    return agents.map(a => a.agent_did)
+    return await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_others", null);
   }
 
   async latestRevision(): Promise<string> {

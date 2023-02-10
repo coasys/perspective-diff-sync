@@ -121,6 +121,43 @@ pub fn get_dids_agent_key(did: String) -> SocialContextResult<Option<AgentPubKey
     }
 }
 
+pub fn get_agents_did_key(agent: AgentPubKey) -> SocialContextResult<Option<String>> {
+    let mut did_links = get_links(agent, LinkTypes::DidLink, None)?;
+    if did_links.len() > 0 {
+        let did = get(
+            did_links
+                .remove(0)
+                .target
+                .into_entry_hash()
+                .expect("Could not get entry_hash"),
+            GetOptions::latest(),
+        )?
+        .ok_or(SocialContextError::InternalError(
+            "Could not find did entry for given did entry reference",
+        ))?
+        .entry()
+        .to_app_option::<Anchor>()?
+        .ok_or(SocialContextError::InternalError(
+            "Expected element to contain app entry data",
+        ))?;
+        Ok(Some(did.0))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn get_others() -> SocialContextResult<Vec<String>> {
+    let active_agents = get_active_agents()?;
+    let mut others = Vec::new();
+    for active_agent in active_agents {
+        let did_key = get_agents_did_key(active_agent)?;
+        if did_key.is_some() {
+            others.push(did_key.unwrap());
+        }
+    }
+    Ok(others)
+}
+
 pub fn get_online_agents() -> SocialContextResult<Vec<OnlineAgent>> {
     let active_agents = get_active_agents()?;
     let mut online_agents = Vec::new();
