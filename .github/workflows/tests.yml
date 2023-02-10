@@ -45,7 +45,7 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm
     - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
-    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cargo install --version 0.2.3 lair_keystore || echo "lair already installed"
     - run: cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-pull
 
   render:
@@ -83,7 +83,7 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm
     - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
-    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cargo install --version 0.2.3 lair_keystore || echo "lair already installed"
     - run: cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-render
 
   revisions:
@@ -121,7 +121,7 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm
     - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
-    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cargo install --version 0.2.3 lair_keystore || echo "lair already installed"
     - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-revisions
 
   signals:
@@ -159,7 +159,7 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm
     - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
-    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cargo install --version 0.2.3 lair_keystore || echo "lair already installed"
     - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-signals
 
 
@@ -198,7 +198,7 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm
     - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
-    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cargo install --version 0.2.3 lair_keystore || echo "lair already installed"
     - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-stress
 
   telepresence:
@@ -236,5 +236,5 @@ jobs:
     - run: rustup target add wasm32-unknown-unknown
     - run: npm install -g npm
     - run: cd hc-dna/zomes/tests && ./download-hc-binaries.sh
-    - run: cargo install --version 0.2.3 lair_keystore
+    - run: cargo install --version 0.2.3 lair_keystore || echo "lair already installed"
     - run: npm install -g npm && cd hc-dna/zomes/tests && npm i && npm run build-ci && npm run test-telepresence
