@@ -17,6 +17,9 @@ export async function unSyncFetch(t) {
         payload: {additions: [generate_link_expression("alice")], removals: []}
     });
     console.warn("\ncommit", commit);
+
+    // need to for gossip to have commit be seen by bob
+    await sleep(1000)
     
     let pull_alice = await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
