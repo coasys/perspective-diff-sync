@@ -12,8 +12,8 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::errors::{SocialContextError, SocialContextResult};
+use crate::link_adapter::topo_sort::topo_sort_diff_references;
 use crate::retriever::{hash_to_node_id, PerspectiveDiffRetreiver};
-use crate::topo_sort::topo_sort_diff_references;
 use crate::utils::get_now;
 use crate::Hash;
 
@@ -871,8 +871,8 @@ impl Workspace {
 #[cfg(test)]
 mod tests {
     use super::NULL_NODE;
+    use crate::link_adapter::workspace::Workspace;
     use crate::retriever::{node_id_hash, MockPerspectiveGraph, GLOBAL_MOCKED_GRAPH};
-    use crate::workspace::Workspace;
     use dot_structures;
 
     #[test]

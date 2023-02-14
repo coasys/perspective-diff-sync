@@ -1,5 +1,4 @@
-import type { LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression } from "@perspect3vism/ad4m";
-import type { DID } from "@perspect3vism/ad4m/lib/DID";
+import type { LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression, DID } from "@perspect3vism/ad4m";
 import { Perspective } from "@perspect3vism/ad4m";
 import { DNA_NICK, ZOME_NAME } from "./dna";
 
@@ -25,7 +24,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async others(): Promise<DID[]> {
-    return []
+    return await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_others", null);
   }
 
   async latestRevision(): Promise<string> {

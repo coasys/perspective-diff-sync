@@ -18,6 +18,8 @@ pub enum SocialContextError {
     InternalError(&'static str),
     #[error("No common ancestor found")]
     NoCommonAncestorFound,
+    #[error("No did found")]
+    NoDidFound,
 }
 
 pub type SocialContextResult<T> = Result<T, SocialContextError>;

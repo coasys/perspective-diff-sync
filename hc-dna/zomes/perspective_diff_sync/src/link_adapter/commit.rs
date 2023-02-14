@@ -1,16 +1,16 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    Anchor, EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
-    PerspectiveDiffReference,
+    EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference,
 };
 
-//use crate::errors::SocialContextError;
 use crate::errors::SocialContextResult;
-//use crate::pull::pull;
+use crate::link_adapter::revisions::{
+    current_revision, update_current_revision, update_latest_revision,
+};
+use crate::link_adapter::snapshots::generate_snapshot;
+use crate::retriever::holochain::{get_active_agent_anchor, get_active_agents};
 use crate::retriever::PerspectiveDiffRetreiver;
-use crate::revisions::{current_revision, update_current_revision, update_latest_revision};
-use crate::snapshots::generate_snapshot;
-use crate::utils::{dedup, get_now};
+use crate::utils::get_now;
 use crate::{ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 
 pub fn commit<Retriever: PerspectiveDiffRetreiver>(
@@ -89,31 +89,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
 
     if *ENABLE_SIGNALS {
-        let now_profile = get_now()?.time();
-        let recent_agents = get_links(
-            hash_entry(get_active_agent_anchor())?,
-            LinkTypes::Index,
-            Some(LinkTag::new("active_agent")),
-        )?;
-
-        let after = get_now()?.time();
-        debug!(
-            "===PerspectiveDiffSync.commit() - Profiling: Took {} to get the active agents",
-            (after - now_profile).num_milliseconds()
-        );
-        let recent_agents = recent_agents
-            .into_iter()
-            .map(|val| AgentPubKey::from(EntryHash::from(val.target)))
-            .collect::<Vec<AgentPubKey>>();
-
-        //Dedup the agents
-        let mut recent_agents = dedup(&recent_agents);
-        //Remove ourself from the agents
-        let me = agent_info()?.agent_latest_pubkey;
-        let index = recent_agents.iter().position(|x| *x == me);
-        if let Some(index) = index {
-            recent_agents.remove(index);
-        }
+        let recent_agents = get_active_agents()?;
 
         debug!(
             "Social-Context.add_link: Sending signal to agents: {:#?}",
@@ -159,8 +135,4 @@ pub fn add_active_agent_link<Retriever: PerspectiveDiffRetreiver>() -> SocialCon
     let after_fn_end = get_now()?.time();
     debug!("===PerspectiveDiffSync.add_active_agent_link() - Profiling: Took {} to complete whole add_active_agent_link()", (after_fn_end - now_fn_start).num_milliseconds());
     Ok(())
-}
-
-fn get_active_agent_anchor() -> Anchor {
-    Anchor("active_agent".to_string())
 }

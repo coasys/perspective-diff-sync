@@ -3,8 +3,8 @@ use perspective_diff_sync_integrity::{
     LinkExpression, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, Snapshot,
 };
 
-use crate::chunked_diffs::ChunkedDiffs;
 use crate::errors::{SocialContextError, SocialContextResult};
+use crate::link_adapter::chunked_diffs::ChunkedDiffs;
 use crate::retriever::HolochainRetreiver;
 use crate::utils::get_now;
 use crate::{Hash, CHUNK_SIZE};

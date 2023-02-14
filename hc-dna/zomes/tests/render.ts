@@ -94,6 +94,8 @@ export async function render(t) {
     await call(bobHapps, "update_latest_revision", commit5);
     await call(bobHapps, "update_current_revision", commit5);
 
+    await sleep(1000);
+
     await call(aliceHapps, "pull"); 
     let alice_render = await call(aliceHapps, "render");
     console.warn("Alice rendered with", alice_render);
@@ -251,7 +253,7 @@ export async function renderMerges(t) {
         fn_name: "update_current_revision", 
         payload: commit6
     });
-    await sleep(500)
+    await sleep(2000)
 
     console.log("bob pull");
     await call(bobHapps, "pull")

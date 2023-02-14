@@ -98,7 +98,7 @@ impl Ord for PerspectiveDiffEntryReference {
 
 app_entry!(PerspectiveDiffEntryReference);
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Perspective {
     pub links: Vec<LinkExpression>,
 }
@@ -132,6 +132,29 @@ pub struct Anchor(pub String);
 
 app_entry!(Anchor);
 
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct PerspectiveExpression {
+    pub author: String,
+    pub data: Perspective,
+    pub timestamp: DateTime<Utc>,
+    pub proof: ExpressionProof,
+}
+
+app_entry!(PerspectiveExpression);
+
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct OnlineAgent {
+    pub did: String,
+    pub status: Option<PerspectiveExpression>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct OnlineAgentAndAction {
+    pub did: String,
+    pub status: Option<PerspectiveExpression>,
+    pub status_action: Option<ActionHash>,
+}
+
 #[hdk_entry_defs]
 #[unit_enum(UnitEntryTypes)]
 pub enum EntryTypes {
@@ -149,6 +172,8 @@ pub enum EntryTypes {
     LocalTimestampReference(LocalTimestampReference),
     #[entry_def(visibility = "public")]
     Anchor(Anchor),
+    #[entry_def(visibility = "private")]
+    PrivateOnlineStatus(PerspectiveExpression),
 }
 
 #[hdk_link_types]
@@ -158,4 +183,5 @@ pub enum LinkTypes {
     HashRef,
     TimePath,
     Index,
+    DidLink,
 }

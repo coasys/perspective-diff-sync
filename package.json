@@ -4,14 +4,14 @@
   "description": "An AD4M language for syncing mutations to a share perspective",
   "main": "index.js",
   "scripts": {
-    "build-dna": "cd hc-dna && nix-shell ./default.nix --run ./build.sh && cd ..",
+    "build-dna": "cd hc-dna && ./build.sh && cd ..",
     "build": "npm run build-dna && tsc && rollup -c",
     "dev": "tsc && rollup -c -w"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@perspect3vism/ad4m": "0.2.7",
+    "@perspect3vism/ad4m": "0.2.12",
     "@perspect3vism/rollup-plugin-dna": "^0.0.2",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-json": "^4.1.0",

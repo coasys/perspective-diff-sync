@@ -4,22 +4,17 @@ extern crate lazy_static;
 use hdk::prelude::*;
 use lazy_static::lazy_static;
 
-use perspective_diff_sync_integrity::{Perspective, PerspectiveDiff, PerspectiveDiffReference};
+use perspective_diff_sync_integrity::{
+    OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff, PerspectiveDiffReference,
+    PerspectiveExpression,
+};
 
-mod chunked_diffs;
-mod commit;
 mod errors;
 mod inputs;
-mod pull;
-mod render;
+mod link_adapter;
 mod retriever;
-mod revisions;
-mod snapshots;
-mod test_graphs;
-mod tests;
-mod topo_sort;
+mod telepresence;
 mod utils;
-mod workspace;
 
 #[macro_use]
 extern crate maplit;
@@ -28,7 +23,12 @@ pub type Hash = HoloHash<holo_hash::hash_type::Action>;
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
-    let functions: GrantedFunctions = GrantedFunctions::All;
+    let mut functions = BTreeSet::new();
+    functions.insert((zome_info()?.name, "get_online_status".into()));
+    //TODO; is this next function needed?
+    functions.insert((zome_info()?.name, "recv_remote_signal".into()));
+
+    let functions: GrantedFunctions = GrantedFunctions::Listed(functions);
 
     create_cap_grant(CapGrantEntry {
         tag: "".into(),
@@ -36,49 +36,43 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
         access: ().into(),
         functions,
     })?;
-    commit::add_active_agent_link::<retriever::HolochainRetreiver>()
+    link_adapter::commit::add_active_agent_link::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))?;
     Ok(InitCallbackResult::Pass)
 }
 
-#[hdk_extern]
-fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    let sig: PerspectiveDiffReference = PerspectiveDiffReference::try_from(signal.clone())
-        .map_err(|error| utils::err(&format!("{}", error)))?;
-    emit_signal(sig)?;
-    Ok(())
-}
+/// LinkLanguage implementation
 
 #[hdk_extern]
 pub fn commit(diff: PerspectiveDiff) -> ExternResult<Hash> {
-    commit::commit::<retriever::HolochainRetreiver>(diff)
+    link_adapter::commit::commit::<retriever::HolochainRetreiver>(diff)
         .map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
 pub fn latest_revision(_: ()) -> ExternResult<Option<Hash>> {
-    revisions::latest_revision::<retriever::HolochainRetreiver>()
+    link_adapter::revisions::latest_revision::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
-    revisions::current_revision::<retriever::HolochainRetreiver>()
+    link_adapter::revisions::current_revision::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|val| val.map(|val| val.hash))
 }
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    pull::pull::<retriever::HolochainRetreiver>(true)
+    link_adapter::pull::pull::<retriever::HolochainRetreiver>(true)
         .map_err(|error| utils::err(&format!("{}", error)))
         .map(|res| res)
 }
 
 #[hdk_extern]
 pub fn render(_: ()) -> ExternResult<Perspective> {
-    render::render::<retriever::HolochainRetreiver>()
+    link_adapter::render::render::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))
 }
 
@@ -86,7 +80,7 @@ pub fn render(_: ()) -> ExternResult<Perspective> {
 pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_current_revision::<retriever::HolochainRetreiver>(
+        link_adapter::revisions::update_current_revision::<retriever::HolochainRetreiver>(
             _hash,
             utils::get_now().unwrap(),
         )
@@ -99,7 +93,7 @@ pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
 pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
     #[cfg(feature = "test")]
     {
-        revisions::update_latest_revision::<retriever::HolochainRetreiver>(
+        link_adapter::revisions::update_latest_revision::<retriever::HolochainRetreiver>(
             _hash,
             utils::get_now().unwrap(),
         )
@@ -110,8 +104,89 @@ pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
 
 #[hdk_extern]
 pub fn fast_forward_signal(perspective_diff_ref: PerspectiveDiffReference) -> ExternResult<()> {
-    pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref)
+    link_adapter::pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref)
         .map_err(|error| utils::err(&format!("{}", error)))
+}
+
+/// Signal handling
+
+#[hdk_extern]
+fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
+    //Check if its a normal diff expression signal
+    match PerspectiveDiffReference::try_from(signal.clone()) {
+        Ok(sig) => emit_signal(sig)?,
+        //Check if its a broadcast message
+        Err(_) => match PerspectiveExpression::try_from(signal.clone()) {
+            Ok(sig) => emit_signal(sig)?,
+            //Check if its an online ping
+            Err(_) => return Err(utils::err(&format!("Signal not recognized: {:?}", signal))),
+        },
+    };
+    Ok(())
+}
+
+// Telepresence implementation
+
+#[hdk_extern]
+pub fn set_online_status(status: PerspectiveExpression) -> ExternResult<()> {
+    telepresence::status::set_online_status(status)
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(())
+}
+
+#[hdk_extern]
+pub fn create_did_pub_key_link(did: String) -> ExternResult<()> {
+    telepresence::status::create_did_pub_key_link(did)
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(())
+}
+
+#[hdk_extern]
+pub fn get_online_agents(_: ()) -> ExternResult<Vec<OnlineAgent>> {
+    let res = telepresence::status::get_online_agents()
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn get_online_status(_: ()) -> ExternResult<OnlineAgentAndAction> {
+    let res = telepresence::status::get_online_status()
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn get_agents_status(agent: AgentPubKey) -> ExternResult<Option<OnlineAgent>> {
+    let res = telepresence::status::get_agents_status(agent);
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn send_signal(signal_data: inputs::SignalData) -> ExternResult<PerspectiveExpression> {
+    let res = telepresence::signal::send_signal(signal_data)
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn send_broadcast(data: PerspectiveExpression) -> ExternResult<PerspectiveExpression> {
+    let res = telepresence::signal::send_broadcast(data)
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn get_active_agents(_: ()) -> ExternResult<Vec<AgentPubKey>> {
+    let res = retriever::holochain::get_active_agents()
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
+}
+
+#[hdk_extern]
+pub fn get_others(_: ()) -> ExternResult<Vec<String>> {
+    let res =
+        telepresence::status::get_others().map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(res)
 }
 
 //not loading from DNA properies since dna zome properties is always null for some reason

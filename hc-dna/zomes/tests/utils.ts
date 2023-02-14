@@ -68,3 +68,14 @@ export async function createConductors(num: number): Promise<{agent_happ: AgentA
     }
     return out
 }
+
+//@ts-ignore
+export function sortedObject(unordered) {
+  if(typeof unordered !== "object") return unordered;
+  return Object.keys(unordered).sort().reduce(
+    (obj, key) => {
+        //@ts-ignore
+        obj[key] = sortedObject(unordered[key]);
+        return obj;
+    }, {});
+}
