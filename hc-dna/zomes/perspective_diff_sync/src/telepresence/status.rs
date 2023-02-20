@@ -61,9 +61,13 @@ pub fn get_online_status() -> SocialContextResult<OnlineAgentAndAction> {
 }
 
 pub fn create_did_pub_key_link(did: String) -> SocialContextResult<()> {
+    debug!("PerspectiveDiffSync.create_did_pub_key_link({:?})", did);
     let agent_key = agent_info()?.agent_latest_pubkey;
+    debug!("PerspectiveDiffSync.create_did_pub_key_link() agent_key: {:?}", agent_key);
     let did_links = get_links(agent_key.clone(), LinkTypes::DidLink, None)?;
+    debug!("PerspectiveDiffSync.create_did_pub_key_link() did_links: {:?}", did_links);
     if did_links.len() == 0 {
+
         let entry = EntryTypes::Anchor(Anchor(did));
         let _did_entry = create_entry(&entry)?;
         let did_entry_hash = hash_entry(entry)?;
@@ -112,6 +116,7 @@ pub fn get_dids_agent_key(did: String) -> SocialContextResult<Option<AgentPubKey
     let did_entry = Anchor(did);
     let did_entry_hash = hash_entry(EntryTypes::Anchor(did_entry.clone()))?;
     let did_links = get_links(did_entry_hash, LinkTypes::DidLink, None)?;
+    debug!("PerspectiveDiffSync.get_dids_agent_key() did_links: {:?}", did_links);
     if did_links.len() > 0 {
         Ok(Some(AgentPubKey::from(EntryHash::from(
             did_links[0].target.clone(),
