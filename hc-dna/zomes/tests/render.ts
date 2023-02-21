@@ -300,7 +300,7 @@ async function testSnapshotRenders(t) {
     let bobHapps = installs[1].agent_happ;
     let bobConductor = installs[1].conductor;
 
-    await createLinks(aliceHapps, "alice", 149);
+    await createLinks(aliceHapps, "alice", 150);
 
     await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
 
@@ -316,7 +316,7 @@ async function testSnapshotRenders(t) {
         return diff.additions.find(l => ad4m.linkEqual(l,link)) || diff.removals.find(l => ad4m.linkEqual(l,link))
     }
 
-    console.log("bob pull length", bobPull.additions.length)
+    console.log("bob pull length", bobPull.additions.length, createdLinks.get("alice")!.length)
     t.assert(bobPull.additions.length === createdLinks.get("alice")!.length)
     
     for(let link of createdLinks.get("alice")!) {
@@ -333,13 +333,13 @@ async function testSnapshotRenders(t) {
 
     //Test now alice rendering bobs stuff
 
-    await createLinks(bobHapps, "bob", 149);
+    await createLinks(bobHapps, "bob", 150);
 
     await sleep(2000);
 
     const alicePull = await call(aliceHapps, "pull") as PerspectiveDiff;
 
-    console.log("alice pull length", alicePull.additions.length);
+    console.log("alice pull length", alicePull.additions.length, createdLinks.get("bob")!.length);
     t.assert(alicePull.additions.length === createdLinks.get("bob")!.length);
 
     for(let link of createdLinks.get("bob")!) {
@@ -348,7 +348,7 @@ async function testSnapshotRenders(t) {
 
     const aliceRender = await call(aliceHapps, "render") as Perspective;
 
-    console.log("alice render length", aliceRender.links.length);
+    console.log("alice render length", aliceRender.links.length, createdLinks.get("bob")!.length + createdLinks.get("alice")!.length);
     t.assert(aliceRender.links.length === createdLinks.get("bob")!.length + createdLinks.get("alice")!.length)
 
     await aliceConductor.shutDown();
