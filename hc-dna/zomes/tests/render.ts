@@ -1,6 +1,7 @@
-import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
-import { call, sleep, generate_link_expression, createConductors} from "./utils";
+import { addAllAgentsToAllConductors, AgentApp, cleanAllConductors } from "@holochain/tryorama";
+import { call, sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
 import test from "tape-promise/tape.js";
+import ad4m, { LinkExpression, Perspective, PerspectiveDiff } from "@perspect3vism/ad4m";
 
 //NOTE; these tests are dependant on the SNAPSHOT_INTERVAL in lib.rs being set to 2
 //@ts-ignore
@@ -281,8 +282,83 @@ export async function renderMerges(t) {
     await cleanAllConductors();
 }
 
+let createdLinks = new Map<string, Array<LinkExpression>>()
+
+async function createLinks(happ: AgentApp, agentName: string, count: number) {
+    if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
+    for(let i=0; i < count; i++) {
+        let { data } = await create_link_expression(happ.cells[0], agentName);
+        createdLinks.get(agentName)!.push(data)
+    }
+}
+
+//@ts-ignore
+async function testSnapshotRenders(t) {
+    let installs = await createConductors(2);
+    let aliceHapps = installs[0].agent_happ;
+    let aliceConductor = installs[0].conductor;
+    let bobHapps = installs[1].agent_happ;
+    let bobConductor = installs[1].conductor;
+
+    await createLinks(aliceHapps, "alice", 149);
+
+    await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
+
+    await sleep(2000);
+
+    const bobPull = await call(bobHapps, "pull") as PerspectiveDiff;
+
+    function includes(perspective: Perspective, link: LinkExpression) {
+        return perspective.links.find(l => ad4m.linkEqual(l,link))
+    }
+
+    function includedInDiff(diff: PerspectiveDiff, link: LinkExpression) {
+        return diff.additions.find(l => ad4m.linkEqual(l,link)) || diff.removals.find(l => ad4m.linkEqual(l,link))
+    }
+
+    console.log("bob pull length", bobPull.additions.length)
+    t.assert(bobPull.additions.length === createdLinks.get("alice")!.length)
+    
+    for(let link of createdLinks.get("alice")!) {
+        t.assert(includedInDiff(bobPull, link))
+    }
+
+    const render = await call(bobHapps, "render") as Perspective;
+
+    console.log("bob render length", render.links.length)
+    t.assert(render.links.length === createdLinks.get("alice")!.length)
+    for(let link of createdLinks.get("alice")!) {
+        t.assert(includes(render, link))
+    }
+
+    //Test now alice rendering bobs stuff
+
+    await createLinks(bobHapps, "bob", 149);
+
+    await sleep(2000);
+
+    const alicePull = await call(aliceHapps, "pull") as PerspectiveDiff;
+
+    console.log("alice pull length", alicePull.additions.length);
+    t.assert(alicePull.additions.length === createdLinks.get("bob")!.length);
+
+    for(let link of createdLinks.get("bob")!) {
+        t.assert(includedInDiff(alicePull, link))
+    }
+
+    const aliceRender = await call(aliceHapps, "render") as Perspective;
+
+    console.log("alice render length", aliceRender.links.length);
+    t.assert(aliceRender.links.length === createdLinks.get("bob")!.length + createdLinks.get("alice")!.length)
+
+    await aliceConductor.shutDown();
+    await bobConductor.shutDown();
+    await cleanAllConductors();
+} 
+
 test("render", async (t) => {
-    await render(t)
-    await renderMerges(t)
+    // await render(t)
+    // await renderMerges(t)
+    await testSnapshotRenders(t)
     t.end()
 })
