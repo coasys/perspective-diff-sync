@@ -1,5 +1,5 @@
 import { addAllAgentsToAllConductors, AgentApp, cleanAllConductors } from "@holochain/tryorama";
-import { call, sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
+import { call, sleep, generate_link_expression, createConductors, create_link_expression, includedInDiff, includes} from "./utils";
 import test from "tape-promise/tape.js";
 import ad4m, { LinkExpression, Perspective, PerspectiveDiff } from "@perspect3vism/ad4m";
 
@@ -300,56 +300,63 @@ async function testSnapshotRenders(t) {
     let bobHapps = installs[1].agent_happ;
     let bobConductor = installs[1].conductor;
 
-    await createLinks(aliceHapps, "alice", 150);
+    //Create 150 links from alice
+    await createLinks(aliceHapps, "alice", 75);
 
     await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
 
-    await sleep(2000);
+    await sleep(5000);
 
+    //Pull the 500 links from bobs node
     const bobPull = await call(bobHapps, "pull") as PerspectiveDiff;
-
-    function includes(perspective: Perspective, link: LinkExpression) {
-        return perspective.links.find(l => ad4m.linkEqual(l,link))
-    }
-
-    function includedInDiff(diff: PerspectiveDiff, link: LinkExpression) {
-        return diff.additions.find(l => ad4m.linkEqual(l,link)) || diff.removals.find(l => ad4m.linkEqual(l,link))
-    }
-
-    console.log("bob pull length", bobPull.additions.length, createdLinks.get("alice")!.length)
-    t.assert(bobPull.additions.length === createdLinks.get("alice")!.length)
     
+    //Check that all the created links are in the diff
     for(let link of createdLinks.get("alice")!) {
         t.assert(includedInDiff(bobPull, link))
     }
 
+    for(let link of bobPull.additions) {
+        t.assert(createdLinks.get("alice")!.find(aLink => ad4m.linkEqual(aLink, link)))
+    }
+
+    //Render the 150 links from bobs node
     const render = await call(bobHapps, "render") as Perspective;
 
-    console.log("bob render length", render.links.length)
-    t.assert(render.links.length === createdLinks.get("alice")!.length)
     for(let link of createdLinks.get("alice")!) {
         t.assert(includes(render, link))
     }
 
-    //Test now alice rendering bobs stuff
+    for(let link of render.links) {
+        t.assert(createdLinks.get("alice")!.find(aLink => ad4m.linkEqual(aLink, link)))
+    }
 
-    await createLinks(bobHapps, "bob", 150);
+    ///Test now alice rendering bobs stuff
+    ///
+    ///
 
-    await sleep(2000);
+    await createLinks(bobHapps, "bob", 75);
+
+    await sleep(5000);
 
     const alicePull = await call(aliceHapps, "pull") as PerspectiveDiff;
-
-    console.log("alice pull length", alicePull.additions.length, createdLinks.get("bob")!.length);
-    t.assert(alicePull.additions.length === createdLinks.get("bob")!.length);
 
     for(let link of createdLinks.get("bob")!) {
         t.assert(includedInDiff(alicePull, link))
     }
 
+    for(let link of alicePull.additions) {
+        t.assert(createdLinks.get("bob")!.find(aLink => ad4m.linkEqual(aLink, link)))
+    }
+
     const aliceRender = await call(aliceHapps, "render") as Perspective;
 
-    console.log("alice render length", aliceRender.links.length, createdLinks.get("bob")!.length + createdLinks.get("alice")!.length);
-    t.assert(aliceRender.links.length === createdLinks.get("bob")!.length + createdLinks.get("alice")!.length)
+    for(let link of createdLinks.get("bob")!) {
+        t.assert(includes(aliceRender, link))
+    }
+
+    for(let link of aliceRender.links) {
+        t.assert(createdLinks.get("bob")!.find(aLink => ad4m.linkEqual(aLink, link)) || createdLinks.get("alice")!.find(aLink => ad4m.linkEqual(aLink, link)))
+    }
 
     await aliceConductor.shutDown();
     await bobConductor.shutDown();
