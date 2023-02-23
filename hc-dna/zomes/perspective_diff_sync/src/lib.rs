@@ -8,6 +8,7 @@ use perspective_diff_sync_integrity::{
     OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff, PerspectiveDiffReference,
     PerspectiveExpression,
 };
+use retriever::PerspectiveDiffRetreiver;
 
 mod errors;
 mod inputs;
@@ -65,9 +66,13 @@ pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
 
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    link_adapter::pull::pull::<retriever::HolochainRetreiver>(true)
-        .map_err(|error| utils::err(&format!("{}", error)))
-        .map(|res| res)
+    if let Some(current) = current_revision(())? {
+        let diff = retriever::HolochainRetreiver::get::<PerspectiveDiffReference>(current)
+            .map_err(|error| utils::err(&format!("{}", error)))?;
+        link_adapter::commit::send_revision_signal(diff.clone())
+            .map_err(|error| utils::err(&format!("{}", error)))?;
+    }
+    Ok(PerspectiveDiff::new())
 }
 
 #[hdk_extern]
