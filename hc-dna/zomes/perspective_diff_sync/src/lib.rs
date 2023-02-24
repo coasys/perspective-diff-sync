@@ -104,19 +104,6 @@ pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
 }
 
 #[hdk_extern]
-pub fn update_latest_revision(_hash: Hash) -> ExternResult<()> {
-    #[cfg(feature = "test")]
-    {
-        link_adapter::revisions::update_latest_revision::<retriever::HolochainRetreiver>(
-            _hash,
-            utils::get_now().unwrap(),
-        )
-        .map_err(|err| utils::err(&format!("{}", err)))?;
-    }
-    Ok(())
-}
-
-#[hdk_extern]
 pub fn fast_forward_signal(perspective_diff_ref: PerspectiveDiffReference) -> ExternResult<()> {
     link_adapter::pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref)
         .map_err(|error| utils::err(&format!("{}", error)))

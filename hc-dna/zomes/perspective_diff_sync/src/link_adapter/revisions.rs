@@ -7,18 +7,6 @@ use crate::retriever::PerspectiveDiffRetreiver;
 use crate::utils::get_now;
 use crate::Hash;
 
-pub fn update_latest_revision<Retriever: PerspectiveDiffRetreiver>(
-    hash: Hash,
-    timestamp: DateTime<Utc>,
-) -> SocialContextResult<()> {
-    debug!("===PerspectiveDiffSync.update_latest_revision(): Function start");
-    let now = get_now()?.time();
-    let res = Retriever::update_latest_revision(hash, timestamp);
-    let after = get_now()?.time();
-    debug!("===PerspectiveDiffSync.update_latest_revision() - Profiling: Took: {} to update latest_revision", (after - now).num_milliseconds());
-    res
-}
-
 pub fn update_current_revision<Retriever: PerspectiveDiffRetreiver>(
     hash: Hash,
     timestamp: DateTime<Utc>,
