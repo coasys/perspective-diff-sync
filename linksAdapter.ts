@@ -28,7 +28,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async latestRevision(): Promise<string> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "latest_revision", null);
+    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "current_revision", null);
     return res as string;
   }
 
