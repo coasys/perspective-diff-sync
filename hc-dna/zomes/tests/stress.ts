@@ -70,6 +70,7 @@ class PeerInfo {
 
   
 async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLanguageDelegate) {
+    console.log("GOSSIP for ", me)
     //@ts-ignore
     await hcDna.call("DNA_NICK", "ZOME_NAME", "sync", null);
     let lostPeers: DID[] = [];
@@ -92,6 +93,8 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
   
     // If we are the first peer, we are the scribe
     let is_scribe = allPeers[0] == me;
+
+    console.log("IS SCRIBE", is_scribe, me)
     
     // Get a deduped set of all peer's current revisions
     let revisions = new Set<string>();
@@ -100,6 +103,7 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     }
   
     revisions.forEach( async (hash) => {
+        console.log("PULLING", hash, is_scribe)
       await hcDna.call("DNA_NICK", "ZOME_NAME", "pull", { 
         hash,
         is_scribe 
