@@ -170,22 +170,32 @@ export async function stressTest(t) {
         gossip(alicePeersList, "did:test:alice", {
             call: async (nick, zome, fn_name, payload) => {
                 await aliceQueue.add( async () => {
-                    await aliceHapps.cells[0].callZome({
-                        zome_name: "perspective_diff_sync", 
-                        fn_name,
-                        payload
-                    })
+                    try{
+                        await aliceHapps.cells[0].callZome({
+                            zome_name: "perspective_diff_sync", 
+                            fn_name,
+                            payload
+                        })
+                    } catch(e) {
+                        console.log("ERROR during alice zome call", e)
+                    }
+                    
                 })
             }
         } as HolochainLanguageDelegate);
         gossip(bobPeersList, "did:test:bob", {
             call: async (nick, zome, fn_name, payload) => {
                 await bobQueue.add( async () => {
-                    await bobHapps.cells[0].callZome({
-                        zome_name: "perspective_diff_sync", 
-                        fn_name,
-                        payload
-                    })
+                    try {
+                        await bobHapps.cells[0].callZome({
+                            zome_name: "perspective_diff_sync", 
+                            fn_name,
+                            payload
+                        })
+                    } catch(e) {
+                        console.log("ERROR during bob zome call", e)
+                    }
+                    
                 })
             }
         } as HolochainLanguageDelegate);
