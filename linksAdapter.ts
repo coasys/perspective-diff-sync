@@ -1,4 +1,4 @@
-import type { LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression, DID } from "@perspect3vism/ad4m";
+import { LinkSyncAdapter, PerspectiveDiffObserver, HolochainLanguageDelegate, LanguageContext, PerspectiveDiff, LinkExpression, DID } from "@perspect3vism/ad4m";
 import { Perspective } from "@perspect3vism/ad4m";
 import { DNA_NICK, ZOME_NAME } from "./dna";
 
@@ -6,13 +6,21 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+class PeerInfo {
+  currentRevision: string;
+  lastSeen: Date;
+};
+
 export class LinkAdapter implements LinkSyncAdapter {
   hcDna: HolochainLanguageDelegate;
   linkCallback?: PerspectiveDiffObserver
+  peers: Map<DID, PeerInfo> = new Map();
+  me: DID
 
   constructor(context: LanguageContext) {
     //@ts-ignore
     this.hcDna = context.Holochain as HolochainLanguageDelegate;
+    this.me = context.agent.did;
   }
 
   writable(): boolean {
@@ -38,8 +46,46 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async pull(): Promise<PerspectiveDiff> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", null);
-    return res as PerspectiveDiff;
+    await this.hcDna.call(DNA_NICK, ZOME_NAME, "sync", null);
+    await this.gossip();
+    return new PerspectiveDiff()
+  }
+
+  async gossip() {
+    let lostPeers: DID[] = [];
+
+    this.peers.forEach( (peerInfo, peer) => {
+      if (peerInfo.lastSeen.getTime() + 10000 < new Date().getTime()) {
+        lostPeers.push(peer);
+      }
+    });
+
+    for (const peer of lostPeers) {
+      this.peers.delete(peer);
+    }
+
+    // flatten the map into an array of peers
+    let peers = Array.from(this.peers.keys());
+    peers.push(this.me);
+    
+    // Lexically sort the peers
+    peers.sort();
+
+    // If we are the first peer, we are the scribe
+    let is_scribe = peers[0] == this.me;
+    
+    // Get a deduped set of all peer's current revisions
+    let revisions = new Set<string>();
+    for (const peer of peers) {
+      revisions.add(this.peers.get(peer)?.currentRevision);
+    }
+
+    revisions.forEach( async (hash) => {
+      await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", { 
+        hash,
+        is_scribe 
+      });
+    })
   }
 
   async render(): Promise<Perspective> {
@@ -62,19 +108,10 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async handleHolochainSignal(signal: any): Promise<void> {
+    let p = signal.payload;
     //Check if this signal came from another agent & contains a diff and reference_hash
-    if (signal.payload.diff && signal.payload.reference_hash && signal.payload.reference) {
-      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signal from another agent, checking if we can fast forward to this signal");
-
-      //First just emit the signal since we dont want to wait for the fast forward to finish
-      if (this.linkCallback) {
-        this.linkCallback(signal.payload.diff);
-      }
-
-      //wait 500ms to be sure we will find the diff in the agents data
-      await sleep(500);
-      //Note; when we have many signals coming in it could cause many fast forward to be build up in the dna request queue (since all DNA calls are sync) and thus block other calls from coming in
-      await this.hcDna.call(DNA_NICK, ZOME_NAME, "fast_forward_signal", signal.payload);
+    if (p.diff && p.reference_hash && p.reference && p.broadcast_author) {
+      this.peers.set(p.broadcast_author, { currentRevision: p.reference_hash, lastSeen: new Date() });
     } else {
       console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull");
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
