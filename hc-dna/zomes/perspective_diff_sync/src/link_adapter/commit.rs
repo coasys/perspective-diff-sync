@@ -4,9 +4,7 @@ use perspective_diff_sync_integrity::{
 };
 
 use crate::errors::SocialContextResult;
-use crate::link_adapter::revisions::{
-    current_revision, update_current_revision, update_latest_revision,
-};
+use crate::link_adapter::revisions::{current_revision, update_current_revision};
 use crate::link_adapter::snapshots::generate_snapshot;
 use crate::retriever::holochain::{get_active_agent_anchor, get_active_agents};
 use crate::retriever::PerspectiveDiffRetreiver;
@@ -80,7 +78,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
 
     let now = get_now()?;
     let now_profile = get_now()?.time();
-    update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
+    //update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
     let after = get_now()?.time();
     debug!(
         "===PerspectiveDiffSync.commit() - Profiling: Took {} to update the latest revision",
