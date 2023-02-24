@@ -1,6 +1,6 @@
 import { AgentApp, addAllAgentsToAllConductors, cleanAllConductors, Conductor, Scenario } from "@holochain/tryorama";
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
-import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
+import ad4m, { DID, HolochainLanguageDelegate, LinkExpression, Perspective } from "@perspect3vism/ad4m"
 import test from "tape-promise/tape.js";
 import { hrtime } from 'node:process';
 //@ts-ignore
@@ -8,7 +8,6 @@ import divide from 'divide-bigint'
 import { AsyncQueue } from "./queue";
 import { resolve } from "path";
 import { dnas } from "./common";
-
 let createdLinks = new Map<string, Array<LinkExpression>>()
 
 async function createLinks(happ: AgentApp, agentName: string, count: number, queue?: AsyncQueue) {
@@ -57,12 +56,54 @@ export async function latestRevisionStress(t) {
     }
 }
 
-async function waitDhtConsistency(hash: Buffer, conductor: Conductor) {
-    while ((await conductor.appWs().networkInfo({dnas: [hash]}))[0].fetch_queue_info.op_bytes_to_fetch != 0) {
-        console.log("waiting for consistency...");
-        await sleep(1000);
+//async function waitDhtConsistency(hash: Buffer, conductor: Conductor) {
+//    while ((await conductor.appWs().networkInfo({dnas: [hash]}))[0].fetch_queue_info.op_bytes_to_fetch != 0) {
+//        console.log("waiting for consistency...");
+//        await sleep(1000);
+//    }
+//}
+
+class PeerInfo {
+    currentRevision: string = "";
+    lastSeen: Date = new Date();
+  };
+
+  
+async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLanguageDelegate) {
+    let lostPeers: DID[] = [];
+  
+    peers.forEach( (peerInfo, peer) => {
+      if (peerInfo.lastSeen.getTime() + 10000 < new Date().getTime()) {
+        lostPeers.push(peer);
+      }
+    });
+  
+    for (const peer of lostPeers) {
+      peers.delete(peer);
     }
-}
+  
+    // flatten the map into an array of peers
+    let allPeers = Array.from(peers.keys())
+    allPeers.push(me);
+    // Lexically sort the peers
+    allPeers.sort();
+  
+    // If we are the first peer, we are the scribe
+    let is_scribe = allPeers[0] == me;
+    
+    // Get a deduped set of all peer's current revisions
+    let revisions = new Set<string>();
+    for (const peer of peers) {
+      revisions.add(peers.get(peer[0])!.currentRevision);
+    }
+  
+    revisions.forEach( async (hash) => {
+      await hcDna.call("DNA_NICK", "ZOME_NAME", "pull", { 
+        hash,
+        is_scribe 
+      });
+    })
+  }
 
 //@ts-ignore
 export async function stressTest(t) {
@@ -88,16 +129,12 @@ export async function stressTest(t) {
             },
         }
     );
+    const alicePeersList: Map<DID, PeerInfo> = new Map();
     aliceHapps.conductor.appWs().on("signal", async (signal) => {
         console.log("Alice Received Signal:",signal);
-        if (signal.payload.diff) {
-            if (signal.payload.diff && signal.payload.reference_hash && signal.payload.reference) {
-                await aliceQueue.add(async () => {
-                    await call(aliceHapps, "fast_forward_signal", signal.payload);
-                }).catch((e) => {
-                    console.log("Error in signal alice queue", e);
-                });
-            }
+        const { diff, reference_hash, reference, broadcast_author } = signal.payload;
+        if (diff && reference_hash && reference && broadcast_author) {
+            alicePeersList.set(broadcast_author, { currentRevision: reference_hash, lastSeen: new Date() });
         }
     });
     const bobHapps = await scenario.addPlayerWithApp(
@@ -118,18 +155,43 @@ export async function stressTest(t) {
             }
         }
     );
+    const bobPeersList: Map<DID, PeerInfo> = new Map();
     bobHapps.conductor.appWs().on("signal", async (signal) => {
         console.log("Bob Received Signal:",signal)
-        if (signal.payload.diff) {
-            if (signal.payload.diff && signal.payload.reference_hash && signal.payload.reference) {
-                await bobQueue.add(async () => {
-                    await call(bobHapps, "fast_forward_signal", signal.payload);
-                }).catch((e) => {
-                    console.log("Error in signal bob queue", e);
-                })
-            }
+        const { diff, reference_hash, reference, broadcast_author } = signal.payload;
+        if (diff && reference_hash && reference && broadcast_author) {
+            bobPeersList.set(broadcast_author, { currentRevision: reference_hash, lastSeen: new Date() });
         }
     })
+
+    function processGossip() {
+        gossip(alicePeersList, "did:test:alice", {
+            call: async (nick, zome, fn_name, payload) => {
+                await aliceQueue.add( async () => {
+                    await aliceHapps.cells[0].callZome({
+                        zome_name: "perspective_diff_sync", 
+                        fn_name,
+                        payload
+                    })
+                })
+            }
+        } as HolochainLanguageDelegate);
+        gossip(bobPeersList, "did:test:bob", {
+            call: async (nick, zome, fn_name, payload) => {
+                await bobQueue.add( async () => {
+                    await bobHapps.cells[0].callZome({
+                        zome_name: "perspective_diff_sync", 
+                        fn_name,
+                        payload
+                    })
+                })
+            }
+        } as HolochainLanguageDelegate);
+    }
+
+    setInterval(() => {
+        processGossip();
+    }, 1000);
 
     let aliceConductor = aliceHapps.conductor
     let bobConductor = bobHapps.conductor;
@@ -160,73 +222,24 @@ export async function stressTest(t) {
         await sleep(1000)
 
         console.log("-------------------------");
-        console.log("Now pulling on both agents...");
-        console.log("-------------------------");
-
-        let pullSuccessful = false
-        while(!pullSuccessful) {
-            try {
-                const startA = hrtime.bigint();
-                await aliceQueue.add(async () => {
-                    await call(aliceHapps, "pull")
-                });
-                const endA = hrtime.bigint();
-                console.log(`Alice pull took ${divide(endA - startA, 1000000)} ms`);
-
-                const startB = hrtime.bigint();
-                await bobQueue.add(async () => {
-                    await call(bobHapps, "pull");
-                });
-                const endB = hrtime.bigint();
-                console.log(`Bob pull took ${divide(endB - startB,1000000)} ms`);
-
-                //await call(aliceHapps, "pull");
-                //await call(bobHapps, "pull");
-                pullSuccessful = true
-            } catch(e) {
-                console.error("Pulling failed with error:", e)
-                await sleep(2000)
-            }
-        }
-        
-        await sleep(3000)
-        
-
-        //let alice_latest_revision = await call(aliceHapps, "latest_revision")
-        //let bob_latest_revision = await call(bobHapps, "latest_revision")
-        let alice_current_revision = await call(aliceHapps, "current_revision")
-        let bob_current_revision = await call(bobHapps, "current_revision")
-
-        //@ts-ignore
-        //t.isEqual(alice_latest_revision.toString("base64"), bob_latest_revision.toString("base64"))
-        //@ts-ignore
-        //t.isEqual(alice_current_revision.toString("base64"), bob_current_revision.toString("base64"))
-        //@ts-ignore
-        //t.isEqual(alice_latest_revision.toString("base64"), alice_current_revision.toString("base64"))
-
-        console.log("-------------------------");
         console.log("All good :)))))))))))))))");
         console.log("-------------------------");
 
     }
 
     // Wait for gossip of latest_revision, needed for render
-    await sleep(5000)
-
-    const startRenderA = hrtime.bigint();
-    await call(aliceHapps, "pull");
-    let alice_rendered = await call(aliceHapps, "render") as Perspective
-    const endRenderA = hrtime.bigint();
-    console.log(`Alice pull + render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
-
-    // Wait for gossip of latest_revision, needed for render
     await sleep(15000)
 
+    const startRenderA = hrtime.bigint();
+    let alice_rendered = await call(aliceHapps, "render") as Perspective
+    const endRenderA = hrtime.bigint();
+    console.log(`Alice render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
+
+
     const startRenderB = hrtime.bigint();
-    await call(bobHapps, "pull");
     let bob_rendered = await call(bobHapps, "render") as Perspective
     const endRenderB = hrtime.bigint();
-    console.log(`Bob pull + render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
+    console.log(`Bob render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
 
     // Wait for gossip of latest_revision, needed for render
     await sleep(15000)
