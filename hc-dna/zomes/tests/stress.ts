@@ -1,4 +1,4 @@
-import { AgentApp, addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryorama";
+import { AgentApp, addAllAgentsToAllConductors, cleanAllConductors, Conductor } from "@holochain/tryorama";
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
 import test from "tape-promise/tape.js";
@@ -45,6 +45,13 @@ export async function latestRevisionStress(t) {
     }
 }
 
+async function waitDhtConsistency(hash: Buffer, conductor: Conductor) {
+    while ((await conductor.appWs().networkInfo({dnas: [hash]}))[0].fetch_queue_info.op_bytes_to_fetch != 0) {
+        console.log("waiting for consistency...");
+        await sleep(1000);
+    }
+}
+
 //@ts-ignore
 export async function stressTest(t) {
     let installs = await createConductors(2);
@@ -52,6 +59,7 @@ export async function stressTest(t) {
     let aliceConductor = installs[0].conductor;
     let bobHapps = installs[1].agent_happ;
     let bobConductor = installs[1].conductor;
+    let hash = Buffer.from((await aliceConductor.adminWs().listDnas())[0]);
 
     await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
 
@@ -75,7 +83,8 @@ export async function stressTest(t) {
         console.log("waiting a second");
         console.log("-------------------------");
 
-        await sleep(1000)
+        await waitDhtConsistency(hash, aliceConductor);
+        await waitDhtConsistency(hash, bobConductor);
 
         console.log("-------------------------");
         console.log("Now pulling on both agents...");
@@ -99,11 +108,13 @@ export async function stressTest(t) {
                 pullSuccessful = true
             } catch(e) {
                 console.error("Pulling failed with error:", e)
-                await sleep(2000)
+                await waitDhtConsistency(hash, aliceConductor);
+                await waitDhtConsistency(hash, bobConductor);
             }
         }
         
-        await sleep(3000)
+        await waitDhtConsistency(hash, aliceConductor);
+        await waitDhtConsistency(hash, bobConductor);
         
 
         //let alice_latest_revision = await call(aliceHapps, "latest_revision")
@@ -125,7 +136,8 @@ export async function stressTest(t) {
     }
 
     // Wait for gossip of latest_revision, needed for render
-    await sleep(5000)
+    await waitDhtConsistency(hash, aliceConductor);
+    await waitDhtConsistency(hash, bobConductor);
 
     const startRenderA = hrtime.bigint();
     await call(aliceHapps, "pull");
@@ -141,7 +153,8 @@ export async function stressTest(t) {
     console.log(`Bob pull + render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
 
     // Wait for gossip of latest_revision, needed for render
-    await sleep(15000)
+    await waitDhtConsistency(hash, aliceConductor);
+    await waitDhtConsistency(hash, bobConductor);
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 
