@@ -4,10 +4,8 @@ use perspective_diff_sync_integrity::{
 };
 
 use crate::errors::SocialContextResult;
-use crate::link_adapter::commit::send_revision_signal;
-use crate::link_adapter::revisions::{
-    current_revision, update_current_revision,
-};
+//use crate::link_adapter::commit::send_revision_signal;
+use crate::link_adapter::revisions::{current_revision, update_current_revision};
 use crate::link_adapter::workspace::{Workspace, NULL_NODE};
 use crate::retriever::PerspectiveDiffRetreiver;
 use crate::utils::{get_now, remove_from_vec};
@@ -27,7 +25,8 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
         additions: vec![],
         removals: vec![],
     };
-    let merge_entry_hash = Retriever::create_entry(EntryTypes::PerspectiveDiff(merge_diff.clone()))?;
+    let merge_entry_hash =
+        Retriever::create_entry(EntryTypes::PerspectiveDiff(merge_diff.clone()))?;
 
     //Create the merge entry reference
     let merge_entry_reference = PerspectiveDiffEntryReference {
@@ -38,7 +37,8 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
             + 1,
     };
     let merge_entry_reference_hash = Retriever::create_entry(
-        EntryTypes::PerspectiveDiffEntryReference(merge_entry_reference.clone()))?;
+        EntryTypes::PerspectiveDiffEntryReference(merge_entry_reference.clone()),
+    )?;
     debug!(
         "===PerspectiveDiffSync.merge(): Commited merge entry: {:#?}",
         merge_entry_reference_hash
@@ -46,12 +46,12 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
 
     let now = get_now()?;
     update_current_revision::<Retriever>(merge_entry_reference_hash.clone(), now)?;
-    let signal_data = PerspectiveDiffReference {
-        reference: merge_entry_reference.clone(),
-        reference_hash: merge_entry_reference_hash.clone(),
-        diff: merge_diff,
-    };
-    send_revision_signal(signal_data)?;
+    // let signal_data = PerspectiveDiffReference {
+    //     reference: merge_entry_reference.clone(),
+    //     reference_hash: merge_entry_reference_hash.clone(),
+    //     diff: merge_diff,
+    // };
+    // send_revision_signal(signal_data)?;
     //update_latest_revision::<Retriever>(hash, now)?;
 
     let fn_end = get_now()?.time();
@@ -99,9 +99,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
     workspace.build_diffs::<Retriever>(theirs.clone(), current.hash.clone())?;
 
     let fast_forward_possible = if workspace.common_ancestors.first() == Some(&NULL_NODE()) {
-        workspace
-            .all_ancestors(&theirs)?
-            .contains(&current.hash)
+        workspace.all_ancestors(&theirs)?.contains(&current.hash)
     } else {
         workspace.common_ancestors.contains(&current.hash)
     };
@@ -486,8 +484,10 @@ mod tests {
         let latest_node_hash = node_1;
 
         let current_node_hash = node_6;
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let node_1 = &node_id_hash(&dot_structures::Id::Plain(String::from("1"))).to_string();
@@ -534,8 +534,10 @@ mod tests {
         let latest_node_hash = node_6;
 
         let current_node_hash = node_1;
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let node_6 = &node_id_hash(&dot_structures::Id::Plain(String::from("6"))).to_string();
@@ -589,8 +591,10 @@ mod tests {
         let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
 
         let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("2")));
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let pull_res = pull::<MockPerspectiveGraph>(false, latest_node_hash.clone());
@@ -645,8 +649,10 @@ mod tests {
         let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("5")));
 
         let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("6")));
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let pull_res = pull::<MockPerspectiveGraph>(false, latest_node_hash.clone());
@@ -691,8 +697,10 @@ mod tests {
         let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("52")));
 
         let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("55")));
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let pull_res = pull::<MockPerspectiveGraph>(false, latest_node_hash.clone());
@@ -729,8 +737,10 @@ mod tests {
         let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("314")));
 
         let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("313")));
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let pull_res = pull::<MockPerspectiveGraph>(false, latest_node_hash.clone());
@@ -762,8 +772,10 @@ mod tests {
         let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("304")));
 
         let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("301")));
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let pull_res = pull::<MockPerspectiveGraph>(false, latest_node_hash.clone());
@@ -798,8 +810,10 @@ mod tests {
         let latest_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("301")));
 
         let current_node_hash = node_id_hash(&dot_structures::Id::Plain(String::from("304")));
-        let update_current =
-            MockPerspectiveGraph::update_current_revision(current_node_hash.clone(), chrono::Utc::now());
+        let update_current = MockPerspectiveGraph::update_current_revision(
+            current_node_hash.clone(),
+            chrono::Utc::now(),
+        );
         assert!(update_current.is_ok());
 
         let pull_res = pull::<MockPerspectiveGraph>(false, latest_node_hash.clone());

@@ -129,10 +129,10 @@ fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
     //Check if its a normal diff expression signal
     match PerspectiveDiffReference::try_from(signal.clone()) {
         Ok(sig) => {
-            #[cfg(feature = "test")]
-            {
-                fast_forward_signal(sig.clone())?;
-            }
+            // #[cfg(feature = "test")]
+            // {
+            //     fast_forward_signal(sig.clone())?;
+            // }
             emit_signal(sig)?;
         }
         //Check if its a broadcast message

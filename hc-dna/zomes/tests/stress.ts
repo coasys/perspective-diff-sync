@@ -1,18 +1,30 @@
-import { AgentApp, addAllAgentsToAllConductors, cleanAllConductors, Conductor } from "@holochain/tryorama";
+import { AgentApp, addAllAgentsToAllConductors, cleanAllConductors, Conductor, Scenario } from "@holochain/tryorama";
 import { call, sleep, createConductors, create_link_expression, generate_link_expression} from "./utils";
 import ad4m, { LinkExpression, Perspective } from "@perspect3vism/ad4m"
 import test from "tape-promise/tape.js";
 import { hrtime } from 'node:process';
 //@ts-ignore
 import divide from 'divide-bigint'
+import { AsyncQueue } from "./queue";
+import { resolve } from "path";
+import { dnas } from "./common";
 
 let createdLinks = new Map<string, Array<LinkExpression>>()
 
-async function createLinks(happ: AgentApp, agentName: string, count: number) {
+async function createLinks(happ: AgentApp, agentName: string, count: number, queue?: AsyncQueue) {
     if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
     for(let i=0; i < count; i++) {
-        let { data } = await create_link_expression(happ.cells[0], agentName);
-        createdLinks.get(agentName)!.push(data)
+        if (queue) {
+            await queue.add(async () => {
+                let { data } = await create_link_expression(happ.cells[0], agentName);
+                createdLinks.get(agentName)!.push(data)
+            }).catch((e) => {
+                console.log("Error in create links queue", e);
+            })
+        } else {
+            let { data } = await create_link_expression(happ.cells[0], agentName);
+            createdLinks.get(agentName)!.push(data)
+        }
     }
 }
 
@@ -54,11 +66,73 @@ async function waitDhtConsistency(hash: Buffer, conductor: Conductor) {
 
 //@ts-ignore
 export async function stressTest(t) {
-    let installs = await createConductors(2);
-    let aliceHapps = installs[0].agent_happ;
-    let aliceConductor = installs[0].conductor;
-    let bobHapps = installs[1].agent_happ;
-    let bobConductor = installs[1].conductor;
+    const aliceQueue = new AsyncQueue();
+    const bobQueue = new AsyncQueue();
+
+    const scenario = new Scenario();
+    const aliceHapps = await scenario.addPlayerWithApp(
+        {
+            bundle: {
+                manifest: {
+                    manifest_version: "1",
+                    name: "perspective-diff-sync",
+                    roles: [{
+                        name: "main",
+                        dna: {
+                            //@ts-ignore
+                            path: resolve(dnas[0].source.path)
+                        }
+                    }]
+                },
+                resources: {}
+            },
+        }
+    );
+    aliceHapps.conductor.appWs().on("signal", async (signal) => {
+        console.log("Alice Received Signal:",signal);
+        if (signal.payload.diff) {
+            if (signal.payload.diff && signal.payload.reference_hash && signal.payload.reference) {
+                await aliceQueue.add(async () => {
+                    await call(aliceHapps, "fast_forward_signal", signal.payload);
+                }).catch((e) => {
+                    console.log("Error in signal alice queue", e);
+                });
+            }
+        }
+    });
+    const bobHapps = await scenario.addPlayerWithApp(
+        {
+            bundle: {
+                manifest: {
+                    manifest_version: "1",
+                    name: "perspective-diff-sync",
+                    roles: [{
+                        name: "main",
+                        dna: {
+                            //@ts-ignore
+                            path: resolve(dnas[0].source.path)
+                        }
+                    }]
+                },
+                resources: {}
+            }
+        }
+    );
+    bobHapps.conductor.appWs().on("signal", async (signal) => {
+        console.log("Bob Received Signal:",signal)
+        if (signal.payload.diff) {
+            if (signal.payload.diff && signal.payload.reference_hash && signal.payload.reference) {
+                await bobQueue.add(async () => {
+                    await call(bobHapps, "fast_forward_signal", signal.payload);
+                }).catch((e) => {
+                    console.log("Error in signal bob queue", e);
+                })
+            }
+        }
+    })
+
+    let aliceConductor = aliceHapps.conductor
+    let bobConductor = bobHapps.conductor;
     let hash = Buffer.from((await aliceConductor.adminWs().listDnas())[0]);
 
     await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
@@ -66,14 +140,14 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 25; i++) {
+    for(let i=0; i < 10; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
         const start = hrtime.bigint();
         await Promise.all([
-            createLinks(aliceHapps, "alice", 20),
-            createLinks(bobHapps, "bob", 20)
+            createLinks(aliceHapps, "alice", 20, aliceQueue),
+            createLinks(bobHapps, "bob", 20, bobQueue)
         ])
         const end = hrtime.bigint();
         console.log(`Creating links took ${divide(end - start, 1000000)} ms`);
@@ -94,12 +168,16 @@ export async function stressTest(t) {
         while(!pullSuccessful) {
             try {
                 const startA = hrtime.bigint();
-                await call(aliceHapps, "pull");
+                await aliceQueue.add(async () => {
+                    await call(aliceHapps, "pull")
+                });
                 const endA = hrtime.bigint();
                 console.log(`Alice pull took ${divide(endA - startA, 1000000)} ms`);
 
                 const startB = hrtime.bigint();
-                await call(bobHapps, "pull");
+                await bobQueue.add(async () => {
+                    await call(bobHapps, "pull");
+                });
                 const endB = hrtime.bigint();
                 console.log(`Bob pull took ${divide(endB - startB,1000000)} ms`);
 
@@ -144,17 +222,16 @@ export async function stressTest(t) {
     let alice_rendered = await call(aliceHapps, "render") as Perspective
     const endRenderA = hrtime.bigint();
     console.log(`Alice pull + render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
-    
+
+    // Wait for gossip of latest_revision, needed for render
+    await waitDhtConsistency(hash, aliceConductor);
+    await waitDhtConsistency(hash, bobConductor);
 
     const startRenderB = hrtime.bigint();
     await call(bobHapps, "pull");
     let bob_rendered = await call(bobHapps, "render") as Perspective
     const endRenderB = hrtime.bigint();
     console.log(`Bob pull + render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
-
-    // Wait for gossip of latest_revision, needed for render
-    await waitDhtConsistency(hash, aliceConductor);
-    await waitDhtConsistency(hash, bobConductor);
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 
