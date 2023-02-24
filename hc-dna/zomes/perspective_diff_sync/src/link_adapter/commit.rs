@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference,
+    EntryTypes, HashBroadcast, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
 };
 
 use crate::errors::SocialContextResult;
@@ -8,6 +8,7 @@ use crate::link_adapter::revisions::{current_revision, update_current_revision};
 use crate::link_adapter::snapshots::generate_snapshot;
 use crate::retriever::holochain::{get_active_agent_anchor, get_active_agents};
 use crate::retriever::PerspectiveDiffRetreiver;
+use crate::telepresence::status::get_my_did;
 use crate::utils::get_now;
 use crate::{ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 
@@ -87,12 +88,13 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
 
     if *ENABLE_SIGNALS {
-        let signal_data = PerspectiveDiffReference {
-            diff,
-            reference: diff_entry_ref_entry,
-            reference_hash: diff_entry_reference.clone(),
-        };
-        send_revision_signal(signal_data)?;
+        // let signal_data = PerspectiveDiffReference {
+        //     diff,
+        //     reference: diff_entry_ref_entry,
+        //     reference_hash: diff_entry_reference.clone(),
+        // };
+        // send_revision_signal(signal_data)?;
+        broadcast_current::<Retriever>()?;
     };
 
     let after_fn_end = get_now()?.time();
@@ -122,20 +124,33 @@ pub fn add_active_agent_link<Retriever: PerspectiveDiffRetreiver>() -> SocialCon
     Ok(())
 }
 
-pub fn send_revision_signal(signal_data: PerspectiveDiffReference) -> SocialContextResult<()> {
-    let recent_agents = get_active_agents()?;
+pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<()> {
+    if let Some(current_revision) = current_revision::<Retriever>()? {
+        let entry_ref =
+            Retriever::get::<PerspectiveDiffEntryReference>(current_revision.hash.clone())?;
+        let diff = Retriever::get::<PerspectiveDiff>(entry_ref.diff.clone())?;
 
-    debug!(
-        "PerspectiveDiffSync.send_revision_signal(): Sending signal to agents: {:#?}",
-        recent_agents
-    );
+        let signal_data = HashBroadcast {
+            reference: entry_ref,
+            reference_hash: current_revision.hash,
+            diff,
+            broadcast_author: get_my_did()?.unwrap(),
+        };
 
-    let now = get_now()?.time();
-    remote_signal(signal_data.get_sb()?, recent_agents)?;
-    let after = get_now()?.time();
-    debug!(
-        "===PerspectiveDiffSync.send_revision_signal() - Profiling: Took {} to send signal to active agents",
-        (after - now).num_milliseconds()
-    );
+        let recent_agents = get_active_agents()?;
+
+        debug!(
+            "PerspectiveDiffSync.send_revision_signal(): Sending signal to agents: {:#?}",
+            recent_agents
+        );
+
+        let now = get_now()?.time();
+        remote_signal(signal_data.get_sb()?, recent_agents)?;
+        let after = get_now()?.time();
+        debug!(
+            "===PerspectiveDiffSync.send_revision_signal() - Profiling: Took {} to send signal to active agents",
+            (after - now).num_milliseconds()
+        );
+    };
     Ok(())
 }

@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use core::cmp::Ordering;
 use hdi::prelude::*;
 
 pub mod impls;
@@ -35,11 +34,13 @@ pub struct PerspectiveDiff {
     pub removals: Vec<LinkExpression>,
 }
 
+///The reference that is sent to other agents, denotes the position in the DAG as well as the data at that position
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
-pub struct PerspectiveDiffReference {
+pub struct HashBroadcast {
     pub reference_hash: HoloHash<holo_hash::hash_type::Action>,
     pub reference: PerspectiveDiffEntryReference,
     pub diff: PerspectiveDiff,
+    pub broadcast_author: String,
 }
 
 impl PerspectiveDiff {
@@ -69,31 +70,6 @@ pub struct PerspectiveDiffEntryReference {
     pub diff: HoloHash<holo_hash::hash_type::Action>,
     pub parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
     pub diffs_since_snapshot: usize,
-}
-
-impl PerspectiveDiffEntryReference {
-    pub fn new(
-        diff: HoloHash<holo_hash::hash_type::Action>,
-        parents: Option<Vec<HoloHash<holo_hash::hash_type::Action>>>,
-    ) -> Self {
-        Self {
-            diff: diff,
-            parents: parents,
-            diffs_since_snapshot: 0,
-        }
-    }
-}
-
-impl PartialOrd for PerspectiveDiffEntryReference {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.diff.partial_cmp(&other.diff)
-    }
-}
-
-impl Ord for PerspectiveDiffEntryReference {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.diff.cmp(&other.diff)
-    }
 }
 
 app_entry!(PerspectiveDiffEntryReference);

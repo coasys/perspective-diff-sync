@@ -2,13 +2,13 @@
 extern crate lazy_static;
 
 use hdk::prelude::*;
+use inputs::PullArguments;
 use lazy_static::lazy_static;
 
 use perspective_diff_sync_integrity::{
-    OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff, PerspectiveDiffEntryReference,
-    PerspectiveDiffReference, PerspectiveExpression,
+    HashBroadcast, OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff,
+    PerspectiveExpression,
 };
-use retriever::PerspectiveDiffRetreiver;
 
 mod errors;
 mod inputs;
@@ -65,23 +65,16 @@ pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
 }
 
 #[hdk_extern]
-pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
-    if let Some(current) = current_revision(())? {
-        let diff_reference =
-            retriever::HolochainRetreiver::get::<PerspectiveDiffEntryReference>(current.clone())
-                .map_err(|error| utils::err(&format!("{}", error)))?;
-        let diff =
-            retriever::HolochainRetreiver::get::<PerspectiveDiff>(diff_reference.diff.clone())
-                .map_err(|error| utils::err(&format!("{}", error)))?;
-        let perspective_diff_reference = PerspectiveDiffReference {
-            reference_hash: current,
-            diff: diff,
-            reference: diff_reference,
-        };
-        link_adapter::commit::send_revision_signal(perspective_diff_reference.clone())
-            .map_err(|error| utils::err(&format!("{}", error)))?;
-    }
-    Ok(PerspectiveDiff::new())
+pub fn sync(_: ()) -> ExternResult<()> {
+    link_adapter::commit::broadcast_current::<retriever::HolochainRetreiver>()
+        .map_err(|error| utils::err(&format!("{}", error)))
+}
+
+#[hdk_extern]
+pub fn pull(args: PullArguments) -> ExternResult<()> {
+    link_adapter::pull::pull::<retriever::HolochainRetreiver>(true, args.hash, args.is_scribe)
+        .map_err(|error| utils::err(&format!("{}", error)))?;
+    Ok(())
 }
 
 #[hdk_extern]
@@ -103,24 +96,15 @@ pub fn update_current_revision(_hash: Hash) -> ExternResult<()> {
     Ok(())
 }
 
-#[hdk_extern]
-pub fn fast_forward_signal(perspective_diff_ref: PerspectiveDiffReference) -> ExternResult<()> {
-    link_adapter::pull::fast_forward_signal::<retriever::HolochainRetreiver>(perspective_diff_ref)
-        .map_err(|error| utils::err(&format!("{}", error)))
-}
-
 /// Signal handling
 
 #[hdk_extern]
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
     //Check if its a normal diff expression signal
-    match PerspectiveDiffReference::try_from(signal.clone()) {
-        Ok(sig) => {
-            // #[cfg(feature = "test")]
-            // {
-            //     fast_forward_signal(sig.clone())?;
-            // }
-            emit_signal(sig)?;
+    match HashBroadcast::try_from(signal.clone()) {
+        Ok(broadcast) => {
+            link_adapter::pull::handle_broadcast::<retriever::HolochainRetreiver>(broadcast)
+                .map_err(|err| utils::err(&format!("{}", err)))?;
         }
         //Check if its a broadcast message
         Err(_) => match PerspectiveExpression::try_from(signal.clone()) {

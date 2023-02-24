@@ -3,7 +3,7 @@ use hdk::prelude::*;
 use std::hash::Hash;
 
 use crate::errors::SocialContextResult;
-use perspective_diff_sync_integrity::{LinkExpression, Triple, ExpressionProof};
+use perspective_diff_sync_integrity::{ExpressionProof, LinkExpression, Triple};
 
 pub fn get_now() -> SocialContextResult<DateTime<Utc>> {
     match sys_time() {
@@ -13,10 +13,8 @@ pub fn get_now() -> SocialContextResult<DateTime<Utc>> {
                 NaiveDateTime::from_timestamp(now.0, now.1),
                 Utc,
             ))
-        },
-        Err(_err) => {
-            Ok(Utc::now())
         }
+        Err(_err) => Ok(Utc::now()),
     }
 }
 
@@ -30,17 +28,6 @@ pub(crate) fn err(reason: &str) -> WasmError {
     wasm_error!(WasmErrorInner::Host(String::from(reason)))
 }
 
-pub fn remove_from_vec<T: PartialEq>(vec: &mut Vec<T>, values: &Vec<T>) {
-    let mut i = 0;
-    while i < vec.len() {
-        if values.contains(&vec[i]) {
-            vec.remove(i);
-        } else {
-            i += 1;
-        }
-    }
-}
-
 #[allow(dead_code)]
 pub fn create_link_expression(source: &str, target: &str) -> LinkExpression {
     LinkExpression {
@@ -48,7 +35,7 @@ pub fn create_link_expression(source: &str, target: &str) -> LinkExpression {
         data: Triple {
             source: Some(String::from(source)),
             predicate: None,
-            target: Some(String::from(target))
+            target: Some(String::from(target)),
         },
         timestamp: DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(0, 0), Utc),
         proof: ExpressionProof {
