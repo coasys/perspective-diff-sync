@@ -92,7 +92,7 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     allPeers.sort();
   
     // If we are the first peer, we are the scribe
-    let is_scribe = allPeers[0] == me;
+    let is_scribe = (allPeers[0] == me);
 
     console.log("IS SCRIBE", is_scribe, me)
     
@@ -170,8 +170,21 @@ export async function stressTest(t) {
         }
     })
 
-    function processGossip() {
-        gossip(alicePeersList, "did:test:alice", {
+    //Create did/pub key link for alice and bob
+       await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:alice"
+    });
+    await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:bob"
+    });
+
+    let done = false;
+    async function processGossip() {
+        await Promise.all([gossip(alicePeersList, "did:test:alice", {
             call: async (nick, zome, fn_name, payload) => {
                 await aliceQueue.add( async () => {
                     try{
@@ -186,7 +199,7 @@ export async function stressTest(t) {
                     
                 })
             }
-        } as HolochainLanguageDelegate);
+        } as HolochainLanguageDelegate),
         gossip(bobPeersList, "did:test:bob", {
             call: async (nick, zome, fn_name, payload) => {
                 await bobQueue.add( async () => {
@@ -202,12 +215,15 @@ export async function stressTest(t) {
                     
                 })
             }
-        } as HolochainLanguageDelegate);
+        } as HolochainLanguageDelegate)])
+        await sleep(1000)
+        if(!done) {
+            processGossip()
+        }
+        
     }
 
-    setInterval(() => {
-        processGossip();
-    }, 1000);
+    processGossip()
 
     let aliceConductor = aliceHapps.conductor
     let bobConductor = bobHapps.conductor;
@@ -259,6 +275,7 @@ export async function stressTest(t) {
 
     // Wait for gossip of latest_revision, needed for render
     await sleep(15000)
+    done = true;
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 
