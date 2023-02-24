@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference, HashReference,
+    EntryTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference,
 };
 
 use crate::errors::SocialContextResult;
