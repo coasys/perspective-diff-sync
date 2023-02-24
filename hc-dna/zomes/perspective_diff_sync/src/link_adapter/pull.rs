@@ -4,6 +4,7 @@ use perspective_diff_sync_integrity::{
 };
 
 use crate::errors::SocialContextResult;
+use crate::link_adapter::commit::send_revision_signal;
 use crate::link_adapter::revisions::{
     current_revision, update_current_revision,
 };
@@ -21,28 +22,36 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
 
     let latest_diff = Retriever::get::<PerspectiveDiffEntryReference>(latest.clone())?;
     let current_diff = Retriever::get::<PerspectiveDiffEntryReference>(current.clone())?;
-    //Create the merge entry
-    let merge_entry = Retriever::create_entry(EntryTypes::PerspectiveDiff(PerspectiveDiff {
+    //Create the merge diff
+    let merge_diff = PerspectiveDiff {
         additions: vec![],
         removals: vec![],
-    }))?;
-    //Create the merge entry
-    let hash = Retriever::create_entry(EntryTypes::PerspectiveDiffEntryReference(
-        PerspectiveDiffEntryReference {
-            parents: Some(vec![latest, current]),
-            diff: merge_entry.clone(),
-            diffs_since_snapshot: latest_diff.diffs_since_snapshot
-                + current_diff.diffs_since_snapshot
-                + 1,
-        },
-    ))?;
+    };
+    let merge_entry_hash = Retriever::create_entry(EntryTypes::PerspectiveDiff(merge_diff.clone()))?;
+
+    //Create the merge entry reference
+    let merge_entry_reference = PerspectiveDiffEntryReference {
+        parents: Some(vec![latest, current]),
+        diff: merge_entry_hash.clone(),
+        diffs_since_snapshot: latest_diff.diffs_since_snapshot
+            + current_diff.diffs_since_snapshot
+            + 1,
+    };
+    let merge_entry_reference_hash = Retriever::create_entry(
+        EntryTypes::PerspectiveDiffEntryReference(merge_entry_reference.clone()))?;
     debug!(
         "===PerspectiveDiffSync.merge(): Commited merge entry: {:#?}",
-        hash
+        merge_entry_reference_hash
     );
 
     let now = get_now()?;
-    update_current_revision::<Retriever>(hash.clone(), now)?;
+    update_current_revision::<Retriever>(merge_entry_reference_hash.clone(), now)?;
+    let signal_data = PerspectiveDiffReference {
+        reference: merge_entry_reference.clone(),
+        reference_hash: merge_entry_reference_hash.clone(),
+        diff: merge_diff,
+    };
+    send_revision_signal(signal_data)?;
     //update_latest_revision::<Retriever>(hash, now)?;
 
     let fn_end = get_now()?.time();
