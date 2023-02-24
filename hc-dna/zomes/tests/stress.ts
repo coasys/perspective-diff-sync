@@ -70,6 +70,8 @@ class PeerInfo {
 
   
 async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLanguageDelegate) {
+    //@ts-ignore
+    await hcDna.call("DNA_NICK", "ZOME_NAME", "sync", null);
     let lostPeers: DID[] = [];
   
     peers.forEach( (peerInfo, peer) => {
