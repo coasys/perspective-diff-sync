@@ -211,6 +211,7 @@ pub fn handle_broadcast<Retriever: PerspectiveDiffRetreiver>(
         };
         if diff_reference.parents == Some(vec![current_revision.hash]) {
             debug!("===PerspectiveDiffSync.fast_forward_signal(): Revisions parent is the same as current, we can fast forward our current");
+            emit_signal(broadcast.diff.clone())?;
             update_current_revision::<Retriever>(revision, get_now()?)?;
         };
     };
