@@ -157,8 +157,7 @@ export async function stressTest(t) {
         console.log("waiting a second");
         console.log("-------------------------");
 
-        await waitDhtConsistency(hash, aliceConductor);
-        await waitDhtConsistency(hash, bobConductor);
+        await sleep(1000)
 
         console.log("-------------------------");
         console.log("Now pulling on both agents...");
@@ -186,13 +185,11 @@ export async function stressTest(t) {
                 pullSuccessful = true
             } catch(e) {
                 console.error("Pulling failed with error:", e)
-                await waitDhtConsistency(hash, aliceConductor);
-                await waitDhtConsistency(hash, bobConductor);
+                await sleep(2000)
             }
         }
         
-        await waitDhtConsistency(hash, aliceConductor);
-        await waitDhtConsistency(hash, bobConductor);
+        await sleep(3000)
         
 
         //let alice_latest_revision = await call(aliceHapps, "latest_revision")
@@ -214,8 +211,7 @@ export async function stressTest(t) {
     }
 
     // Wait for gossip of latest_revision, needed for render
-    await waitDhtConsistency(hash, aliceConductor);
-    await waitDhtConsistency(hash, bobConductor);
+    await sleep(5000)
 
     const startRenderA = hrtime.bigint();
     await call(aliceHapps, "pull");
@@ -224,14 +220,16 @@ export async function stressTest(t) {
     console.log(`Alice pull + render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
 
     // Wait for gossip of latest_revision, needed for render
-    await waitDhtConsistency(hash, aliceConductor);
-    await waitDhtConsistency(hash, bobConductor);
+    await sleep(15000)
 
     const startRenderB = hrtime.bigint();
     await call(bobHapps, "pull");
     let bob_rendered = await call(bobHapps, "render") as Perspective
     const endRenderB = hrtime.bigint();
     console.log(`Bob pull + render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
+
+    // Wait for gossip of latest_revision, needed for render
+    await sleep(15000)
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 
