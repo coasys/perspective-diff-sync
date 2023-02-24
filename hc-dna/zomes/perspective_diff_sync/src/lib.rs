@@ -5,8 +5,8 @@ use hdk::prelude::*;
 use lazy_static::lazy_static;
 
 use perspective_diff_sync_integrity::{
-    OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff, PerspectiveDiffReference,
-    PerspectiveExpression,
+    OnlineAgent, OnlineAgentAndAction, Perspective, PerspectiveDiff, PerspectiveDiffEntryReference,
+    PerspectiveDiffReference, PerspectiveExpression,
 };
 use retriever::PerspectiveDiffRetreiver;
 
@@ -67,9 +67,18 @@ pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
 #[hdk_extern]
 pub fn pull(_: ()) -> ExternResult<PerspectiveDiff> {
     if let Some(current) = current_revision(())? {
-        let diff = retriever::HolochainRetreiver::get::<PerspectiveDiffReference>(current)
-            .map_err(|error| utils::err(&format!("{}", error)))?;
-        link_adapter::commit::send_revision_signal(diff.clone())
+        let diff_reference =
+            retriever::HolochainRetreiver::get::<PerspectiveDiffEntryReference>(current.clone())
+                .map_err(|error| utils::err(&format!("{}", error)))?;
+        let diff =
+            retriever::HolochainRetreiver::get::<PerspectiveDiff>(diff_reference.diff.clone())
+                .map_err(|error| utils::err(&format!("{}", error)))?;
+        let perspective_diff_reference = PerspectiveDiffReference {
+            reference_hash: current,
+            diff: diff,
+            reference: diff_reference,
+        };
+        link_adapter::commit::send_revision_signal(perspective_diff_reference.clone())
             .map_err(|error| utils::err(&format!("{}", error)))?;
     }
     Ok(PerspectiveDiff::new())
@@ -119,7 +128,13 @@ pub fn fast_forward_signal(perspective_diff_ref: PerspectiveDiffReference) -> Ex
 fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
     //Check if its a normal diff expression signal
     match PerspectiveDiffReference::try_from(signal.clone()) {
-        Ok(sig) => emit_signal(sig)?,
+        Ok(sig) => {
+            #[cfg(feature = "test")]
+            {
+                fast_forward_signal(sig.clone())?;
+            }
+            emit_signal(sig)?;
+        }
         //Check if its a broadcast message
         Err(_) => match PerspectiveExpression::try_from(signal.clone()) {
             Ok(sig) => emit_signal(sig)?,
