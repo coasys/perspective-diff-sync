@@ -142,7 +142,7 @@ export class LinkAdapter implements LinkSyncAdapter {
             `)
       this.peers.set(broadcast_author, { currentRevision: reference_hash, lastSeen: new Date() });
     } else {
-      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull: ", signal.payload);");
+      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull: ", signal.payload);
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
       if (this.linkCallback) {
         this.linkCallback(signal.payload);
