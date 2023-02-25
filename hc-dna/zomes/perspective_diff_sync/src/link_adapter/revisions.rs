@@ -25,7 +25,7 @@ pub fn current_revision<Retriever: PerspectiveDiffRetreiver>(
     //debug!("===PerspectiveDiffSync.current_revision(): Function start");
     //let now = get_now()?.time();
     let rev = Retriever::current_revision()?;
-    debug!("===PerspectiveDiffSync.current_revision(): rev = {:?}", rev);
+    // debug!("===PerspectiveDiffSync.current_revision(): rev = {:?}", rev);
     //let after = get_now()?.time();
     //debug!("===PerspectiveDiffSync.current_revision() - Profiling: Took: {} to get the current_revision", (after - now).num_milliseconds());
     Ok(rev)
