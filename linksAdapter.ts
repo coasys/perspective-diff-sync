@@ -77,7 +77,9 @@ export class LinkAdapter implements LinkSyncAdapter {
     // Get a deduped set of all peer's current revisions
     let revisions = new Set<string>();
     for (const peer of peers) {
-      revisions.add(this.peers.get(peer)?.currentRevision);
+      if (peer != this.me) {
+        revisions.add(this.peers.get(peer)?.currentRevision);
+      }
     }
 
     revisions.forEach( async (hash) => {
