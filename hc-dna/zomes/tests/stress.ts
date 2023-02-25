@@ -264,7 +264,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 10; i++) {
+    for(let i=0; i < 40; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
@@ -292,20 +292,19 @@ export async function stressTest(t) {
     // Wait for gossip of latest_revision, needed for render
     await sleep(15000)
 
+    done = true;
+    aliceQueue.clear();
+    bobQueue.clear()
+
     const startRenderA = hrtime.bigint();
     let alice_rendered = await call(aliceHapps, "render") as Perspective
     const endRenderA = hrtime.bigint();
     console.log(`Alice render took ${divide(endRenderA - startRenderA, 1000000)} ms`);
 
-
     const startRenderB = hrtime.bigint();
     let bob_rendered = await call(bobHapps, "render") as Perspective
     const endRenderB = hrtime.bigint();
     console.log(`Bob render took ${divide(endRenderB - startRenderB, 1000000)} ms`);
-
-    // Wait for gossip of latest_revision, needed for render
-    await sleep(15000)
-    done = true;
 
     t.isEqual(alice_rendered.links.length, bob_rendered.links.length)
 

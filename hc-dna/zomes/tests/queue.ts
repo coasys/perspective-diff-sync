@@ -74,4 +74,9 @@ export class AsyncQueue {
   get pendingCount(): number {
     return this.#pendingCount;
   }
+
+  clear() {
+    this.#queue = new Queue<() => any>();
+    this.#pendingCount = 0;
+  }
 }
