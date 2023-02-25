@@ -213,7 +213,7 @@ impl Workspace {
 
     pub fn sort_graph(&mut self) -> SocialContextResult<()> {
         //debug!("===Workspace.sort_graph(): Function start");
-        let fn_start = get_now()?.time();
+        //let fn_start = get_now()?.time();
 
         let common_ancestor = self.common_ancestors.last().unwrap();
 
@@ -222,14 +222,14 @@ impl Workspace {
         let mut visited: HashSet<Hash> = HashSet::new();
         let mut next: VecDeque<Hash> = VecDeque::new();
         self.unexplored_side_branches = BTreeSet::new();
-        let mut inner_iter = 0;
+        //let mut inner_iter = 0;
 
         next.push_back(common_ancestor.clone());
 
         while !next.is_empty() {
             let current = next.pop_front().expect("must be Ok since next !is_empty()");
             if !visited.contains(&current) {
-                inner_iter += 1;
+                //inner_iter += 1;
                 //println!("current: {:?}", hash_to_node_id(current.clone()));
                 match self.back_links.get(&current) {
                     Some(children) => {
@@ -280,7 +280,7 @@ impl Workspace {
         //println!("Sorted is: {:?}", sorted.clone().into_iter().map(|val| hash_to_node_id(val.0)).collect::<Vec<_>>());
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
 
-        let fn_end = get_now()?.time();
+        //let fn_end = get_now()?.time();
         //debug!(
         //    "===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function",
         //    (fn_end - fn_start).num_milliseconds()
@@ -554,7 +554,7 @@ impl Workspace {
         let fn_end = get_now()?.time();
         let ms_spent = (fn_end - fn_start).num_milliseconds();
         if ms_spent > 1000{
-            debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", );
+            debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", ms_spent);
         }
 
         if common_ancestor.is_none() {
