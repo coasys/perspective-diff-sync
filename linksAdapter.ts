@@ -100,7 +100,10 @@ export class LinkAdapter implements LinkSyncAdapter {
       return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.getTime()}\n`
     })}
     --
-    revisions: ${Array.from(revisions)}
+    revisions: ${Array.from(revisions).map( (hash) => {
+      //@ts-ignore
+      hash.toString('base64')
+    })}
     `);
   }
 
