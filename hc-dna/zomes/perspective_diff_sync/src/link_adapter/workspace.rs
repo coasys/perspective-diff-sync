@@ -400,7 +400,7 @@ impl Workspace {
         theirs: Hash,
         ours: Hash,
     ) -> SocialContextResult<Hash> {
-        debug!("===Workspace.collect_until_common_ancestor(): Function start");
+        //debug!("===Workspace.collect_until_common_ancestor(): Function start");
         let fn_start = get_now()?.time();
 
         let mut common_ancestor: Option<Hash> = None;
@@ -552,7 +552,10 @@ impl Workspace {
         }
 
         let fn_end = get_now()?.time();
-        debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", (fn_end - fn_start).num_milliseconds());
+        let ms_spent = (fn_end - fn_start).num_milliseconds();
+        if ms_spent > 1000{
+            debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", );
+        }
 
         if common_ancestor.is_none() {
             return Err(SocialContextError::NoCommonAncestorFound);
