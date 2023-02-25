@@ -190,7 +190,7 @@ fn handle_parents(
                     hash: parents.remove(0),
                     is_unseen: false,
                 };
-                debug!("Appending parents to look up");
+                // debug!("Appending parents to look up");
                 unseen_parents.append(
                     &mut parents
                         .into_iter()
@@ -244,7 +244,7 @@ fn handle_parents(
                     hash: parents.remove(0),
                     is_unseen: false,
                 };
-                debug!("Appending parents to look up");
+                // debug!("Appending parents to look up");
                 unseen_parents.append(
                     &mut parents
                         .into_iter()
