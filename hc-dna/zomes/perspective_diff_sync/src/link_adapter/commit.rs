@@ -140,8 +140,8 @@ pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContext
         let recent_agents = get_active_agents()?;
 
         debug!(
-            "PerspectiveDiffSync.send_revision_signal(): Sending signal to agents: {:#?}",
-            recent_agents
+            "PerspectiveDiffSync.send_revision_signal(): Sending signal to agents: {:#?}\nme: {:#?}\nsignal: {:#?}",
+            recent_agents, agent_info()?.agent_latest_pubkey, signal_data
         );
 
         let now = get_now()?.time();
