@@ -111,7 +111,7 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     --
     ${Array.from(peers.entries()).map( ([peer, peerInfo]) => {
       //@ts-ignore
-      return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.getTime()}\n`
+      return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.toISOString()}\n`
     })}
     --
     revisions: ${Array.from(revisions).map( (hash) => {

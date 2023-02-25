@@ -16,6 +16,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   linkCallback?: PerspectiveDiffObserver
   peers: Map<DID, PeerInfo> = new Map();
   me: DID
+  gossipLogCount: number = 0;
 
   constructor(context: LanguageContext) {
     //@ts-ignore
@@ -52,6 +53,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async gossip() {
+    this.gossipLogCount += 1;
     let lostPeers: DID[] = [];
 
     this.peers.forEach( (peerInfo, peer) => {
@@ -88,23 +90,27 @@ export class LinkAdapter implements LinkSyncAdapter {
       });
     })
 
-    console.log(`
-    ======
-    GOSSIP
-    --
-    me: ${this.me}
-    is scribe: ${is_scribe}
-    --
-    ${Array.from(this.peers.entries()).map( ([peer, peerInfo]) => {
-      //@ts-ignore
-      return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.getTime()}\n`
-    })}
-    --
-    revisions: ${Array.from(revisions).map( (hash) => {
-      //@ts-ignore
-      return hash.toString('base64')
-    })}
-    `);
+    //Only show the gossip log every 10th iteration
+    if (this.gossipLogCount == 10) {
+      console.log(`
+      ======
+      GOSSIP
+      --
+      me: ${this.me}
+      is scribe: ${is_scribe}
+      --
+      ${Array.from(this.peers.entries()).map( ([peer, peerInfo]) => {
+        //@ts-ignore
+        return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.toISOString()}\n`
+      })}
+      --
+      revisions: ${Array.from(revisions).map( (hash) => {
+        //@ts-ignore
+        return hash.toString('base64')
+      })}
+      `);
+      this.gossipLogCount = 0;
+    }
   }
 
   async render(): Promise<Perspective> {
@@ -130,19 +136,19 @@ export class LinkAdapter implements LinkSyncAdapter {
     const { diff, reference_hash, reference, broadcast_author } = signal.payload;
     //Check if this signal came from another agent & contains a diff and reference_hash
     if (diff && reference_hash && reference && broadcast_author) {
-      console.log(`PerspectiveDiffSync.handleHolochainSignal: 
-            diff: ${JSON.stringify(diff)}
-            reference_hash: ${reference_hash.toString('base64')}
-            reference: {
-                diff: ${reference.diff?.toString('base64')}
-                parents: ${reference.parents ? reference.parents.map( (parent: Buffer) => parent ? parent.toString('base64') : 'null').join(', '):'none'}
-                diffs_since_snapshot: ${reference?.diffs_since_snapshot}
-            }
-            broadcast_author: ${broadcast_author}
-            `)
+      // console.log(`PerspectiveDiffSync.handleHolochainSignal: 
+      //       diff: ${JSON.stringify(diff)}
+      //       reference_hash: ${reference_hash.toString('base64')}
+      //       reference: {
+      //           diff: ${reference.diff?.toString('base64')}
+      //           parents: ${reference.parents ? reference.parents.map( (parent: Buffer) => parent ? parent.toString('base64') : 'null').join(', '):'none'}
+      //           diffs_since_snapshot: ${reference?.diffs_since_snapshot}
+      //       }
+      //       broadcast_author: ${broadcast_author}
+      //       `)
       this.peers.set(broadcast_author, { currentRevision: reference_hash, lastSeen: new Date() });
     } else {
-      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull: ", signal.payload);
+      //console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull: ", signal.payload);
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
       if (this.linkCallback) {
         this.linkCallback(signal.payload);

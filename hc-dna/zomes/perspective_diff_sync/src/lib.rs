@@ -51,13 +51,6 @@ pub fn commit(diff: PerspectiveDiff) -> ExternResult<Hash> {
 }
 
 #[hdk_extern]
-pub fn latest_revision(_: ()) -> ExternResult<Option<Hash>> {
-    link_adapter::revisions::latest_revision::<retriever::HolochainRetreiver>()
-        .map_err(|error| utils::err(&format!("{}", error)))
-        .map(|val| val.map(|val| val.hash))
-}
-
-#[hdk_extern]
 pub fn current_revision(_: ()) -> ExternResult<Option<Hash>> {
     link_adapter::revisions::current_revision::<retriever::HolochainRetreiver>()
         .map_err(|error| utils::err(&format!("{}", error)))

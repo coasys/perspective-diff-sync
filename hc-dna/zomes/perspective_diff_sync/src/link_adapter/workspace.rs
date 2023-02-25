@@ -129,10 +129,13 @@ impl Workspace {
         let mut unprocessed_branches = VecDeque::new();
         unprocessed_branches.push_back(latest);
 
+        let mut snapshot_seen = vec![];
+
         while !unprocessed_branches.is_empty() {
             let current_hash = unprocessed_branches[0].clone();
 
-            if self.entry_map.contains_key(&current_hash) {
+            if self.entry_map.contains_key(&current_hash) && !snapshot_seen.contains(&current_hash)
+            {
                 debug!("===Workspace.collect_only_from_latest(): CIRCLE DETECTED! Closing current branch...");
                 unprocessed_branches.pop_front();
                 continue;
@@ -148,7 +151,7 @@ impl Workspace {
                     debug!("===Workspace.collect_only_from_latest(): ERROR: Expected to find snapshot link on current_diff where diffs_since_snapshot was 0");
                     self.handle_parents(current_diff, current_hash, &mut unprocessed_branches);
                 } else {
-                    let snapshot = snapshot.unwrap();
+                    let mut snapshot = snapshot.unwrap();
 
                     let mut last_diff = None;
                     for i in 0..snapshot.diff_chunks.len() {
@@ -167,6 +170,9 @@ impl Workspace {
                         current_hash.clone(),
                         PerspectiveDiffEntryReference::new(current_diff.diff, last_diff.clone()),
                     );
+
+                    snapshot_seen.append(&mut snapshot.included_diffs);
+
                     // Snapshot terminates like an orphan.
                     // So we can close this branch and potentially continue
                     // with other unprocessed branches, if they exist.
@@ -553,7 +559,7 @@ impl Workspace {
 
         let fn_end = get_now()?.time();
         let ms_spent = (fn_end - fn_start).num_milliseconds();
-        if ms_spent > 1000{
+        if ms_spent > 1000 {
             debug!("===Workspace.collect_until_common_ancestor() - Profiling: Took: {} to complete collect_until_common_ancestor() function", ms_spent);
         }
 

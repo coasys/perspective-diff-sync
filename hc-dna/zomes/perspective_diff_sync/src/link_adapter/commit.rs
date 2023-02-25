@@ -1,3 +1,4 @@
+use chrono::Timelike;
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
     EntryTypes, HashBroadcast, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
@@ -132,17 +133,19 @@ pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContext
 
         let signal_data = HashBroadcast {
             reference: entry_ref,
-            reference_hash: current_revision.hash,
+            reference_hash: current_revision.hash.clone(),
             diff,
             broadcast_author: get_my_did()?.unwrap(),
         };
 
         let recent_agents = get_active_agents()?;
 
-        debug!(
-            "PerspectiveDiffSync.send_revision_signal(): Sending signal to agents: {:#?}\nme: {:#?}\nsignal: {:#?}",
-            recent_agents, agent_info()?.agent_latest_pubkey, signal_data
-        );
+        if get_now()?.second() % 10 == 0 {
+            debug!(
+                "===PerspectiveDiffSync.broadcast_current(): Sending signal to agents: {:#?}\nme: {:#?}\nrevision: {:#?}",
+                recent_agents, agent_info()?.agent_latest_pubkey, current_revision.hash
+            );
+        };
 
         let now = get_now()?.time();
         remote_signal(signal_data.get_sb()?, recent_agents)?;

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use hdk::prelude::debug;
-use perspective_diff_sync_integrity::{HashReference, LocalHashReference};
+use perspective_diff_sync_integrity::LocalHashReference;
 
 use crate::errors::SocialContextResult;
 use crate::retriever::PerspectiveDiffRetreiver;
@@ -17,20 +17,6 @@ pub fn update_current_revision<Retriever: PerspectiveDiffRetreiver>(
     let after = get_now()?.time();
     debug!("===PerspectiveDiffSync.update_current_revision() - Profiling: Took: {} to update current_revision", (after - now).num_milliseconds());
     res
-}
-
-//Latest revision as seen from the DHT
-pub fn latest_revision<Retriever: PerspectiveDiffRetreiver>(
-) -> SocialContextResult<Option<HashReference>> {
-    debug!("===PerspectiveDiffSync.latest_revision(): Function start");
-    let now = get_now()?.time();
-    let rev = Retriever::latest_revision()?;
-    let after = get_now()?.time();
-    debug!(
-        "===PerspectiveDiffSync.latest_revision() - Profiling: Took: {} to get the latest_revision",
-        (after - now).num_milliseconds()
-    );
-    Ok(rev)
 }
 
 //Latest revision as seen from our local state
