@@ -101,13 +101,18 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
         });
     }
 
-    let fast_forward_possible = if workspace.common_ancestors.first() == Some(&NULL_NODE()) {
-        workspace.all_ancestors(&theirs)?.contains(&current.hash)
-    } else {
-        workspace.common_ancestors.contains(&current.hash)
-    };
+    let fast_forward_possible = workspace.all_ancestors(&theirs)?.contains(&current.hash);
 
-    // println!("fast_forward_possible: {}, {:#?}", fast_forward_possible, workspace.common_ancestors);
+    // If we can't fast forward, we have to merge
+    // but if we are not a scribe, we can't merge
+    // so in that case, we can't do anything
+    if !fast_forward_possible && !is_scribe {
+        debug!("===PerspectiveDiffSync.pull(): Have to merge but I'm not a scribe. Exiting without change...");
+        return Ok(PerspectiveDiff {
+            additions: vec![],
+            removals: vec![],
+        })
+    }
 
     //Get all the diffs which exist between current and the last ancestor that we got
     let seen_diffs = workspace.all_ancestors(&current.hash)?;
@@ -187,6 +192,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
             removals: vec![],
         }
     };
+
     //Emit the signal in case the client connection has a timeout during the zome call
     if emit {
         if diffs.additions.len() > 0 || diffs.removals.len() > 0 {
