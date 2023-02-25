@@ -45,13 +45,6 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
 
     let now = get_now()?;
     update_current_revision::<Retriever>(merge_entry_reference_hash.clone(), now)?;
-    // let signal_data = PerspectiveDiffReference {
-    //     reference: merge_entry_reference.clone(),
-    //     reference_hash: merge_entry_reference_hash.clone(),
-    //     diff: merge_diff,
-    // };
-    // send_revision_signal(signal_data)?;
-    //update_latest_revision::<Retriever>(hash, now)?;
 
     let fn_end = get_now()?.time();
     debug!(
@@ -91,6 +84,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
         workspace.collect_only_from_latest::<Retriever>(theirs.clone())?;
         let diff = workspace.squashed_diff::<Retriever>()?;
         update_current_revision::<Retriever>(theirs, get_now()?)?;
+        emit_signal(diff.clone())?;
         return Ok(diff);
     }
 
@@ -220,8 +214,8 @@ pub fn handle_broadcast<Retriever: PerspectiveDiffRetreiver>(
         };
         if diff_reference.parents == Some(vec![current_revision.hash]) {
             debug!("===PerspectiveDiffSync.fast_forward_signal(): Revisions parent is the same as current, we can fast forward our current");
-            emit_signal(broadcast.diff.clone())?;
             update_current_revision::<Retriever>(revision, get_now()?)?;
+            emit_signal(broadcast.diff.clone())?;
         };
     };
     emit_signal(broadcast)?;
