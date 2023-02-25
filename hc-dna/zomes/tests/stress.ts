@@ -98,8 +98,8 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     
     // Get a deduped set of all peer's current revisions
     let revisions = new Set<string>();
-    for (const peer of peers) {
-      revisions.add(peers.get(peer[0])!.currentRevision);
+    for(const peerInfo of peers.values()) {
+        revisions.add(peerInfo.currentRevision);
     }
 
     console.log(`
@@ -116,7 +116,7 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     --
     revisions: ${Array.from(revisions).map( (hash) => {
         //@ts-ignore
-        hash.toString('base64')
+        return hash.toString('base64')
       })}
     `);
   
