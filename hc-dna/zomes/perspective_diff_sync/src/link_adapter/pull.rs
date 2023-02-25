@@ -98,6 +98,15 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
 
     workspace.build_diffs::<Retriever>(theirs.clone(), current.hash.clone())?;
 
+    // First check if we are actually ahead of them -> we don't have to do anything
+    // they will have to merge with / or fast-forward to our current
+    if workspace.all_ancestors(&current.hash)?.contains(&theirs) {
+        return Ok(PerspectiveDiff {
+            removals: vec![],
+            additions: vec![],
+        });
+    }
+
     let fast_forward_possible = if workspace.common_ancestors.first() == Some(&NULL_NODE()) {
         workspace.all_ancestors(&theirs)?.contains(&current.hash)
     } else {
