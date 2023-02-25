@@ -86,6 +86,19 @@ export class LinkAdapter implements LinkSyncAdapter {
         is_scribe 
       });
     })
+
+    console.log(`
+    ======
+    GOSSIP
+    --
+    is scribe: ${is_scribe}
+    --
+    ${Array.from(this.peers.entries()).map( ([peer, peerInfo]) => {
+      return `${peer}: ${peerInfo.currentRevision} ${peerInfo.lastSeen.getTime()}\n`
+    })}
+    --
+    revisions: ${Array.from(revisions)}
+    `);
   }
 
   async render(): Promise<Perspective> {

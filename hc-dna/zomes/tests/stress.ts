@@ -101,6 +101,19 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     for (const peer of peers) {
       revisions.add(peers.get(peer[0])!.currentRevision);
     }
+
+    console.log(`
+    ======
+    GOSSIP
+    --
+    is scribe: ${is_scribe}
+    --
+    ${Array.from(peers.entries()).map( ([peer, peerInfo]) => {
+      return `${peer}: ${peerInfo.currentRevision} ${peerInfo.lastSeen.getTime()}\n`
+    })}
+    --
+    revisions: ${Array.from(revisions)}
+    `);
   
     revisions.forEach( async (hash) => {
         console.log("PULLING", hash, is_scribe)
