@@ -1,15 +1,15 @@
+use chrono::Timelike;
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    EntryTypes, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference, PerspectiveDiffReference,
+    EntryTypes, HashBroadcast, LinkTypes, PerspectiveDiff, PerspectiveDiffEntryReference,
 };
 
 use crate::errors::SocialContextResult;
-use crate::link_adapter::revisions::{
-    current_revision, update_current_revision, update_latest_revision,
-};
+use crate::link_adapter::revisions::{current_revision, update_current_revision};
 use crate::link_adapter::snapshots::generate_snapshot;
 use crate::retriever::holochain::{get_active_agent_anchor, get_active_agents};
 use crate::retriever::PerspectiveDiffRetreiver;
+use crate::telepresence::status::get_my_did;
 use crate::utils::get_now;
 use crate::{ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 
@@ -80,7 +80,7 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
 
     let now = get_now()?;
     let now_profile = get_now()?.time();
-    update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
+    //update_latest_revision::<Retriever>(diff_entry_reference.clone(), now.clone())?;
     let after = get_now()?.time();
     debug!(
         "===PerspectiveDiffSync.commit() - Profiling: Took {} to update the latest revision",
@@ -89,25 +89,13 @@ pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     update_current_revision::<Retriever>(diff_entry_reference.clone(), now)?;
 
     if *ENABLE_SIGNALS {
-        let recent_agents = get_active_agents()?;
-
-        debug!(
-            "Social-Context.add_link: Sending signal to agents: {:#?}",
-            recent_agents
-        );
-
-        let now = get_now()?.time();
-        let signal_data = PerspectiveDiffReference {
-            diff,
-            reference: diff_entry_ref_entry,
-            reference_hash: diff_entry_reference.clone(),
-        };
-        remote_signal(signal_data.get_sb()?, recent_agents)?;
-        let after = get_now()?.time();
-        debug!(
-            "===PerspectiveDiffSync.commit() - Profiling: Took {} to send signal to active agents",
-            (after - now).num_milliseconds()
-        );
+        // let signal_data = PerspectiveDiffReference {
+        //     diff,
+        //     reference: diff_entry_ref_entry,
+        //     reference_hash: diff_entry_reference.clone(),
+        // };
+        // send_revision_signal(signal_data)?;
+        broadcast_current::<Retriever>()?;
     };
 
     let after_fn_end = get_now()?.time();
@@ -134,5 +122,38 @@ pub fn add_active_agent_link<Retriever: PerspectiveDiffRetreiver>() -> SocialCon
     )?;
     let after_fn_end = get_now()?.time();
     debug!("===PerspectiveDiffSync.add_active_agent_link() - Profiling: Took {} to complete whole add_active_agent_link()", (after_fn_end - now_fn_start).num_milliseconds());
+    Ok(())
+}
+
+pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<()> {
+    if let Some(current_revision) = current_revision::<Retriever>()? {
+        let entry_ref =
+            Retriever::get::<PerspectiveDiffEntryReference>(current_revision.hash.clone())?;
+        let diff = Retriever::get::<PerspectiveDiff>(entry_ref.diff.clone())?;
+
+        let signal_data = HashBroadcast {
+            reference: entry_ref,
+            reference_hash: current_revision.hash.clone(),
+            diff,
+            broadcast_author: get_my_did()?.unwrap(),
+        };
+
+        let recent_agents = get_active_agents()?;
+
+        let now = get_now()?.time();
+        remote_signal(signal_data.get_sb()?, recent_agents.clone())?;
+        let after = get_now()?.time();
+
+        if get_now()?.second() % 10 == 0 {
+            debug!(
+                "===PerspectiveDiffSync.broadcast_current(): Sending signal to agents: {:#?}\nme: {:#?}\nrevision: {:#?}",
+                recent_agents, agent_info()?.agent_latest_pubkey, current_revision.hash
+            );
+            debug!(
+                "===PerspectiveDiffSync.send_revision_signal() - Profiling: Took {} to send signal to active agents",
+                (after - now).num_milliseconds()
+            );
+        };
+    };
     Ok(())
 }

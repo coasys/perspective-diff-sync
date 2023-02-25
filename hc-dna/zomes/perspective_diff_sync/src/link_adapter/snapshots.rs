@@ -96,7 +96,7 @@ pub fn generate_snapshot(
                 }
                 //Be careful with break here where there are still unseen parents
                 if unseen_parents.len() == 0 {
-                    debug!("No more unseen parents within snapshot block");
+                    // debug!("No more unseen parents within snapshot block");
                     break;
                 } else {
                     search_position = unseen_parents.remove(0);
@@ -164,10 +164,10 @@ fn handle_parents(
             //No parents, we have reached the end of the chain
             //Now move onto traversing unseen parents, or break if we dont have any other paths to search
             if unseen_parents.len() == 0 {
-                debug!("No more unseen items within parent block");
+                // debug!("No more unseen items within parent block");
                 Ok(true)
             } else {
-                debug!("Moving onto unseen fork items within parent block");
+                // debug!("Moving onto unseen fork items within parent block");
                 *search_position = unseen_parents.remove(0);
                 Ok(false)
             }
@@ -178,10 +178,10 @@ fn handle_parents(
             //TODO; we should use a seen set here versus array iter
             if parents.iter().all(|val| seen.contains(val)) {
                 if unseen_parents.len() == 0 {
-                    debug!("Parents of item seen and unseen 0");
+                    // debug!("Parents of item seen and unseen 0");
                     return Ok(true);
                 } else {
-                    debug!("last moving onto unseen");
+                    // debug!("last moving onto unseen");
                     *search_position = unseen_parents.remove(0);
                     Ok(false)
                 }
@@ -190,7 +190,7 @@ fn handle_parents(
                     hash: parents.remove(0),
                     is_unseen: false,
                 };
-                debug!("Appending parents to look up");
+                // debug!("Appending parents to look up");
                 unseen_parents.append(
                     &mut parents
                         .into_iter()
@@ -206,10 +206,10 @@ fn handle_parents(
     } else if search_position.is_unseen {
         //The parent for this branch is already seen so likely already explored and we are part of the main branch
         if unseen_parents.len() == 0 {
-            debug!("No more unseen items within parent block");
+            // debug!("No more unseen items within parent block");
             Ok(true)
         } else {
-            debug!("Moving onto unseen fork items within parent block");
+            // debug!("Moving onto unseen fork items within parent block");
             *search_position = unseen_parents.remove(0);
             Ok(false)
         }
@@ -218,10 +218,10 @@ fn handle_parents(
             //No parents, we have reached the end of the chain
             //Now move onto traversing unseen parents, or break if we dont have any other paths to search
             if unseen_parents.len() == 0 {
-                debug!("No more unseen items within parent block");
+                // debug!("No more unseen items within parent block");
                 Ok(true)
             } else {
-                debug!("Moving onto unseen fork items within parent block");
+                // debug!("Moving onto unseen fork items within parent block");
                 *search_position = unseen_parents.remove(0);
                 Ok(false)
             }
@@ -232,10 +232,10 @@ fn handle_parents(
             //TODO; we should use a seen set here versus array iter
             if parents.iter().all(|val| seen.contains(val)) {
                 if unseen_parents.len() == 0 {
-                    debug!("Parents of item seen and unseen 0");
+                    // debug!("Parents of item seen and unseen 0");
                     Ok(true)
                 } else {
-                    debug!("last moving onto unseen");
+                    // debug!("last moving onto unseen");
                     *search_position = unseen_parents.remove(0);
                     Ok(false)
                 }
@@ -244,7 +244,7 @@ fn handle_parents(
                     hash: parents.remove(0),
                     is_unseen: false,
                 };
-                debug!("Appending parents to look up");
+                // debug!("Appending parents to look up");
                 unseen_parents.append(
                     &mut parents
                         .into_iter()
