@@ -106,10 +106,12 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     ======
     GOSSIP
     --
+    me: ${me}
     is scribe: ${is_scribe}
     --
     ${Array.from(peers.entries()).map( ([peer, peerInfo]) => {
-      return `${peer}: ${peerInfo.currentRevision} ${peerInfo.lastSeen.getTime()}\n`
+      //@ts-ignore
+      return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.getTime()}\n`
     })}
     --
     revisions: ${Array.from(revisions)}
@@ -150,10 +152,22 @@ export async function stressTest(t) {
     );
     const alicePeersList: Map<DID, PeerInfo> = new Map();
     aliceHapps.conductor.appWs().on("signal", async (signal) => {
-        console.log("Alice Received Signal:",signal);
+        //console.log("Alice Received Signal:",signal);
         const { diff, reference_hash, reference, broadcast_author } = signal.payload;
         if (diff && reference_hash && reference && broadcast_author) {
+            console.log(`PerspectiveDiffSync.handleHolochainSignal: 
+            diff: ${JSON.stringify(diff)}
+            reference_hash: ${reference_hash.toString('base64')}
+            reference: {
+                diff: ${reference.diff?.toString('base64')}
+                parents: ${reference.parents ? reference.parents.map( (parent: Buffer) => parent ? parent.toString('base64') : 'null').join(', '):'none'}
+                diffs_since_snapshot: ${reference?.diffs_since_snapshot}
+            }
+            broadcast_author: ${broadcast_author}
+            `)
             alicePeersList.set(broadcast_author, { currentRevision: reference_hash, lastSeen: new Date() });
+        } else {
+            console.log("PerspectiveDiffSync.handleHolochainSignal: got other signal:", signal.payload)
         }
     });
     const bobHapps = await scenario.addPlayerWithApp(

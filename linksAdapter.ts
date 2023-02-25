@@ -81,6 +81,7 @@ export class LinkAdapter implements LinkSyncAdapter {
     }
 
     revisions.forEach( async (hash) => {
+      if(!hash) return
       await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", { 
         hash,
         is_scribe 
@@ -91,10 +92,12 @@ export class LinkAdapter implements LinkSyncAdapter {
     ======
     GOSSIP
     --
+    me: ${this.me}
     is scribe: ${is_scribe}
     --
     ${Array.from(this.peers.entries()).map( ([peer, peerInfo]) => {
-      return `${peer}: ${peerInfo.currentRevision} ${peerInfo.lastSeen.getTime()}\n`
+      //@ts-ignore
+      return `${peer}: ${peerInfo.currentRevision.toString('base64')} ${peerInfo.lastSeen.getTime()}\n`
     })}
     --
     revisions: ${Array.from(revisions)}
@@ -121,12 +124,22 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async handleHolochainSignal(signal: any): Promise<void> {
-    let p = signal.payload;
+    const { diff, reference_hash, reference, broadcast_author } = signal.payload;
     //Check if this signal came from another agent & contains a diff and reference_hash
-    if (p.diff && p.reference_hash && p.reference && p.broadcast_author) {
-      this.peers.set(p.broadcast_author, { currentRevision: p.reference_hash, lastSeen: new Date() });
+    if (diff && reference_hash && reference && broadcast_author) {
+      console.log(`PerspectiveDiffSync.handleHolochainSignal: 
+            diff: ${JSON.stringify(diff)}
+            reference_hash: ${reference_hash.toString('base64')}
+            reference: {
+                diff: ${reference.diff?.toString('base64')}
+                parents: ${reference.parents ? reference.parents.map( (parent: Buffer) => parent ? parent.toString('base64') : 'null').join(', '):'none'}
+                diffs_since_snapshot: ${reference?.diffs_since_snapshot}
+            }
+            broadcast_author: ${broadcast_author}
+            `)
+      this.peers.set(broadcast_author, { currentRevision: reference_hash, lastSeen: new Date() });
     } else {
-      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull");
+      console.log("PerspectiveDiffSync.handleHolochainSignal: received a signals from ourselves in fast_forward_signal or in a pull: ", signal.payload);");
       //This signal only contains link data and no reference, and therefore came from us in a pull in fast_forward_signal
       if (this.linkCallback) {
         this.linkCallback(signal.payload);
