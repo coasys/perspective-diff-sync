@@ -212,7 +212,7 @@ impl Workspace {
     }
 
     pub fn sort_graph(&mut self) -> SocialContextResult<()> {
-        debug!("===Workspace.sort_graph(): Function start");
+        //debug!("===Workspace.sort_graph(): Function start");
         let fn_start = get_now()?.time();
 
         let common_ancestor = self.common_ancestors.last().unwrap();
@@ -263,10 +263,10 @@ impl Workspace {
                 visited.insert(current);
             }
         }
-        debug!(
-            "===Workspace.sort_graph(): Made {:?} total iterations",
-            inner_iter
-        );
+        //debug!(
+        //    "===Workspace.sort_graph(): Made {:?} total iterations",
+        //    inner_iter
+        //);
 
         self.unexplored_side_branches = self
             .unexplored_side_branches
@@ -281,10 +281,10 @@ impl Workspace {
         self.sorted_diffs = Some(sorted.into_iter().unique().collect());
 
         let fn_end = get_now()?.time();
-        debug!(
-            "===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function",
-            (fn_end - fn_start).num_milliseconds()
-        );
+        //debug!(
+        //    "===Workspace.sort_graph() - Profiling: Took: {} to complete sort_graph() function",
+        //    (fn_end - fn_start).num_milliseconds()
+        //);
 
         Ok(())
     }
