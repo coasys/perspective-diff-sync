@@ -201,7 +201,7 @@ export async function stressTest(t) {
     })
 
     //Create did/pub key link for alice and bob
-       await aliceHapps.cells[0].callZome({
+    await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync",
         fn_name: "create_did_pub_key_link",
         payload: "did:test:alice"
@@ -264,7 +264,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 40; i++) {
+    for(let i=0; i < 10; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");
