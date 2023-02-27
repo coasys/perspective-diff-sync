@@ -37,8 +37,7 @@ jobs:
           ~/.cargo/git/db/
           target/
         key: ${{ runner.os }}-cargo
-    - run: cd hc-dna/
-    - run: cargo test -- --test-threads=1
+    - run: cd hc-dna && cargo test -- --test-threads=1
 
   pull:
     name: Pull
