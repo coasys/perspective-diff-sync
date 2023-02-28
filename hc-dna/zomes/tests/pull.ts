@@ -10,6 +10,18 @@ export async function unSyncFetch(t) {
     let bobHapps = installs[1].agent_happ;
     let conductor2 = installs[1].conductor;
     await addAllAgentsToAllConductors([conductor1, conductor2]);
+
+    //Create did/pub key link for alice and bob
+    await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:alice"
+    });
+    await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:bob"
+    });
     
     let commit = await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
@@ -21,17 +33,11 @@ export async function unSyncFetch(t) {
     // need to for gossip to have commit be seen by bob
     await sleep(1000)
     
-    let pull_alice = await aliceHapps.cells[0].callZome({
+    const pull_bob = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
+        fn_name: "pull",
+        payload: { hash: commit, is_scribe: false } 
     });
-    console.warn("\npull alice", pull_alice);
-    
-    let pull_bob = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
-    });
-    console.warn("\npull bob", pull_bob);
     //@ts-ignore
     t.equal(pull_bob.additions.length, 1);
     
@@ -156,6 +162,18 @@ export async function mergeFetch(t) {
     let aliceConductor = installs[0].conductor;
     let bobHapps = installs[1].agent_happ;
     let bobConductor = installs[1].conductor;
+
+    //Create did/pub key link for alice and bob
+    await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:alice"
+    });
+    await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:bob"
+    });
     
     //Create new commit whilst bob is not connected
     let link_data = generate_link_expression("alice");
@@ -168,13 +186,23 @@ export async function mergeFetch(t) {
     //@ts-ignore
     console.warn("\ncommit", commit.toString("base64"));
 
-    //Pull from bob and make sure he does not have the latest state
-    let pull_bob = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
-    });
-    //@ts-ignore
-    t.isEqual(pull_bob.additions.length, 0);
+    await sleep(1000)
+
+    let bob_pull_failed = false
+    try{
+        // Pull from bob who is not connected to alice yet
+        // to show that this will fail (because `commit` could not be found)
+        await bobHapps.cells[0].callZome({
+            zome_name: "perspective_diff_sync", 
+            fn_name: "pull",
+            payload: { hash: commit, is_scribe: false }
+        });
+    } catch(e) {
+        bob_pull_failed = true
+    }
+
+    t.assert(bob_pull_failed)
+
     
     //Bob to commit his data, and update the latest revision, causing a fork
     let bob_link_data = generate_link_expression("bob");
@@ -186,13 +214,6 @@ export async function mergeFetch(t) {
     });
     //@ts-ignore
     console.warn("\ncommit_bob", commit_bob.toString("base64"));
-
-    let pull_bob2 = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
-    });
-    //@ts-ignore
-    t.isEqual(pull_bob2.additions.length, 0);
     
     //Connect nodes togther
     await addAllAgentsToAllConductors([aliceConductor, bobConductor]);
@@ -202,19 +223,26 @@ export async function mergeFetch(t) {
     //Alice tries to merge
     let merge_alice = await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
+        fn_name: "pull",
+        payload: { hash: commit_bob, is_scribe: true }
     });
     //@ts-ignore
     t.isEqual(merge_alice.additions.length, 1);
     //@ts-ignore
     t.isEqual(JSON.stringify(merge_alice.additions[0].data), JSON.stringify(bob_link_data.data));
+
+    const alice_merge_commit = await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "current_revision",
+    });
     
     //note; running this test on some machines may require more than 200ms wait
     await sleep(2000)
     
     let pull_bob3 = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
-        fn_name: "pull"
+        fn_name: "pull",
+        payload: { hash: alice_merge_commit, is_scribe: false }
     });
     console.warn("bob pull3", pull_bob3);
     //@ts-ignore

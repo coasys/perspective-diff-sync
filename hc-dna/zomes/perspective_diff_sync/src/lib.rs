@@ -64,10 +64,9 @@ pub fn sync(_: ()) -> ExternResult<()> {
 }
 
 #[hdk_extern]
-pub fn pull(args: PullArguments) -> ExternResult<()> {
+pub fn pull(args: PullArguments) -> ExternResult<PerspectiveDiff> {
     link_adapter::pull::pull::<retriever::HolochainRetreiver>(true, args.hash, args.is_scribe)
-        .map_err(|error| utils::err(&format!("{}", error)))?;
-    Ok(())
+        .map_err(|error| utils::err(&format!("{}", error)))
 }
 
 #[hdk_extern]
