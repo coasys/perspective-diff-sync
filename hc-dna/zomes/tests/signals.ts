@@ -55,6 +55,18 @@ export async function signals(t) {
         bobSignalCount += 1;
     })
 
+    await aliceHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:alice"
+    });
+    await bobHapps.cells[0].callZome({
+        zome_name: "perspective_diff_sync",
+        fn_name: "create_did_pub_key_link",
+        payload: "did:test:bob"
+    });
+
+    
     await scenario.shareAllAgents();
 
     //Sleep to give time for bob active agent link to arrive at alice
