@@ -7,7 +7,7 @@ function sleep(ms: number) {
 }
 
 class PeerInfo {
-  currentRevision: string;
+  currentRevision: Buffer;
   lastSeen: Date;
 };
 
@@ -17,6 +17,7 @@ export class LinkAdapter implements LinkSyncAdapter {
   peers: Map<DID, PeerInfo> = new Map();
   me: DID
   gossipLogCount: number = 0;
+  myCurrentRevision: Buffer | null = null;
 
   constructor(context: LanguageContext) {
     //@ts-ignore
@@ -47,7 +48,8 @@ export class LinkAdapter implements LinkSyncAdapter {
   }
 
   async pull(): Promise<PerspectiveDiff> {
-    await this.hcDna.call(DNA_NICK, ZOME_NAME, "sync", null);
+    let current_revision = await this.hcDna.call(DNA_NICK, ZOME_NAME, "sync", null);
+    this.currentRevision = current_revision;
     await this.gossip();
     return new PerspectiveDiff()
   }
@@ -77,17 +79,22 @@ export class LinkAdapter implements LinkSyncAdapter {
     let is_scribe = peers[0] == this.me;
     
     // Get a deduped set of all peer's current revisions
-    let revisions = new Set<string>();
+    let revisions = new Set<Buffer>();
     for(const peerInfo of this.peers.values()) {
-      revisions.add(peerInfo.currentRevision);
+      if (peerInfo.currentRevision) revisions.add(peerInfo.currentRevision);
     }
 
     revisions.forEach( async (hash) => {
       if(!hash) return
-      await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", { 
+      if (hash === this.myCurrentRevision) return
+      let pullResult = await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", { 
         hash,
         is_scribe 
       });
+      if (pullResult) {
+        let myRevision = pullResult.current_revision;
+        this.currentRevision = myRevision;
+      }
     })
 
     //Only show the gossip log every 10th iteration
@@ -124,6 +131,7 @@ export class LinkAdapter implements LinkSyncAdapter {
       removals: diff.removals.map((diff) => prepareLinkExpression(diff))
     }
     let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "commit", prep_diff);
+    this.myCurrentRevision = res;
     return res as string;
   }
 

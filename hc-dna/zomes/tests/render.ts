@@ -35,7 +35,7 @@ export async function render(t) {
 
     let alice_rendered = await call(aliceHapps, "render");
     //@ts-ignore
-    t.equal(alice_rendered.links.length, 2)
+    t.equal(alice_rendered.diff.links.length, 2)
 
     await sleep(5000);
     

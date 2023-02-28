@@ -10,12 +10,27 @@ import { resolve } from "path";
 import { dnas } from "./common";
 let createdLinks = new Map<string, Array<LinkExpression>>()
 
+class PeerInfo {
+    currentRevision: Buffer | null = null;
+    lastSeen: Date = new Date();
+};
+
+let aliceRevision: Buffer | null = null;
+let bobRevision: Buffer | null = null;
+let aliceDid = "";
+let bobDid = "";
+
 async function createLinks(happ: AgentApp, agentName: string, count: number, queue?: AsyncQueue) {
     if(!createdLinks.get(agentName)) createdLinks.set(agentName, [])
     for(let i=0; i < count; i++) {
         if (queue) {
             await queue.add(async () => {
-                let { data } = await create_link_expression(happ.cells[0], agentName);
+                let { commitRaw, data } = await create_link_expression(happ.cells[0], agentName);
+                if (agentName === "alice") {
+                    aliceRevision = commitRaw;
+                } else if (agentName === "bob") {
+                    bobRevision = commitRaw;
+                }
                 createdLinks.get(agentName)!.push(data)
             }).catch((e) => {
                 console.log("Error in create links queue", e);
@@ -55,19 +70,6 @@ export async function latestRevisionStress(t) {
         console.log("Fetch execution took: ", after2 - after);
     }
 }
-
-//async function waitDhtConsistency(hash: Buffer, conductor: Conductor) {
-//    while ((await conductor.appWs().networkInfo({dnas: [hash]}))[0].fetch_queue_info.op_bytes_to_fetch != 0) {
-//        console.log("waiting for consistency...");
-//        await sleep(1000);
-//    }
-//}
-
-class PeerInfo {
-    currentRevision: string = "";
-    lastSeen: Date = new Date();
-  };
-
   
 async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLanguageDelegate) {
     console.log("GOSSIP for ", me)
@@ -97,9 +99,9 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     console.log("IS SCRIBE", is_scribe, me)
     
     // Get a deduped set of all peer's current revisions
-    let revisions = new Set<string>();
+    let revisions = new Set<Buffer>();
     for(const peerInfo of peers.values()) {
-        revisions.add(peerInfo.currentRevision);
+        if (peerInfo.currentRevision) revisions.add(peerInfo.currentRevision);
     }
 
     console.log(`
@@ -121,11 +123,29 @@ async function gossip(peers: Map<DID, PeerInfo>, me: DID, hcDna: HolochainLangua
     `);
   
     revisions.forEach( async (hash) => {
-        console.log("PULLING", hash, is_scribe)
-      await hcDna.call("DNA_NICK", "ZOME_NAME", "pull", { 
-        hash,
-        is_scribe 
-      });
+        console.log("PULLING", hash, is_scribe, aliceRevision, bobRevision) 
+        if(!hash) return
+        if (me === aliceDid) {
+            if (hash === aliceRevision) {
+                console.log("Alice skipping pull since we already sync'd on this gossip loop");
+                return
+            }
+        }
+        if (me === bobDid) {
+            if (hash === bobRevision) {
+                console.log("Bob skipping pull since we already sync'd on this gossip loop");
+                return
+            }
+        }
+        let pullResult = await hcDna.call("DNA_NICK", "ZOME_NAME", "pull", { 
+            hash,
+            is_scribe 
+        });
+        if (pullResult) {
+            let myRevision = pullResult.current_revision;
+            if (me === aliceDid) aliceRevision = myRevision;
+            if (me === bobDid) bobRevision = myRevision;
+        }
     })
   }
 
@@ -201,16 +221,18 @@ export async function stressTest(t) {
     })
 
     //Create did/pub key link for alice and bob
-       await aliceHapps.cells[0].callZome({
+    await aliceHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync",
         fn_name: "create_did_pub_key_link",
         payload: "did:test:alice"
     });
+    aliceDid = "did:test:alice";
     await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync",
         fn_name: "create_did_pub_key_link",
         payload: "did:test:bob"
     });
+    bobDid = "did:test:bob";
 
     let done = false;
     async function processGossip() {
@@ -264,7 +286,7 @@ export async function stressTest(t) {
     console.log("==============================================")
     console.log("=================START========================")
     console.log("==============================================")
-    for(let i=0; i < 40; i++) {
+    for(let i=0; i < 10; i++) {
         console.log("-------------------------");
         console.log("Iteration: ", i)
         console.log("-------------------------");

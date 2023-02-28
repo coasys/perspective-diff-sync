@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use perspective_diff_sync_integrity::{
-    EntryTypes, HashBroadcast, PerspectiveDiff, PerspectiveDiffEntryReference,
+    EntryTypes, HashBroadcast, PerspectiveDiff, PerspectiveDiffEntryReference, PullResult,
 };
 
 use crate::errors::SocialContextResult;
@@ -13,7 +13,7 @@ use crate::Hash;
 fn merge<Retriever: PerspectiveDiffRetreiver>(
     latest: Hash,
     current: Hash,
-) -> SocialContextResult<()> {
+) -> SocialContextResult<Hash> {
     debug!("===PerspectiveDiffSync.merge(): Function start");
     let fn_start = get_now()?.time();
 
@@ -51,14 +51,14 @@ fn merge<Retriever: PerspectiveDiffRetreiver>(
         "===PerspectiveDiffSync.merge() - Profiling: Took: {} to complete merge() function",
         (fn_end - fn_start).num_milliseconds()
     );
-    Ok(())
+    Ok(merge_entry_reference_hash)
 }
 
 pub fn pull<Retriever: PerspectiveDiffRetreiver>(
     emit: bool,
     theirs: Hash,
     is_scribe: bool,
-) -> SocialContextResult<PerspectiveDiff> {
+) -> SocialContextResult<PullResult> {
     debug!("===PerspectiveDiffSync.pull(): Function start");
     let fn_start = get_now()?.time();
 
@@ -72,9 +72,9 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
     let theirs_hash = theirs.clone();
 
     if Some(theirs_hash) == current_hash {
-        return Ok(PerspectiveDiff {
-            removals: vec![],
-            additions: vec![],
+        return Ok(PullResult {
+            diff: PerspectiveDiff::default(),
+            current_revision: current_hash,
         });
     }
 
@@ -85,7 +85,10 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
         let diff = workspace.squashed_diff::<Retriever>()?;
         update_current_revision::<Retriever>(theirs, get_now()?)?;
         emit_signal(diff.clone())?;
-        return Ok(diff);
+        return Ok(PullResult {
+            diff: PerspectiveDiff::default(),
+            current_revision: None,
+        });
     }
 
     let current = current.expect("current missing handled above");
@@ -95,9 +98,9 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
     // First check if we are actually ahead of them -> we don't have to do anything
     // they will have to merge with / or fast-forward to our current
     if workspace.all_ancestors(&current.hash)?.contains(&theirs) {
-        return Ok(PerspectiveDiff {
-            removals: vec![],
-            additions: vec![],
+        return Ok(PullResult {
+            diff: PerspectiveDiff::default(),
+            current_revision: Some(current.hash),
         });
     }
 
@@ -108,10 +111,10 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
     // so in that case, we can't do anything
     if !fast_forward_possible && !is_scribe {
         debug!("===PerspectiveDiffSync.pull(): Have to merge but I'm not a scribe. Exiting without change...");
-        return Ok(PerspectiveDiff {
-            additions: vec![],
-            removals: vec![],
-        })
+        return Ok(PullResult {
+            diff: PerspectiveDiff::default(),
+            current_revision: Some(current.hash),
+        });
     }
 
     //Get all the diffs which exist between current and the last ancestor that we got
@@ -148,7 +151,7 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
             .collect::<Vec<(Hash, PerspectiveDiffEntryReference)>>()
     };
 
-    let diffs = if fast_forward_possible {
+    let (diffs, current_revision) = if fast_forward_possible {
         debug!("===PerspectiveDiffSync.pull(): There are paths between current and latest, lets fast forward the changes we have missed!");
         let mut out = PerspectiveDiff {
             additions: vec![],
@@ -159,13 +162,13 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
             out.additions.append(&mut diff_entry.additions.clone());
             out.removals.append(&mut diff_entry.removals.clone());
         }
-        update_current_revision::<Retriever>(theirs, get_now()?)?;
+        update_current_revision::<Retriever>(theirs.clone(), get_now()?)?;
         let fn_end = get_now()?.time();
         debug!(
             "===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function",
             (fn_end - fn_start).num_milliseconds()
         );
-        out
+        (out, theirs)
     } else if is_scribe {
         debug!("===PerspectiveDiffSync.pull():There are no paths between current and latest, we must merge current and latest");
         //Get the entries we missed from unseen diff
@@ -179,18 +182,21 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
             out.removals.append(&mut diff_entry.removals.clone());
         }
 
-        merge::<Retriever>(theirs, current.hash)?;
+        let merge_hash = merge::<Retriever>(theirs, current.hash)?;
         let fn_end = get_now()?.time();
         debug!(
             "===PerspectiveDiffSync.pull() - Profiling: Took: {} to complete pull() function",
             (fn_end - fn_start).num_milliseconds()
         );
-        out
+        (out, merge_hash)
     } else {
-        PerspectiveDiff {
-            additions: vec![],
-            removals: vec![],
-        }
+        (
+            PerspectiveDiff {
+                additions: vec![],
+                removals: vec![],
+            },
+            current.hash,
+        )
     };
 
     //Emit the signal in case the client connection has a timeout during the zome call
@@ -199,7 +205,10 @@ pub fn pull<Retriever: PerspectiveDiffRetreiver>(
             emit_signal(diffs.clone())?;
         }
     }
-    Ok(diffs)
+    Ok(PullResult {
+        diff: diffs,
+        current_revision: Some(current_revision),
+    })
 }
 
 pub fn handle_broadcast<Retriever: PerspectiveDiffRetreiver>(
@@ -280,6 +289,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -334,6 +344,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -391,6 +402,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -442,6 +454,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -488,6 +501,7 @@ mod tests {
         assert!(pull_res.is_ok());
         assert!(pull_res
             .unwrap()
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -548,6 +562,7 @@ mod tests {
         assert!(pull_res.is_ok());
         assert!(pull_res
             .unwrap()
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -605,6 +620,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -665,6 +681,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -704,9 +721,10 @@ mod tests {
         expected_additions.push(create_node_id_link_expression(21));
 
         for addition in expected_additions.clone() {
-            assert!(pull_res.additions.contains(&addition));
+            assert!(pull_res.diff.additions.contains(&addition));
         }
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -742,6 +760,7 @@ mod tests {
         let expected_additions = vec![create_node_id_link_expression(314)];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -780,6 +799,7 @@ mod tests {
         ];
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
@@ -814,6 +834,7 @@ mod tests {
         let expected_additions = create_node_id_vec(1, 301);
 
         assert!(pull_res
+            .diff
             .additions
             .iter()
             .all(|item| expected_additions.contains(item)));
