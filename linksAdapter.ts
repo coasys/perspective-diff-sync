@@ -86,7 +86,7 @@ export class LinkAdapter implements LinkSyncAdapter {
 
     revisions.forEach( async (hash) => {
       if(!hash) return
-      if (hash === this.myCurrentRevision) return
+      if (hash.compare(this.myCurrentRevision)) return
       let pullResult = await this.hcDna.call(DNA_NICK, ZOME_NAME, "pull", { 
         hash,
         is_scribe 
