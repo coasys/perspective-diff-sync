@@ -31,7 +31,7 @@ export async function unSyncFetch(t) {
     console.warn("\ncommit", commit);
 
     // need to for gossip to have commit be seen by bob
-    await sleep(1000)
+    await sleep(5000)
     
     const pull_bob = await bobHapps.cells[0].callZome({
         zome_name: "perspective_diff_sync", 
