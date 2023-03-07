@@ -402,24 +402,10 @@
     ws "^8.12.1"
     yargs "^17.3.1"
 
-"@perspect3vism/ad4m@*":
+"@perspect3vism/ad4m@*", "@perspect3vism/ad4m@0.2.16":
   version "0.2.16"
   resolved "https://registry.yarnpkg.com/@perspect3vism/ad4m/-/ad4m-0.2.16.tgz#fe4f51f0e9f3861424455f9b4d90c1ab20efc651"
   integrity sha512-5vLKihMUd701jkSrQYlL8bdDrmTlt7dvoQBw6IHaAaJvlPvmvZHCoDlaVkvjPFVwkxerQMxmcAjjE4wrNvSXvA==
-  dependencies:
-    "@apollo/client" "3.6.9"
-    "@holochain/client" "0.12.0"
-    "@types/jest" "^26.0.14"
-    class-validator "^0.13.1"
-    express "^4.18.1"
-    graphql "^15.7.2"
-    reflect-metadata "^0.1.13"
-    type-graphql "^1.1.1"
-
-"@perspect3vism/ad4m@0.2.12":
-  version "0.2.12"
-  resolved "https://registry.yarnpkg.com/@perspect3vism/ad4m/-/ad4m-0.2.12.tgz#9227552e6194595f8708472552ea733656518175"
-  integrity sha512-bj8AAaN9yx7n606P18n5kCrhacUywCHN6HFUrJgW+8N1J573+3dUAbFd3PzLHAh+wS0HsTsx+eX78mz2UKawbg==
   dependencies:
     "@apollo/client" "3.6.9"
     "@holochain/client" "0.12.0"
@@ -760,7 +746,7 @@ anymatch@~3.1.2:
     normalize-path "^3.0.0"
     picomatch "^2.0.4"
 
-"appdata-path@github:perspect3vism/appdata-path":
+appdata-path@perspect3vism/appdata-path:
   version "1.0.0"
   resolved "https://codeload.github.com/perspect3vism/appdata-path/tar.gz/6304ea16cbfebc98749c33941d643c3046b45985"
 

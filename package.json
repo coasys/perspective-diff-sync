@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@perspect3vism/ad4m": "0.2.12",
+    "@perspect3vism/ad4m": "0.2.16",
     "@perspect3vism/ad4m-test": "0.2.16-fix.12",
     "@perspect3vism/rollup-plugin-dna": "^0.0.2",
     "@rollup/plugin-commonjs": "^14.0.0",
