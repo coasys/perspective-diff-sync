@@ -11,6 +11,7 @@ class PeerInfo {
   lastSeen: Date;
 };
 
+//@ts-ignore
 export class LinkAdapter implements LinkSyncAdapter {
   hcDna: HolochainLanguageDelegate;
   linkCallback?: PerspectiveDiffObserver
@@ -37,17 +38,12 @@ export class LinkAdapter implements LinkSyncAdapter {
     return await this.hcDna.call(DNA_NICK, ZOME_NAME, "get_others", null);
   }
 
-  async latestRevision(): Promise<string> {
-    let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "current_revision", null);
-    return res as string;
-  }
-
   async currentRevision(): Promise<string> {
     let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "current_revision", null);
     return res as string;
   }
 
-  async pull(): Promise<PerspectiveDiff> {
+  async sync(): Promise<PerspectiveDiff> {
     let current_revision = await this.hcDna.call(DNA_NICK, ZOME_NAME, "sync", null);
     this.currentRevision = current_revision;
     await this.gossip();

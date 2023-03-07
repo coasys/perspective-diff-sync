@@ -21,12 +21,14 @@ export default async function create(context: LanguageContext): Promise<Language
     //@ts-ignore
     [{ file: DNA, nick: DNA_NICK, zomeCalls: 
       [
-        [ZOME_NAME, "latest_revision"],
         [ZOME_NAME, "current_revision"],
-        [ZOME_NAME, "pull"],
+        [ZOME_NAME, "sync"],
         [ZOME_NAME, "render"],
         [ZOME_NAME, "commit"],
-        [ZOME_NAME, "fast_forward_signal"]
+        [ZOME_NAME, "fast_forward_signal"],
+        [ZOME_NAME, "get_others"],
+        [ZOME_NAME, "add_active_agent_link"],
+        [ZOME_NAME, "create_did_pub_key_link"],
       ]
     }],
     async (signal) => { 
@@ -44,6 +46,7 @@ export default async function create(context: LanguageContext): Promise<Language
   //Setup the link between did and agent pub key
   await Holochain.call(DNA_NICK, ZOME_NAME, "create_did_pub_key_link", agent.did);
 
+  //@ts-ignore
   return {
     name,
     linksAdapter,
