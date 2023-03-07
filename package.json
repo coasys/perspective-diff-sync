@@ -1,6 +1,6 @@
 {
   "name": "perspective-diff-sync",
-  "version": "0.1.1-alpha",
+  "version": "0.3.2",
   "description": "An AD4M language for syncing mutations to a share perspective",
   "main": "index.js",
   "scripts": {
