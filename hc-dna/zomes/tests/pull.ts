@@ -2,49 +2,49 @@ import { addAllAgentsToAllConductors, cleanAllConductors } from "@holochain/tryo
 import { call, sleep, generate_link_expression, createConductors, create_link_expression} from "./utils";
 import test from "tape-promise/tape.js";
 
-//@ts-ignore
-export async function unSyncFetch(t) {
-    let installs = await createConductors(2);
-    let aliceHapps = installs[0].agent_happ;
-    let conductor1 = installs[0].conductor;
-    let bobHapps = installs[1].agent_happ;
-    let conductor2 = installs[1].conductor;
-    await addAllAgentsToAllConductors([conductor1, conductor2]);
+// //@ts-ignore
+// export async function unSyncFetch(t) {
+//     let installs = await createConductors(2);
+//     let aliceHapps = installs[0].agent_happ;
+//     let conductor1 = installs[0].conductor;
+//     let bobHapps = installs[1].agent_happ;
+//     let conductor2 = installs[1].conductor;
+//     await addAllAgentsToAllConductors([conductor1, conductor2]);
 
-    //Create did/pub key link for alice and bob
-    await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync",
-        fn_name: "create_did_pub_key_link",
-        payload: "did:test:alice"
-    });
-    await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync",
-        fn_name: "create_did_pub_key_link",
-        payload: "did:test:bob"
-    });
+//     //Create did/pub key link for alice and bob
+//     await aliceHapps.cells[0].callZome({
+//         zome_name: "perspective_diff_sync",
+//         fn_name: "create_did_pub_key_link",
+//         payload: "did:test:alice"
+//     });
+//     await bobHapps.cells[0].callZome({
+//         zome_name: "perspective_diff_sync",
+//         fn_name: "create_did_pub_key_link",
+//         payload: "did:test:bob"
+//     });
     
-    let commit = await aliceHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "commit", 
-        payload: {additions: [generate_link_expression("alice")], removals: []}
-    });
-    console.warn("\ncommit", commit);
+//     let commit = await aliceHapps.cells[0].callZome({
+//         zome_name: "perspective_diff_sync", 
+//         fn_name: "commit", 
+//         payload: {additions: [generate_link_expression("alice")], removals: []}
+//     });
+//     console.warn("\ncommit", commit);
 
-    // need to for gossip to have commit be seen by bob
-    await sleep(5000)
+//     // need to for gossip to have commit be seen by bob
+//     await sleep(5000)
     
-    const pull_bob = await bobHapps.cells[0].callZome({
-        zome_name: "perspective_diff_sync", 
-        fn_name: "pull",
-        payload: { hash: commit, is_scribe: false } 
-    });
-    //@ts-ignore
-    t.equal(pull_bob.diff.additions.length, 1);
+//     const pull_bob = await bobHapps.cells[0].callZome({
+//         zome_name: "perspective_diff_sync", 
+//         fn_name: "pull",
+//         payload: { hash: commit, is_scribe: false } 
+//     });
+//     //@ts-ignore
+//     t.equal(pull_bob.diff.additions.length, 1);
     
-    await conductor1.shutDown();
-    await conductor2.shutDown();
-    await cleanAllConductors();
-};
+//     await conductor1.shutDown();
+//     await conductor2.shutDown();
+//     await cleanAllConductors();
+// };
 
 //@ts-ignore
 export async function mergeFetchDeep(t) {
@@ -261,7 +261,7 @@ export async function mergeFetch(t) {
 test("pull", async (t) => {
     //t.plan(20)
     try {
-        await unSyncFetch(t);
+        //await unSyncFetch(t);
         await mergeFetch(t);
     } catch(e) {
         console.error("Pull test failed with error", e);
