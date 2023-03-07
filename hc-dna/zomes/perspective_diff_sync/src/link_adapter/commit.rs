@@ -11,7 +11,7 @@ use crate::retriever::holochain::{get_active_agent_anchor, get_active_agents};
 use crate::retriever::PerspectiveDiffRetreiver;
 use crate::telepresence::status::get_my_did;
 use crate::utils::get_now;
-use crate::{ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
+use crate::{Hash, ENABLE_SIGNALS, SNAPSHOT_INTERVAL};
 
 pub fn commit<Retriever: PerspectiveDiffRetreiver>(
     diff: PerspectiveDiff,
@@ -125,8 +125,12 @@ pub fn add_active_agent_link<Retriever: PerspectiveDiffRetreiver>() -> SocialCon
     Ok(())
 }
 
-pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<()> {
-    if let Some(current_revision) = current_revision::<Retriever>()? {
+pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContextResult<Option<Hash>>
+{
+    let current = current_revision::<Retriever>()?;
+
+    if current.is_some() {
+        let current_revision = current.clone().unwrap();
         let entry_ref =
             Retriever::get::<PerspectiveDiffEntryReference>(current_revision.hash.clone())?;
         let diff = Retriever::get::<PerspectiveDiff>(entry_ref.diff.clone())?;
@@ -155,5 +159,5 @@ pub fn broadcast_current<Retriever: PerspectiveDiffRetreiver>() -> SocialContext
             );
         };
     };
-    Ok(())
+    Ok(current.map(|rev| rev.hash))
 }

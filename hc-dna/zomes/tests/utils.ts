@@ -21,7 +21,7 @@ export function generate_link_expression(agent: string) {
    }
 }
 
-export async function create_link_expression(cell: CallableCell, agent: string): Promise<{commit: string, data: any}> {
+export async function create_link_expression(cell: CallableCell, agent: string): Promise<{commit: string, data: any, commitRaw: Buffer}> {
     let link_data = generate_link_expression(agent);
     let commit = await cell.callZome({
         zome_name: "perspective_diff_sync", 
@@ -29,7 +29,7 @@ export async function create_link_expression(cell: CallableCell, agent: string):
         payload: {additions: [link_data], removals: []}
     }, 60000);
     //@ts-ignore
-    return {commit: commit.toString("base64"), data: link_data}
+    return {commit: commit.toString("base64"), data: link_data, commitRaw: commit}
 }
 
 export function sleep(ms: number) {

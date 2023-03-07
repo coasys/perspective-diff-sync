@@ -28,7 +28,7 @@ pub struct LinkExpression {
     pub proof: ExpressionProof,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
+#[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes, Default)]
 pub struct PerspectiveDiff {
     pub additions: Vec<LinkExpression>,
     pub removals: Vec<LinkExpression>,
@@ -129,6 +129,12 @@ pub struct OnlineAgentAndAction {
     pub did: String,
     pub status: Option<PerspectiveExpression>,
     pub status_action: Option<ActionHash>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SerializedBytes)]
+pub struct PullResult {
+    pub diff: PerspectiveDiff,
+    pub current_revision: Option<HoloHash<holo_hash::hash_type::Action>>,
 }
 
 #[hdk_entry_defs]
