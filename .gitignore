@@ -12,3 +12,7 @@ perspect-diff-sync.dna
 *.js.map
 !rollup.config*
 !.dna.js
+!integration-test.js
+
+.ad4m-test
+ad4m-test-*
