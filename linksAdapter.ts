@@ -45,7 +45,7 @@ export class LinkAdapter implements LinkSyncAdapter {
 
   async sync(): Promise<PerspectiveDiff> {
     let current_revision = await this.hcDna.call(DNA_NICK, ZOME_NAME, "sync", null);
-    this.currentRevision = current_revision;
+    this.myCurrentRevision = current_revision;
     await this.gossip();
     return new PerspectiveDiff()
   }
