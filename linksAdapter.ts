@@ -45,7 +45,9 @@ export class LinkAdapter implements LinkSyncAdapter {
 
   async sync(): Promise<PerspectiveDiff> {
     let current_revision = await this.hcDna.call(DNA_NICK, ZOME_NAME, "sync", null);
-    this.myCurrentRevision = current_revision;
+    if (current_revision && Buffer.isBuffer(current_revision)) {
+      this.myCurrentRevision = current_revision; 
+    }
     await this.gossip();
     return new PerspectiveDiff()
   }
@@ -88,8 +90,10 @@ export class LinkAdapter implements LinkSyncAdapter {
         is_scribe 
       });
       if (pullResult) {
-        let myRevision = pullResult.current_revision;
-        this.currentRevision = myRevision;
+        if (pullResult.current_revision && Buffer.isBuffer(pullResult.current_revision)) {
+          let myRevision = pullResult.current_revision;
+          this.myCurrentRevision = myRevision;
+        }
       }
     })
 
@@ -127,7 +131,9 @@ export class LinkAdapter implements LinkSyncAdapter {
       removals: diff.removals.map((diff) => prepareLinkExpression(diff))
     }
     let res = await this.hcDna.call(DNA_NICK, ZOME_NAME, "commit", prep_diff);
-    this.myCurrentRevision = res;
+    if (res && Buffer.isBuffer(res)) {
+      this.myCurrentRevision = res;
+    }
     return res as string;
   }
 
